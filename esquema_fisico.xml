@@ -1,0 +1,268 @@
+<!-- Centro de costos -->
+<table name='crp_rrhh_asign_cost'>
+    
+    <!-- COLUMNS -->
+    <column name='id_cost'      type='serial'       required='y'    info='Identificador del registro' />
+    <column name='file_seqno'   type='serialref'                    info='Identificador de registro del fichero del cual proviene' />
+    <column name='dcodcos'      type='char'         size='7'        info='Codigo de costos' />
+    <column name='dctagas'      type='char'         size='7'        info='Cuenta de gastos' />
+    <column name='dctacos'      type='char'         size='7'        info='Cuenta de costos' />
+    <column name='dvalcom'      type='decimal'      size='9,2'      info='Valor de compra' />
+    <column name='tip_proc'     type='char'         size='4'        info='Tipo de proceso del registro' />
+    
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'     size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'     size='year to second'   default='current'   required='y' />
+    
+    <!-- PRIMARY KEY -->
+    <primary name='p_crp_rrhh_asign_cost'   columns='id_cost' />
+    
+    <!-- FOREIGN KEYS -->
+    <foreign name='f_crp_rrhh_asign_cost1'  columns='file_seqno'    references='crp_rrhh_file'  refcols='file_seqno' />
+    
+    <!-- CHECK -->
+    <check name='c_crp_rrhh_asign_cost1'>
+        <constraint>
+            tip_proc IN ('EMP', 'PRAC', 'PROV')
+        </constraint>
+    </check>
+
+</table>
+
+<!-- Nueva estructura de la tabla -->
+<table name='crp_rrhh_asign'>
+    
+    <!-- COLUMNS -->
+    <column name='id_cost'      type='serial'       required='y'    info='Identificador del registro' />
+    <column name='file_seqno'   type='serialref'                    info='Identificador de registro del fichero del cual proviene' />
+    <column name='dcodcos'      type='char'         size='7'        info='Codigo de costos' />
+    <column name='dctagas'      type='char'         size='7'        info='Cuenta de gastos' />
+    <column name='dctacos'      type='char'         size='7'        info='Cuenta de costos' />
+    <column name='dvalcom'      type='decimal'      size='9,2'      info='Valor de compra' />
+    <column name='tip_proc'     type='char'         size='4'        info='Tipo de proceso del registro' />
+    
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'     size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'     size='year to second'   default='current'   required='y' />
+    
+    <!-- PRIMARY KEY -->
+    <primary name='p_crp_rrhh_asign'   columns='id_cost' />
+    
+    <!-- FOREIGN KEYS -->
+    <foreign name='f_crp_rrhh_asign1'  columns='file_seqno'    references='crp_rrhh_file'  refcols='file_seqno' />
+    
+    <!-- CHECK -->
+    <check name='c_crp_rrhh_asign1'>
+        <constraint>
+            tip_proc IN ('EMP', 'PRAC', 'PROV')
+        </constraint>
+    </check>
+
+</table>
+
+
+<!-- !isNullOrEmpty(file_seqno) -->
+
+
+Agregado del 'file_seqno'
+<!-- 3. Centro de Costos Provision -->
+<table name='crp_rrhh_asign_cost_prov'>
+    
+    <!-- COLUMNS -->
+    <column name='id_cost_prov'     type='serial'                       required='y' />
+    <column name='dcodcos'          type='varchar'      size='7'        required='y' />
+    <column name='dctagas'          type='varchar'      size='7'        required='y' />
+    <column name='dctacos'          type='varchar'      size='7'        required='y' />
+    <column name='dvalcom'          type='decimal'      size='9,2'      required='y' />
+    <column name='cod_axional'      type='integer' />
+
+    <column name='file_seqno'       type='integer' />
+   
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'  size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'  size='year to second'   default='current'   required='y' />
+
+    <!-- INDEX -->
+    <index name='i_cod_axional' columns='cod_axional' />
+    
+    <!-- PRIMARY KEY -->
+    <primary name='p_cost_prov' columns='id_cost_prov' />
+
+</table>
+
+
+<!-- 2. Centro de Costos Practicantes -->
+<table name='crp_rrhh_asign_cost_prac'>
+    
+    <!-- COLUMNS -->
+    <column name='id_cost_prac' type='serial'                       required='y' />
+    <column name='dcodcos'      type='varchar'      size='7'        required='y' />
+    <column name='dctagas'      type='varchar'      size='7'        required='y' />
+    <column name='dctacos'      type='varchar'      size='7'        required='y' />
+    <column name='dvalcom'      type='decimal'      size='9,2'      required='y' />
+    <column name='cod_axional'  type='integer' />
+    <column name='file_seqno'   type='integer' />
+   
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'     size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'     size='year to second'   default='current'   required='y' />
+    
+    <!-- INDEX -->
+    <index name='i_cod_axional' columns='cod_axional' />
+
+    <!-- PRIMARY KEY -->
+    <primary name='p_cost_prac' columns='id_cost_prac' />
+
+</table> 
+
+
+<!-- 1. Centro de Costos Empleados -->
+<table name='crp_rrhh_asign_cost_emp'> 
+    
+    <!-- COLUMNS -->
+    <column name='id_cost_emp'  type='serial'                       required='y' />
+    <column name='dcodcos'      type='varchar'      size='7'        required='y' />
+    <column name='dctagas'      type='varchar'      size='7'        required='y' />
+    <column name='dctacos'      type='varchar'      size='7'        required='y' />
+    <column name='dvalcom'      type='decimal'      size='9,2'      required='y' />
+    <column name='cod_axional'  type='integer' />
+    <column name='file_seqno'   type='integer' />
+   
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'     size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'      size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'     size='year to second'   default='current'   required='y' />
+    
+    <!-- INDEX -->
+    <index name='i_cod_axional' columns='cod_axional' />
+    
+    <!-- PRIMARY KEY -->
+    <primary name='p_cost_emp' columns='id_cost_emp' />
+
+</table> 
+
+
+
+
+
+
+
+<!-- 3. Planilla Provision -->
+<!-- <table name='crp_rrhh_asign_plan_prov'> 
+    
+    <!-- COLUMNS -->
+    <column name='id_plan_prov'     type='serial'                       required='y' />
+    <column name='indicador'        type='varchar'      size='6'        required='y' />
+    <column name='ref'              type='char'         size='1'        required='y' />
+    <column name='fecha'            type='date'                         required='y' />
+    <column name='cheque'           type='varchar'      size='50' />
+    <column name='cuenta'           type='varchar'      size='7'        required='y' />
+    <column name='empleado'         type='varchar'      size='7'  />
+    <column name='glosa'            type='varchar'      size='50'       required='y' />
+    <column name='tipo_doc'         type='char'         size='1'  />
+    <column name='serie'            type='char'         size='8'  />
+    <column name='comprobante'      type='char'         size='15' />
+    <column name='fechadocu'        type='date'    />
+    <column name='fechavenc'        type='date'    />
+    <column name='debe'             type='decimal'      size='9,2'      required='y' />
+    <column name='haber'            type='decimal'      size='9,2'      required='y' />
+    <column name='cod_axional'      type='integer' />
+    <column name='file_seqno'       type='integer' />
+    
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'  size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'  size='year to second'   default='current'   required='y' />
+    
+    <!-- INDEX -->
+    <index name='i_cod_axional' columns='cod_axional' />
+
+    <!-- PRIMARY KEY -->
+    <primary name='p_plan_prov' columns='id_plan_prov' />
+
+</table> -->
+
+
+<!-- 2. Planilla Practicante -->
+<!-- <table name='crp_rrhh_asign_plan_prac'> 
+    
+    <!-- COLUMNS -->
+    <column name='id_plan_prac'     type='serial'                       required='y' />
+    <column name='indicador'        type='varchar'      size='6'        required='y' />
+    <column name='ref'              type='char'         size='1'        required='y' />
+    <column name='fecha'            type='date'                         required='y' />
+    <column name='cheque'           type='varchar'      size='50' />
+    <column name='cuenta'           type='varchar'      size='7'        required='y' />
+    <column name='empleado'         type='varchar'      size='7'  />
+    <column name='glosa'            type='varchar'      size='50'       required='y' />
+    <column name='tipo_doc'         type='char'         size='1'  />
+    <column name='serie'            type='char'         size='8'  />
+    <column name='comprobante'      type='char'         size='15' />
+    <column name='fechadocu'        type='date'    />
+    <column name='fechavenc'        type='date'    />
+    <column name='debe'             type='decimal'      size='9,2'      required='y' />
+    <column name='haber'            type='decimal'      size='9,2'      required='y' />
+    <column name='cod_axional'      type='integer' />
+    <column name='file_seqno'       type='integer' />
+    
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'  size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'  size='year to second'   default='current'   required='y' />
+    
+    <!-- INDEX -->
+    <index name='i_cod_axional' columns='cod_axional' />
+
+    <!-- PRIMARY KEY -->
+    <primary name='p_plan_prac' columns='id_plan_prac' />
+
+</table> -->
+
+
+<!-- 1. Planilla Empleado -->
+<!-- <table name='crp_rrhh_asign_plan_emp'> -
+    
+    <!-- COLUMNS -->
+    <column name='id_plan_emp'      type='serial'                       required='y' />
+    <column name='indicador'        type='varchar'      size='6'        required='y' />
+    <column name='ref'              type='char'         size='1'        required='y' />
+    <column name='fecha'            type='date'                         required='y' />
+    <column name='cheque'           type='varchar'      size='50' />
+    <column name='cuenta'           type='varchar'      size='7'        required='y' />
+    <column name='empleado'         type='varchar'      size='7'  />
+    <column name='glosa'            type='varchar'      size='50'       required='y' />
+    <column name='tipo_doc'         type='char'         size='1'  />
+    <column name='serie'            type='char'         size='8'  />
+    <column name='comprobante'      type='char'         size='15' />
+    <column name='fechadocu'        type='date'    />
+    <column name='fechavenc'        type='date'    />
+    <column name='debe'             type='decimal'      size='9,2'      required='y' />
+    <column name='haber'            type='decimal'      size='9,2'      required='y' />
+    <column name='cod_axional'      type='integer' />
+    <column name='file_seqno'       type='integer' />
+    
+    <!-- DATA CONTROL -->
+    <column name='user_created' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_created' type='datetime'  size='year to second'   default='current'   required='y' />
+    <column name='user_updated' type='varchar'   size='20'               default='user'      required='y' />
+    <column name='date_updated' type='datetime'  size='year to second'   default='current'   required='y' />
+    
+    <!-- INDEX -->
+    <index name='i_cod_axional' columns='cod_axional' />
+
+    <!-- PRIMARY KEY -->
+    <primary name='p_plan_emp' columns='id_plan_emp' />
+
+</table> -->
+
