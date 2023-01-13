@@ -26,8 +26,8 @@
  * 
  *  JS:  crp_load_rrhh_file 
  *
- *  Version     : v2.1
- *  Date        : 2023-01-12
+ *  Version     : v2.2
+ *  Date        : 2023-01-13
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla); 
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign) 
  *                y las planillas en los Mov. Contables (capuntes).
@@ -93,6 +93,18 @@
      */ 
     function __insPlanilla(pRsSheet, pStrUserName) { 
         /**
+         * Se obtiene el número de asiento 'asient'.
+         */ 
+        mIntAsient = Ax.db.executeGet(`
+            <select>
+                <columns>
+                    MAX(asient) max_asient
+                </columns>
+                <from table='capuntes'/>
+            </select> 
+        `) + 1; 
+
+        /**
          * Se obtiene el identificador de lote 'loteid'.
          */ 
         mIntLoteId = Ax.db.executeGet(`
@@ -104,6 +116,7 @@
             </select> 
         `) + 1; 
 
+        var mIntNumOrden = 1;
         /**
          * Registro en Movimientos contables 'capuntes'.
          */
@@ -115,31 +128,34 @@
 
             // Registro de planilla en 'capuntes'
             Ax.db.insert("capuntes", {
-                empcode: '001', 
-                proyec: 'CRP0',
-                sistem: 'A', 
-                seccio: '0',
-                fecha: mRowSheet.C,
-                diario: '40', 
-                jusser: 'GL',
-                origen: 'M',
-                docser: mStrDocSer,
-                punteo: 'N',
-                placon: 'CH',
-                cuenta: mRowSheet.E,
-                codaux: 'RRHH',
-                ctaaux: mRowSheet.F,
-                contra: null,
-                concep: mRowSheet.G,
-                fecval: mRowSheet.K,
-                moneda: 'PEN',
-                divdeb: mRowSheet.M,
-                divhab: mRowSheet.N,
-                cambio: '1.000000',
-                divemp: 'PEN',
-                debe: mRowSheet.M,
-                haber: mRowSheet.N,
-                loteid: mIntLoteId,
+                empcode: '001',                     // Código de Empresa
+                proyec: 'CRP0',                     // Línea de negocio
+                sistem: 'A',                        // Sistema
+                seccio: '0',                        // Sección
+                fecha: mRowSheet.C,                 // Fecha
+                asient: mIntAsient,                 // Número de asiento
+                diario: '40',                       // Código de diario
+                orden: mIntNumOrden++,              // Número de Orden
+                jusser: 'GL',                       // Justificante
+                origen: 'M',                        // Origen de apunte
+                docser: mStrDocSer,                 // Documento o número de factura
+                punteo: 'N',                        // Apunte auditado
+                placon: 'CH',                       // Plan contable
+                cuenta: mRowSheet.E,                // Cuenta contable
+                codaux: 'RRHH',                     // Grupo auxiliar
+                ctaaux: mRowSheet.F,                // Código auxiliar
+                contra: null,                       // Contrapartida
+                codcon: mObjCodCon[mRowSheet.H],    // Conceptos contables
+                concep: mRowSheet.G,                // Descripción del apunte
+                fecval: mRowSheet.K,                // Fecha de valor
+                moneda: 'PEN',                      // Moneda de transacción
+                divdeb: mRowSheet.M,                // Debe divisa
+                divhab: mRowSheet.N,                // Haber divisa
+                cambio: '1.000000',                 // Cambio
+                divemp: 'PEN',                      // Moneda de la empresa
+                debe: mRowSheet.M,                  // Debe
+                haber: mRowSheet.N,                 // Haber
+                loteid: mIntLoteId,                 // Identificador de lote
                 user_created: pStrUserName,
                 user_updated: pStrUserName
             });
@@ -167,7 +183,7 @@
             </select> 
         `, 'RRHH'); 
 
-        if (mIntExistGroupAux != 1) {
+        if (mIntExistGroupAux == 0) {
             /**
              * Insert del grupo auxiliar debido a su inexistencia.
              */
@@ -230,7 +246,7 @@
                 /**
                  * Si la cantidad de registro es menor/igual a cero (No está registrado).
                  */
-                if (mIntExistCtaAux <= 0) {
+                if (mIntExistCtaAux == 0) {
                     /**
                      * Insert del código de empleado en el registro auxiliar (cctaauxl).
                      */
@@ -306,12 +322,19 @@
             	AND crp_rrhh_file.file_status = 'P'
             </where>
         </select>
-    `, pIntFileId);
+    `, pIntFileId); 
+
+    /**
+     * Validación del estado del fichero que se encuentre en Pendiente (P).
+     */
+    if (!mObjRRHHFile) { 
+        throw new Ax.ext.Exception("El fichero con Id. [${fileId}] se encuentra en un estado distinto de Pendiente.",{fileId : pIntFileId});
+    }
 
     try{
         var wb = Ax.ms.Excel.load(mObjRRHHFile);
     } catch(e){
-        throw new Ax.ext.Exception("El documento NO presenta el formato de excel. [${e}]",{e : e})
+        throw new Ax.ext.Exception("El documento NO presenta el formato de excel. [${e}]",{e : e});
     }
 
     /**
@@ -320,10 +343,12 @@
     var mXlsSheet = wb.getSheet(0);
     mXlsSheet.removeRow(0);
     
-    var mIntLastRow = mXlsSheet.getLastRowNum();
-    var mRsSheet = mXlsSheet.toResultSet(); 
-    var mStrUserName = Ax.db.getUser(); 
-    var mIntLoteId = null;
+    var mIntLastRow = mXlsSheet.getLastRowNum();    // Número de la última fila del fichero
+    var mRsSheet = mXlsSheet.toResultSet();         // ResulSet con data del fichero
+    var mStrUserName = Ax.db.getUser();             // Nombre de usuario
+    var mIntLoteId = null;                          // Identificador de lote
+
+    var mObjCodCon = {F: 'FV', B: 'BV'};            // Códigos de conceptos contables
 
     /**
      * Validación: Existencia de data a cargar.
