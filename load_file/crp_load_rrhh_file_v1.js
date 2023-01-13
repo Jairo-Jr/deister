@@ -388,7 +388,7 @@
                 /** 
                  * Registro de los códigos de empleados.
                  */
-                __insCodEmp(); 
+                __insCodEmp(mIntLoteId); 
 
                 /**
                  * Update del estado del fichero a Cargado (C)
@@ -410,7 +410,7 @@
         /**
          * Update del estado del fichero a Cargado (C)
          */
-        __updFileStatus('E', mIntLoteId, mStrUserName, pIntFileId);
+        __updFileStatus('E', null, mStrUserName, pIntFileId);
 
         throw new Ax.ext.Exception("ERROR: [${error}]", {error});
     }

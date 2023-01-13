@@ -429,7 +429,7 @@
                 /** 
                  * Registro de los códigos de empleados.
                  */
-                __insCodEmp(); 
+                __insCodEmp(mIntLoteId); 
 
                 /**
                  * Update del estado del fichero a Cargado (C)
