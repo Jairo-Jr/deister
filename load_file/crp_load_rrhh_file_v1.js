@@ -298,7 +298,7 @@
      * PARAMETERS:
      *      @param {integer}        pIntFileRefno   Identificador de fichero del tipo planilla.
      *      @param {ResultSet}      pRsSheet        ResultSet con la data del fichero.
-     *      @param {string}         pStrUserName    Usuario que realiza el proceso.
+     *      @param {string}         pStrUserName    Usuario que realiza el proceso. 
      */
     function __insMovCostes(pIntFileRefno, pRsSheet, pStrUserName) { 
         /**
