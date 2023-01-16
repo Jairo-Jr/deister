@@ -26,8 +26,8 @@
  * 
  *  JS:  crp_load_rrhh_file 
  *
- *  Version     : v2.2
- *  Date        : 2023-01-13
+ *  Version     : v2.3
+ *  Date        : 2023-01-16
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla); 
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign) 
  *                y las planillas en los Mov. Contables (capuntes).
@@ -290,9 +290,118 @@
 	    );
     } 
 
+    /**
+     * @param {integer}     pIntFileRefno  
+     * @param {ResultSet}   pRsSheet 
+     * @param {string}     pStrUserName    Usuario que realiza el proceso
+     */
+    function __insMovCostes(pIntFileRefno, pRsSheet, pStrUserName) { 
+        /**
+         * Busqueda del identificador de lote.
+         */
+        var mIntLoteId = Ax.db.executeGet(`
+            <select>
+                <columns>
+                    loteid
+                </columns>
+                <from table='crp_rrhh_file'/>
+                <where>
+                    crp_rrhh_file.file_seqno = ?
+                </where>
+            </select> 
+        `, pIntFileRefno); 
+        /**
+         * Validar la existencia del identificador de lote (una planilla contabilizada).
+         */
+        if (mIntLoteId == null) {
+            throw new Ax.ext.Exception("La planilla con Id. [${fileId}] a la que hace referencia no posee un lote contable.",{fileId : pIntFileRefno});
+        } 
 
-    function __insMovCostes(params) {
-        
+        /**
+         * 
+         */ 
+        pRsSheet.forEach(mRowSheet => {
+            /**
+             * Busqueda en Apuntes de una planilla segun el identificador de lote y el numero de cuenta de gasto
+             */ 
+            var mObjApunte = Ax.db.executeQuery(`
+                <select first='1'>
+                    <columns>
+                        *
+                    </columns>
+                    <from table='capuntes'/>
+                    <where>
+                        loteid = ? 
+                        AND cuenta = ?
+                    </where>
+                </select> 
+            `, mIntLoteId, mRowSheet.B).toOne();
+            
+            /**
+             * Insert en Apuntes de Costes (ccoscont)
+             */
+            Ax.db.insert('ccoscont', {
+                empcode: mObjApunte.empcode,    // Código de Empresa
+                proyec: mObjApunte.proyec,      // Línea de negocio
+                seccio: mObjApunte.seccio,      // Sección
+                fecha: mObjApunte.fecha,        // Fecha
+                apteid: mObjApunte.apteid,      // Identificador de apunte
+                diario: mObjApunte.diario,      // Código de diario
+                jusser: mObjApunte.jusser,      // Justificante
+                docser: mObjApunte.docser,      // Documento o número de factura
+                sistem: mObjApunte.sistem,
+                placon: mObjApunte.placon,      // Plan contable
+                centro: '0', /* DATO POR DEFINIR - TEMPORAL */
+                ctaexp: '0', /* DATO POR DEFINIR - TEMPORAL */
+                cuenta: mObjApunte.cuenta,      // Cuenta contable
+                dimcode1: mObjApunte.dimcode1,
+                cantid1: mObjApunte.cantid1,
+                dimcode2: mObjApunte.dimcode2,
+                cantid2: mObjApunte.cantid2,
+                codcon: mObjApunte.codcon,
+                concep: mObjApunte.concep,
+                porcen: '100', /* DATO POR DEFINIR - TEMPORAL */
+                debe: mRowSheet.D,               // Debe
+                haber: '0',
+                user_created: pStrUserName,
+                user_updated: pStrUserName
+            });
+
+            console.log('INSERT');
+
+            //  Ax.db.insert("capuntes", {
+            //     empcode: '001',                     // Código de Empresa
+            //     proyec: 'CRP0',                     // Línea de negocio
+            //     sistem: 'A',                        // Sistema
+            //     seccio: '0',                        // Sección
+            //     fecha: mRowSheet.C,                 // Fecha
+            //     asient: mIntAsient,                 // Número de asiento
+            //     diario: '40',                       // Código de diario
+            //     orden: mIntNumOrden++,              // Número de Orden
+            //     jusser: 'GL',                       // Justificante
+            //     origen: 'M',                        // Origen de apunte
+            //     docser: mStrDocSer,                 // Documento o número de factura
+            //     punteo: 'N',                        // Apunte auditado
+            //     placon: 'CH',                       // Plan contable
+            //     cuenta: mRowSheet.E,                // Cuenta contable
+            //     codaux: 'RRHH',                     // Grupo auxiliar
+            //     ctaaux: mRowSheet.F,                // Código auxiliar
+            //     contra: null,                       // Contrapartida
+            //     codcon: mObjCodCon[mRowSheet.H],    // Conceptos contables
+            //     concep: mRowSheet.G,                // Descripción del apunte
+            //     fecval: mRowSheet.K,                // Fecha de valor
+            //     moneda: 'PEN',                      // Moneda de transacción
+            //     divdeb: mRowSheet.M,                // Debe divisa
+            //     divhab: mRowSheet.N,                // Haber divisa
+            //     cambio: '1.000000',                 // Cambio
+            //     divemp: 'PEN',                      // Moneda de la empresa
+            //     debe: mRowSheet.M,                  // Debe
+            //     haber: mRowSheet.N,                 // Haber
+            //     loteid: mIntLoteId,                 // Identificador de lote
+            //     user_created: pStrUserName,
+            //     user_updated: pStrUserName
+            // });
+        });
     }
 
     /**
@@ -377,7 +486,7 @@
                 /**
                  * Insert en Movimeintos de costes (ccoscont)
                  */ 
-                __insMovCostes();
+                __insMovCostes(pIntFileRefno, mRsSheet, mStrUserName);
 
                 /**
                  * Update del estado del fichero a Cargado (C)
