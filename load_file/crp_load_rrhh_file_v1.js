@@ -184,7 +184,7 @@
             </select> 
         `, 'RRHH'); 
 
-        if (mIntExistGroupAux == 0) {
+        if (mIntExistGroupAux === 0) {
             /**
              * Insert del grupo auxiliar debido a su inexistencia.
              */
@@ -247,7 +247,7 @@
                 /**
                  * Si la cantidad de registro es menor/igual a cero (No está registrado).
                  */
-                if (mIntExistCtaAux == 0) {
+                if (mIntExistCtaAux === 0) {
                     /**
                      * Insert del código de empleado en el registro auxiliar (cctaauxl).
                      */
@@ -291,13 +291,18 @@
     } 
 
     /**
-     * @param {integer}     pIntFileRefno  
-     * @param {ResultSet}   pRsSheet 
-     * @param {string}     pStrUserName    Usuario que realiza el proceso
+     * LOCAL FUNCTION: __insMovCostes
+     * 
+     * Description: Función local que registra en Movimientos de costes (t: ccoscont) la data del fichero de costos según la planilla a la que corresponda.
+     * 
+     * PARAMETERS:
+     *      @param {integer}        pIntFileRefno   Identificador de fichero del tipo planilla.
+     *      @param {ResultSet}      pRsSheet        ResultSet con la data del fichero.
+     *      @param {string}         pStrUserName    Usuario que realiza el proceso.
      */
     function __insMovCostes(pIntFileRefno, pRsSheet, pStrUserName) { 
         /**
-         * Busqueda del identificador de lote.
+         * Búsqueda del identificador de lote del fichero de planilla.
          */
         var mIntLoteId = Ax.db.executeGet(`
             <select>
@@ -313,16 +318,16 @@
         /**
          * Validar la existencia del identificador de lote (una planilla contabilizada).
          */
-        if (mIntLoteId == null) {
+        if (mIntLoteId === null) {
             throw new Ax.ext.Exception("La planilla con Id. [${fileId}] a la que hace referencia no posee un lote contable.",{fileId : pIntFileRefno});
         } 
 
         /**
-         * 
+         * Iteración de las filas del fichero de costos.
          */ 
         pRsSheet.forEach(mRowSheet => {
             /**
-             * Busqueda en Apuntes de una planilla segun el identificador de lote y el numero de cuenta de gasto
+             * Búsqueda en Apuntes de una planilla según el identificador de lote y el número de cuenta de gasto.
              */ 
             var mObjApunte = Ax.db.executeQuery(`
                 <select first='1'>
@@ -341,66 +346,31 @@
              * Insert en Apuntes de Costes (ccoscont)
              */
             Ax.db.insert('ccoscont', {
-                empcode: mObjApunte.empcode,    // Código de Empresa
-                proyec: mObjApunte.proyec,      // Línea de negocio
-                seccio: mObjApunte.seccio,      // Sección
-                fecha: mObjApunte.fecha,        // Fecha
-                apteid: mObjApunte.apteid,      // Identificador de apunte
-                diario: mObjApunte.diario,      // Código de diario
-                jusser: mObjApunte.jusser,      // Justificante
-                docser: mObjApunte.docser,      // Documento o número de factura
-                sistem: mObjApunte.sistem,
-                placon: mObjApunte.placon,      // Plan contable
-                centro: '0', /* DATO POR DEFINIR - TEMPORAL */
-                ctaexp: '0', /* DATO POR DEFINIR - TEMPORAL */
-                cuenta: mObjApunte.cuenta,      // Cuenta contable
-                dimcode1: mObjApunte.dimcode1,
-                cantid1: mObjApunte.cantid1,
-                dimcode2: mObjApunte.dimcode2,
-                cantid2: mObjApunte.cantid2,
-                codcon: mObjApunte.codcon,
-                concep: mObjApunte.concep,
-                porcen: '100', /* DATO POR DEFINIR - TEMPORAL */
-                debe: mRowSheet.D,               // Debe
-                haber: '0',
+                empcode:  mObjApunte.empcode,       // Código de Empresa
+                proyec:   mObjApunte.proyec,        // Línea de negocio
+                seccio:   mObjApunte.seccio,        // Sección
+                fecha:    mObjApunte.fecha,         // Fecha
+                apteid:   mObjApunte.apteid,        // Identificador de apunte
+                diario:   mObjApunte.diario,        // Código de diario
+                jusser:   mObjApunte.jusser,        // Justificante
+                docser:   mObjApunte.docser,        // Documento o número de factura
+                sistem:   mObjApunte.sistem,        // Sistema
+                placon:   mObjApunte.placon,        // Plan contable
+                centro:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                ctaexp:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                cuenta:   mObjApunte.cuenta,        // Cuenta contable
+                dimcode1: mObjApunte.dimcode1,      // Dimensión 1
+                cantid1:  mObjApunte.cantid1,       // Cantidad 1
+                dimcode2: mObjApunte.dimcode2,      // Dimensión 2
+                cantid2:  mObjApunte.cantid2,       // Cantidad 2
+                codcon:   mObjApunte.codcon,        // Concepto
+                concep:   mObjApunte.concep,        // Descripción
+                porcen:   '100',                    /* DATO POR DEFINIR - TEMPORAL */
+                debe:     mRowSheet.D,              // Debe
+                haber:    '0',                      // Haber
                 user_created: pStrUserName,
                 user_updated: pStrUserName
-            });
-
-            console.log('INSERT');
-
-            //  Ax.db.insert("capuntes", {
-            //     empcode: '001',                     // Código de Empresa
-            //     proyec: 'CRP0',                     // Línea de negocio
-            //     sistem: 'A',                        // Sistema
-            //     seccio: '0',                        // Sección
-            //     fecha: mRowSheet.C,                 // Fecha
-            //     asient: mIntAsient,                 // Número de asiento
-            //     diario: '40',                       // Código de diario
-            //     orden: mIntNumOrden++,              // Número de Orden
-            //     jusser: 'GL',                       // Justificante
-            //     origen: 'M',                        // Origen de apunte
-            //     docser: mStrDocSer,                 // Documento o número de factura
-            //     punteo: 'N',                        // Apunte auditado
-            //     placon: 'CH',                       // Plan contable
-            //     cuenta: mRowSheet.E,                // Cuenta contable
-            //     codaux: 'RRHH',                     // Grupo auxiliar
-            //     ctaaux: mRowSheet.F,                // Código auxiliar
-            //     contra: null,                       // Contrapartida
-            //     codcon: mObjCodCon[mRowSheet.H],    // Conceptos contables
-            //     concep: mRowSheet.G,                // Descripción del apunte
-            //     fecval: mRowSheet.K,                // Fecha de valor
-            //     moneda: 'PEN',                      // Moneda de transacción
-            //     divdeb: mRowSheet.M,                // Debe divisa
-            //     divhab: mRowSheet.N,                // Haber divisa
-            //     cambio: '1.000000',                 // Cambio
-            //     divemp: 'PEN',                      // Moneda de la empresa
-            //     debe: mRowSheet.M,                  // Debe
-            //     haber: mRowSheet.N,                 // Haber
-            //     loteid: mIntLoteId,                 // Identificador de lote
-            //     user_created: pStrUserName,
-            //     user_updated: pStrUserName
-            // });
+            }); 
         });
     }
 
