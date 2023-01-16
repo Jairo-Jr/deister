@@ -45,15 +45,16 @@
  *      @param  {string}    pStrCRC         Número CRC de control del fichero
  *      @param  {string}    pStrProc        Proceso de registro (C: centro de costo, P: planilla)
  *      @param  {string}    pStrTipProc     Tipo de proceso (EMP: empleado, PRAC: practicante, PROV: provisión)
- *
+ *      @param  {integer}   pIntFileRefno   Identificador del fichero de referencia. 
+ * 
  */
 
- function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc) { 
+ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFileRefno) { 
 
     /**
-     * LOCAL FUNCTION: __insCosto
+     * LOCAL FUNCTION: __insTmpCosto
      * 
-     * Description: Función local que registra los costos en Centro de Costos(t: crp_rrhh_asign).
+     * Description: Función local que registra los costos en Centro de Costos(t: crp_rrhh_asign), una tabla temporal de respaldo.
      * 
      * PARAMETERS:
      *      @param  {integer}       pIntFileId      Identificador de fichero
@@ -61,7 +62,7 @@
      *      @param  {string}        pStrTipProc     Nombre del tipo de proceso (EMP: Empleados, PRAC: Practicantes, PROV: Provisión)
      *      @param  {string}        pStrUserName    Usuario que realiza el registro
      */ 
-    function __insCosto(pIntFileId, pRsSheet, pStrTipProc, pStrUserName) {
+    function __insTmpCosto(pIntFileId, pRsSheet, pStrTipProc, pStrUserName) {
 
         pRsSheet.forEach(mRowSheet => { 
             /**
@@ -287,6 +288,11 @@
 	    		file_seqno : pIntFileId
 	    	}
 	    );
+    } 
+
+
+    function __insMovCostes(params) {
+        
     }
 
     /**
@@ -365,13 +371,18 @@
             case 'C': 
                 /**
                  * Insert de costos
-                 */
-                __insCosto(pIntFileId, mRsSheet, pStrTipProc, mStrUserName);
+                 */ 
+                __insTmpCosto(pIntFileId, mRsSheet, pStrTipProc, mStrUserName);
+
+                /**
+                 * Insert en Movimeintos de costes (ccoscont)
+                 */ 
+                __insMovCostes();
 
                 /**
                  * Update del estado del fichero a Cargado (C)
                  */
-                 __updFileStatus('C', mIntLoteId, mStrUserName, pIntFileId);
+                __updFileStatus('C', mIntLoteId, mStrUserName, pIntFileId); 
                 break; 
             // Proceso Planillas
             case 'P': 
