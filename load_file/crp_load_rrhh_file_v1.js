@@ -26,8 +26,8 @@
  * 
  *  JS:  crp_load_rrhh_file 
  *
- *  Version     : v2.3
- *  Date        : 2023-01-16
+ *  Version     : v2.4
+ *  Date        : 2023-01-17
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla); 
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign) 
  *                y las planillas en los Mov. Contables (capuntes).
@@ -47,7 +47,7 @@
  *      @param  {string}    pStrTipProc     Tipo de proceso (EMP: empleado, PRAC: practicante, PROV: provisión)
  *      @param  {integer}   pIntFileRefno   Identificador del fichero de referencia. 
  * 
- */
+ */ 
 
  function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFileRefno) { 
 
@@ -65,20 +65,21 @@
     function __insTmpCosto(pIntFileId, pRsSheet, pStrTipProc, pStrUserName) {
 
         pRsSheet.forEach(mRowSheet => { 
-            /**
-             * Insert en la tabla de respaldo
-             */
-            Ax.db.insert("crp_rrhh_asign", { 
-                file_seqno: pIntFileId,
-                dcodcos : mRowSheet.A,
-                dctagas : mRowSheet.B,
-                dctacos : mRowSheet.C,
-                dvalcom : mRowSheet.D,
-                tip_proc: pStrTipProc,
-                user_created: pStrUserName,
-                user_updated: pStrUserName
-            });
-
+            if(mRowSheet.A !== null){ 
+                /**
+                 * Insert en la tabla de respaldo
+                 */
+                Ax.db.insert("crp_rrhh_asign", { 
+                    file_seqno: pIntFileId,
+                    dcodcos : mRowSheet.A,
+                    dctagas : mRowSheet.B,
+                    dctacos : mRowSheet.C,
+                    dvalcom : mRowSheet.D,
+                    tip_proc: pStrTipProc,
+                    user_created: pStrUserName,
+                    user_updated: pStrUserName
+                });
+            } 
         });
     }
 
@@ -123,43 +124,48 @@
          */
         pRsSheet.forEach(mRowSheet => { 
             /**
-             * Componer el número de documento según la nulidad de la serie y el comprobante.
+             * Validación de la primera columna no sea null.
              */
-            var mStrDocSer = (mRowSheet.I === null || mRowSheet.J === null) ? '-' : mRowSheet.I + '-' + mRowSheet.J;
+            if(mRowSheet.A !== null){ 
+                /**
+                 * Componer el número de documento según la nulidad de la serie y el comprobante.
+                 */
+                var mStrDocSer = (mRowSheet.I === null || mRowSheet.J === null) ? '-' : mRowSheet.I + '-' + mRowSheet.J;
 
-            // Registro de planilla en 'capuntes'
-            Ax.db.insert("capuntes", {
-                empcode: '001',                     // Código de Empresa
-                proyec: 'CRP0',                     // Línea de negocio
-                sistem: 'A',                        // Sistema
-                seccio: '0',                        // Sección
-                fecha: mRowSheet.C,                 // Fecha
-                asient: mIntAsient,                 // Número de asiento
-                diario: '40',                       // Código de diario
-                orden: mIntNumOrden++,              // Número de Orden
-                jusser: 'GL',                       // Justificante
-                origen: 'F',                        // Origen de apunte
-                docser: mStrDocSer,                 // Documento o número de factura
-                punteo: 'N',                        // Apunte auditado
-                placon: 'CH',                       // Plan contable
-                cuenta: mRowSheet.E,                // Cuenta contable
-                codaux: 'RRHH',                     // Grupo auxiliar
-                ctaaux: mRowSheet.F,                // Código auxiliar
-                contra: null,                       // Contrapartida
-                codcon: mObjCodCon[mRowSheet.H],    // Conceptos contables
-                concep: mRowSheet.G,                // Descripción del apunte
-                fecval: mRowSheet.K,                // Fecha de valor
-                moneda: 'PEN',                      // Moneda de transacción
-                divdeb: mRowSheet.M,                // Debe divisa
-                divhab: mRowSheet.N,                // Haber divisa
-                cambio: '1.000000',                 // Cambio
-                divemp: 'PEN',                      // Moneda de la empresa
-                debe: mRowSheet.M,                  // Debe
-                haber: mRowSheet.N,                 // Haber
-                loteid: mIntLoteId,                 // Identificador de lote
-                user_created: pStrUserName,
-                user_updated: pStrUserName
-            });
+                // Registro de planilla en 'capuntes'
+                Ax.db.insert("capuntes", {
+                    empcode: '001',                     // Código de Empresa
+                    proyec: 'CRP0',                     // Línea de negocio
+                    sistem: 'A',                        // Sistema
+                    seccio: '0',                        // Sección
+                    fecha: mRowSheet.C,                 // Fecha
+                    asient: mIntAsient,                 // Número de asiento
+                    diario: '40',                       // Código de diario
+                    orden: mIntNumOrden++,              // Número de Orden
+                    jusser: 'GL',                       // Justificante
+                    origen: 'F',                        // Origen de apunte
+                    docser: mStrDocSer,                 // Documento o número de factura
+                    punteo: 'N',                        // Apunte auditado
+                    placon: 'CH',                       // Plan contable
+                    cuenta: mRowSheet.E,                // Cuenta contable
+                    codaux: 'RRHH',                     // Grupo auxiliar
+                    ctaaux: mRowSheet.F,                // Código auxiliar
+                    contra: null,                       // Contrapartida
+                    codcon: mObjCodCon[mRowSheet.H],    // Conceptos contables
+                    concep: mRowSheet.G,                // Descripción del apunte
+                    fecval: mRowSheet.K,                // Fecha de valor
+                    moneda: 'PEN',                      // Moneda de transacción
+                    divdeb: mRowSheet.M,                // Debe divisa
+                    divhab: mRowSheet.N,                // Haber divisa
+                    cambio: '1.000000',                 // Cambio
+                    divemp: 'PEN',                      // Moneda de la empresa
+                    debe: mRowSheet.M,                  // Debe
+                    haber: mRowSheet.N,                 // Haber
+                    loteid: mIntLoteId,                 // Identificador de lote
+                    user_created: pStrUserName,
+                    user_updated: pStrUserName
+                });
+            } 
         });
     } 
     /**
@@ -326,52 +332,65 @@
          * Iteración de las filas del fichero de costos.
          */ 
         pRsSheet.forEach(mRowSheet => {
-            /**
-             * Búsqueda en Apuntes de una planilla según el identificador de lote y el número de cuenta de gasto.
-             */ 
-            var mObjApunte = Ax.db.executeQuery(`
-                <select first='1'>
-                    <columns>
-                        *
-                    </columns>
-                    <from table='capuntes'/>
-                    <where>
-                        loteid = ? 
-                        AND cuenta = ?
-                    </where>
-                </select> 
-            `, mIntLoteId, mRowSheet.B).toOne();
-            
-            /**
-             * Insert en Apuntes de Costes (ccoscont)
-             */
-            Ax.db.insert('ccoscont', {
-                empcode:  mObjApunte.empcode,       // Código de Empresa
-                proyec:   mObjApunte.proyec,        // Línea de negocio
-                seccio:   mObjApunte.seccio,        // Sección
-                fecha:    mObjApunte.fecha,         // Fecha
-                apteid:   mObjApunte.apteid,        // Identificador de apunte
-                diario:   mObjApunte.diario,        // Código de diario
-                jusser:   mObjApunte.jusser,        // Justificante
-                docser:   mObjApunte.docser,        // Documento o número de factura
-                sistem:   mObjApunte.sistem,        // Sistema
-                placon:   mObjApunte.placon,        // Plan contable
-                centro:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
-                ctaexp:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
-                cuenta:   mObjApunte.cuenta,        // Cuenta contable
-                dimcode1: mObjApunte.dimcode1,      // Dimensión 1
-                cantid1:  mObjApunte.cantid1,       // Cantidad 1
-                dimcode2: mObjApunte.dimcode2,      // Dimensión 2
-                cantid2:  mObjApunte.cantid2,       // Cantidad 2
-                codcon:   mObjApunte.codcon,        // Concepto
-                concep:   mObjApunte.concep,        // Descripción
-                porcen:   '100',                    /* DATO POR DEFINIR - TEMPORAL */
-                debe:     mRowSheet.D,              // Debe
-                haber:    '0',                      // Haber
-                user_created: pStrUserName,
-                user_updated: pStrUserName
-            }); 
+            if(mRowSheet.A !== null){ 
+                /**
+                 * Búsqueda en Apuntes de una planilla según el identificador de lote y el número de cuenta de gasto.
+                 */ 
+                var mObjApunte = Ax.db.executeQuery(`
+                    <select first='1'>
+                        <columns>
+                            *
+                        </columns>
+                        <from table='capuntes'/>
+                        <where>
+                            loteid = ? 
+                            AND cuenta = ?
+                        </where>
+                    </select> 
+                `, mIntLoteId, mRowSheet.B).toOne();
+                
+                /**
+                 * Insert en Apuntes de Costes (ccoscont)
+                 */
+                Ax.db.insert('ccoscont', {
+                    empcode:  mObjApunte.empcode,       // Código de Empresa
+                    proyec:   mObjApunte.proyec,        // Línea de negocio
+                    seccio:   mObjApunte.seccio,        // Sección
+                    fecha:    mObjApunte.fecha,         // Fecha
+                    apteid:   mObjApunte.apteid,        // Identificador de apunte
+                    diario:   mObjApunte.diario,        // Código de diario
+                    jusser:   mObjApunte.jusser,        // Justificante
+                    docser:   mObjApunte.docser,        // Documento o número de factura
+                    sistem:   mObjApunte.sistem,        // Sistema
+                    placon:   mObjApunte.placon,        // Plan contable
+                    centro:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                    ctaexp:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                    cuenta:   mObjApunte.cuenta,        // Cuenta contable
+                    dimcode1: mObjApunte.dimcode1,      // Dimensión 1
+                    cantid1:  mObjApunte.cantid1,       // Cantidad 1
+                    dimcode2: mObjApunte.dimcode2,      // Dimensión 2
+                    cantid2:  mObjApunte.cantid2,       // Cantidad 2
+                    codcon:   mObjApunte.codcon,        // Concepto
+                    concep:   mObjApunte.concep,        // Descripción
+                    porcen:   '100',                    /* DATO POR DEFINIR - TEMPORAL */
+                    debe:     mRowSheet.D,              // Debe
+                    haber:    '0',                      // Haber
+                    user_created: pStrUserName,
+                    user_updated: pStrUserName
+                }); 
+            } 
         });
+    } 
+
+    /**
+     * LOCAL FUNCTION: __delFile
+     * 
+     * Description: Función local que elimina los archivos temporales usados como apoyo en el procesado de ficheros.
+     * 
+     */
+    function __delFile() {
+        mFileBiff5.delete();
+        mFileBiff8.delete();
     }
 
     /**
@@ -416,10 +435,33 @@
         throw new Ax.ext.Exception("El fichero con Id. [${fileId}] se encuentra en un estado distinto de Pendiente.",{fileId : pIntFileId});
     }
 
-    try{
-        var wb = Ax.ms.Excel.load(mObjRRHHFile);
+    try{ 
+        // Creación de archivo .xls y se agrega la data (blob).
+        var mFileBiff5 = new Ax.io.File("tmp/excel_biff5.xls"); 
+        mFileBiff5.write(mObjRRHHFile); 
+        var path = mFileBiff5.getAbsolutePath(); 
+
+        // Creación de archivo .xls transformado a una nueva versión actualizada.
+        let mStrPathNewFile = new Ax.io.File("tmp").getAbsolutePath() + `/excel_convert_${pIntFileId}.xls`;
+        var mPB = new Ax.lang.ProcessBuilder(); 
+        var mIntConverStatus = mPB.directory('/home/axional').command('/bin/bash', '-c', `./xlsx-cli.sh ${path} ${mStrPathNewFile}`); 
+
+        // Validación de la correcta transformación del archivo.
+        if (mIntConverStatus == 0) {
+
+            // Se obtiene el nuevo archivo transformado a la nueva versión.
+            var mFileBiff8 = new Ax.io.File(mStrPathNewFile); 
+            
+            // Carga del nuevo archivo.
+            var wb = Ax.ms.Excel.load(mFileBiff8.toBlob());
+
+        }
+        else {
+            console.log(mPB.getStdErr());
+        } 
+
     } catch(e){
-        throw new Ax.ext.Exception("El documento NO presenta el formato de excel. [${e}]",{e : e});
+        throw new Ax.ext.Exception("El documento NO presenta el formato de excel. [${e}]",{e});
     }
 
     /**
@@ -439,6 +481,7 @@
      * Validación: Existencia de data a cargar.
      */
     if (mIntLastRow < 1){
+        __delFile();
         throw new Ax.ext.Exception("No existen registros a cargar en la hoja de Excel"); 
     }
 
@@ -488,9 +531,10 @@
                 break;
         
             default:
+                __delFile();
                 throw new Ax.ext.Exception('El tipo de proceso es no soportado.');
         } 
-
+        __delFile();
         Ax.db.commitWork();
 
     } catch(error) { 
@@ -500,9 +544,9 @@
         /**
          * Update del estado del fichero a Cargado (C)
          */
-        __updFileStatus('E', null, mStrUserName, pIntFileId);
-
+        __updFileStatus('E', null, mStrUserName, pIntFileId); 
+        __delFile();
         throw new Ax.ext.Exception("ERROR: [${error}]", {error});
-    }
+    } 
 
 }
