@@ -138,7 +138,7 @@
                 diario: '40',                       // Código de diario
                 orden: mIntNumOrden++,              // Número de Orden
                 jusser: 'GL',                       // Justificante
-                origen: 'M',                        // Origen de apunte
+                origen: 'F',                        // Origen de apunte
                 docser: mStrDocSer,                 // Documento o número de factura
                 punteo: 'N',                        // Apunte auditado
                 placon: 'CH',                       // Plan contable
