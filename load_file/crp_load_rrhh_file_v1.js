@@ -26,8 +26,8 @@
  * 
  *  JS:  crp_load_rrhh_file 
  *
- *  Version     : v2.4
- *  Date        : 2023-01-17
+ *  Version     : v2.5
+ *  Date        : 2023-01-26
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla); 
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign) 
  *                y las planillas en los Mov. Contables (capuntes).
@@ -353,16 +353,16 @@
                  * Insert en Apuntes de Costes (ccoscont)
                  */
                 Ax.db.insert('ccoscont', {
-                    empcode:  mObjApunte.empcode,       // Código de Empresa
-                    proyec:   mObjApunte.proyec,        // Línea de negocio
-                    seccio:   mObjApunte.seccio,        // Sección
-                    fecha:    mObjApunte.fecha,         // Fecha
-                    apteid:   mObjApunte.apteid,        // Identificador de apunte
-                    diario:   mObjApunte.diario,        // Código de diario
-                    jusser:   mObjApunte.jusser,        // Justificante
-                    docser:   mObjApunte.docser,        // Documento o número de factura
-                    sistem:   mObjApunte.sistem,        // Sistema
-                    placon:   mObjApunte.placon,        // Plan contable
+                    empcode:  mObjApunte.empcode,       // Código de Empresa 
+                    proyec:   mObjApunte.proyec,        // Línea de negocio 
+                    seccio:   mRowSheet.C,              // Sección 
+                    fecha:    mObjApunte.fecha,         // Fecha 
+                    apteid:   mObjApunte.apteid,        // Identificador de apunte 
+                    diario:   mObjApunte.diario,        // Código de diario 
+                    jusser:   mObjApunte.jusser,        // Justificante 
+                    docser:   mObjApunte.docser,        // Documento o número de factura 
+                    sistem:   mObjApunte.sistem,        // Sistema 
+                    placon:   mObjApunte.placon,        // Plan contable 
                     centro:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
                     ctaexp:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
                     cuenta:   mObjApunte.cuenta,        // Cuenta contable
