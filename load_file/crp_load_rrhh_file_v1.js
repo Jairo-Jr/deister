@@ -332,7 +332,28 @@
          * Iteración de las filas del fichero de costos.
          */ 
         pRsSheet.forEach(mRowSheet => {
-            if(mRowSheet.A !== null){ 
+            if(mRowSheet.A !== null){
+                /**
+                 * Obtener el equivalente de coste chavin (seccion axional)
+                 */
+                var mStrCodAx = Ax.db.executeGet(`
+                    <select>
+                        <columns>
+                            seccio
+                        </columns>
+                        <from table='crp_chv_mapcen'/>
+                        <where>
+                            crp_chv_mapcen.cencos = ?
+                        </where>
+                    </select> 
+                `, mRowSheet.C); 
+                /**
+                 * Validar la existencia de un equivalente al codigo de coste chavin
+                 */
+                if (mStrCodAx === null) {
+                    throw new Ax.ext.Exception("El centro de coste Chavin [${codAx}] no posee una sección contable de destino.",{codAx : mRowSheet.C});
+                } 
+
                 /**
                  * Búsqueda en Apuntes de una planilla según el identificador de lote y el número de cuenta de gasto.
                  */ 
