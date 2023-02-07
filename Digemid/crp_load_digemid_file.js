@@ -75,11 +75,12 @@
                 const sheet = wb.getSheet(0);
                 sheet.removeRow(0);
 
+
                 for (let row of sheet) {
                     let m_arr = row.toArray();
-                    // console.log(m_arr);
-                    if (m_arr[0] && m_arr[1]) {
-                        // console.log('OK');
+
+                    if (m_arr[0] && (m_arr[1] + '').length() == 5 ) {
+
                         try {
 
                             var res = Ax.db.update('garticul_ext', {
