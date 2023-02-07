@@ -24,24 +24,24 @@
  * ----------------------------------------------------------------------------- 
  *
  *  JS:  Name Function
- *  Version     : Version
- *  Date        : 31-01-2023
- *  Description : Procesa fichero en excel y actualiza el código digemid de los artículos en garticul.
+ *  Version     : v1.2
+ *  Date        : 06-02-2023
+ *  Description : Procesa fichero en excel y actualiza el código digemid de los artículos en garticul_ext.
  *
  *  CALLED FROM:
  *  ==================
- *  sstdd_digemid / ACTION_BTN_1
+ *      Obj: sstdd_digemid              A través de la acción 'ACTION_BTN_1'
  *
  *  PARAMETERS:
  *  ==================
- *  p_fileid: Número serial del registro de la tabla sstd_digemid
+ *      @param  {integer}   p_fileid      Número serial del registro de la tabla sstd_digemid
  *
  **/
 
  function crp_load_digemid_file(p_fileid) {
-    let m_count = 0;
+    let mBoolValidFormat = false;
     let m_count_update = 0;
-
+    var mStrUserName = Ax.db.getUser();
     var msg_fbck = '';
 
     let m_blob = Ax.db.executeQuery(`
@@ -62,24 +62,21 @@
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ]
 
-    for (let i = 0; i < m_mimetype_excel.length; i++) {
-        if (m_blob.file_type == m_mimetype_excel[i]) {
-            m_count++;
-        }
-    }
+    // Restringe un formato de fichero valido
+    mBoolValidFormat = m_mimetype_excel.includes(m_blob.file_type);
 
-    if (m_count == 1) {
+    if (mBoolValidFormat) {
         if (m_blob.file_status == 'P') {
             try {
                 const wb = Ax.ms.Excel.load(m_blob.file_data);
                 const sheet = wb.getSheet(0);
                 sheet.removeRow(0);
 
-
                 for (let row of sheet) {
                     let m_arr = row.toArray();
 
-                    if (m_arr[0] && (m_arr[1] + '').length() == 5 ) {
+                    // if (m_arr[0] && (m_arr[1] + '').length() == 5) {
+                    if (m_arr[0] && String(m_arr[1]).length == 5) {
 
                         try {
 
@@ -90,30 +87,60 @@
                             }, { codigo: m_arr[0] });
 
                             // Si se realiza el update
-                            if (res.count != 0) {
-                                /*
-                                 * Insert de los datos (flexline y digemid) que se pudieron actualizar en garticul_ext
-                                */
-                                Ax.db.insert('crp_sstd_digemid', {
-                                    flexline: m_arr[0],
-                                    digemid: m_arr[1],
-                                    file_seqno: p_fileid
-                                });
+                            if (res.count !== 0) {
+
+                                let mIntDigemidId = Ax.db.executeGet(`
+                                    <select>
+                                        <columns>
+                                            digemid_id
+                                        </columns>
+                                        <from table='crp_sstd_digemid'/>
+                                        <where>
+                                            codart = ?
+                                            AND file_seqno = ?
+                                        </where>
+                                    </select> 
+                                `, m_arr[0], p_fileid);
+
+                                if (mIntDigemidId) {    // Si existe un codigo flexline
+                                    /*
+                                    * Update de (flexline y digemid) que se pudieron actualizar en garticul_ext
+                                    */
+                                    Ax.db.update('crp_sstd_digemid', {
+                                        codart: m_arr[0],
+                                        code_digemid: m_arr[1],
+                                        file_seqno: p_fileid,
+                                        user_updated:  mStrUserName
+                                    }, {digemid_id: mIntDigemidId});
+
+                                } else {    // Si no existe un codigo flexline
+                                    /*
+                                    * Insert de los datos (flexline y digemid) que se pudieron actualizar en garticul_ext
+                                    */
+                                    Ax.db.insert('crp_sstd_digemid', {
+                                        codart: m_arr[0],
+                                        code_digemid: m_arr[1],
+                                        file_seqno: p_fileid,
+                                        user_created: mStrUserName,
+                                        user_updated: mStrUserName
+                                    });
+                                }
 
                                 m_count_update++;
                             } else {
-                                msg_fbck = msg_fbck + '[' + m_arr[0] + ',' + m_arr[1] + ']' + '  ';
+                                msg_fbck = msg_fbck + '[' + m_arr[0] + ', ' + m_arr[1] + ']' + '\n';
                             }
 
                         } catch (e) {
                             console.error(e);
                         }
                     } else {
-                        msg_fbck = msg_fbck + '[' + m_arr[0] + ',' + m_arr[1] + ']' + '  ';
+                        msg_fbck = msg_fbck + '[' + m_arr[0] + ', ' + m_arr[1] + ']' + '\n';
                     }
                 }
             } catch (e) {
-                throw new Ax.ext.Exception('', `Error al procesar el fichero excel`);
+                throw new Ax.ext.Exception("Error: [${error}].",{error : e});
+                // throw new Ax.ext.Exception('', `Error al procesar el fichero Excel`);
             }
         } else {
             throw new Ax.ext.Exception('', `Solo permite la carga de ficheros en estado Pendiente`);
@@ -124,9 +151,9 @@
 
     if (m_count_update > 0) {
         if (msg_fbck) {
-            msg_fbck = msg_fbck + 'No cumplen el formato necesario.'
+            msg_fbck = 'El código de artículo no existe y/o el código Digemid no cumple el formato necesario: \n' + msg_fbck;
         }
-        Ax.db.update('sstd_digemid', { file_status: 'H', file_memo: msg_fbck }, { file_status: 'C' });
+        Ax.db.update('sstd_digemid', { file_status: 'H' }, { file_status: 'C' });
         Ax.db.update('sstd_digemid', { file_status: 'C', file_memo: msg_fbck }, { file_seqno: p_fileid });
 
         return m_count_update;
