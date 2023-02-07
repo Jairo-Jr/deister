@@ -39,17 +39,13 @@
  **/
 
  function crp_load_digemid_file(p_fileid) {
+
+    // Definicion de variables
     let mBoolValidFormat = false;
     let m_count_update = 0;
-    var mStrUserName = Ax.db.getUser();
-    var msg_fbck = '';
+    var mStrUserName = Ax.db.getUser(); 
 
-    let m_blob = Ax.db.executeQuery(`
-        SELECT file_status, file_data, file_type, user_updated
-          FROM sstd_digemid
-         WHERE file_seqno = ?
-    `, p_fileid).toOne();
-
+    // Array con los tipos de ficheros validos
     const m_mimetype_excel = [
         'application/vnd.ms-excel',
         'application/msexcel',
@@ -60,35 +56,78 @@
         'application/xls',
         'application/x-xls',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    ]
+    ] 
+
+    // Busqueda de archivo segun el fileId
+    let m_blob = Ax.db.executeQuery(`
+        SELECT file_status, file_data, file_type, user_updated
+          FROM sstd_digemid
+         WHERE file_seqno = ?
+    `, p_fileid).toOne();
+
+    
 
     // Restringe un formato de fichero valido
-    mBoolValidFormat = m_mimetype_excel.includes(m_blob.file_type);
+    mBoolValidFormat = m_mimetype_excel.includes(m_blob.file_type); 
 
-    if (mBoolValidFormat) {
-        if (m_blob.file_status == 'P') {
+    if (mBoolValidFormat) {     // Si es un formato valido
+        if (m_blob.file_status == 'P') {    // Si el fichero se encuentra en estado 'P' (Pendiente)
+
             try {
-                const wb = Ax.ms.Excel.load(m_blob.file_data);
-                const sheet = wb.getSheet(0);
-                sheet.removeRow(0);
+                // Lectura de data del fichero
+                var wb = Ax.ms.Excel.load(m_blob.file_data);
+                var sheet = wb.getSheet(0);
+                sheet.removeRow(0); 
 
-                for (let row of sheet) {
-                    let m_arr = row.toArray();
+                // Creacion de nuevo fichero 
+                var wbCustom = new Ax.ms.Excel("wbCustom.xlsx");
+                var sheetCustom = wbCustom.createSheet("sheetCustom");
 
-                    // if (m_arr[0] && (m_arr[1] + '').length() == 5) {
-                    if (m_arr[0] && String(m_arr[1]).length == 5) {
+                // Definicion de estilos
+                var fnt_red = wbCustom.createCellStyle();
+                fnt_red.setFont(wbCustom.createFont().setColor(Ax.ms.Excel.Color.RED).setBold(true));
 
-                        try {
+                var fnt_title = wbCustom.createCellStyle();
+                fnt_title.setFont(wbCustom.createFont().setBold(true)); 
 
+                // Instancia de nombre de columnas
+                sheetCustom.setCellValue("A1", "Flexline");
+                sheetCustom.setCellValue("B1", "Digemid");
+                sheetCustom.setCellValue("C1", "Observaciones");
+
+            } catch (error) {
+                // Error al procesar el fichero
+                console.error(error);
+                throw new Ax.ext.Exception("Error al procesar el fichero: [${error}].", { error });
+            } 
+
+            var mIntNumRow = 2;
+            for (let row of sheet) {
+                let m_arr = row.toArray(); 
+
+                // Asignacion de datos del archivo inicial hacia el nuevo fichero
+                sheetCustom.setCellValue("A" + mIntNumRow, m_arr[0]);
+                sheetCustom.setCellValue("B" + mIntNumRow, m_arr[1]);
+
+                // Si ambos codigos (articulo y digemid) existen
+                if (m_arr[0] && m_arr[1]) {
+
+                    // Eliminacion de espacios que pueda tener el dato
+                    var mStrCodeDigemid = String(m_arr[1]).replace(/\s/g, ''); 
+
+                    if (mStrCodeDigemid.length == 5) {  // Si la longitud del codigo es igual a 5
+
+                        try { 
+                            // Actualizado del codigo Digemid para el articulo determinado
                             var res = Ax.db.update('garticul_ext', {
-                                code_digemid: m_arr[1],
+                                code_digemid: mStrCodeDigemid,
                                 user_updated: m_blob.user_updated,
                                 date_updated: new Ax.util.Date()
                             }, { codigo: m_arr[0] });
 
                             // Si se realiza el update
-                            if (res.count !== 0) {
-
+                            if (res.count !== 0) { 
+                                // Busqueda de codigo articulo y Digemid ya registrados
                                 let mIntDigemidId = Ax.db.executeGet(`
                                     <select>
                                         <columns>
@@ -100,9 +139,9 @@
                                             AND file_seqno = ?
                                         </where>
                                     </select> 
-                                `, m_arr[0], p_fileid);
+                                `, m_arr[0], p_fileid); 
 
-                                if (mIntDigemidId) {    // Si existe un codigo flexline
+                                if (mIntDigemidId) {    // Si se encuentran registrados
                                     /*
                                     * Update de (flexline y digemid) que se pudieron actualizar en garticul_ext
                                     */
@@ -110,10 +149,10 @@
                                         codart: m_arr[0],
                                         code_digemid: m_arr[1],
                                         file_seqno: p_fileid,
-                                        user_updated:  mStrUserName
-                                    }, {digemid_id: mIntDigemidId});
+                                        user_updated: mStrUserName
+                                    }, { digemid_id: mIntDigemidId });
 
-                                } else {    // Si no existe un codigo flexline
+                                } else {    // Si no se encuentran registrados
                                     /*
                                     * Insert de los datos (flexline y digemid) que se pudieron actualizar en garticul_ext
                                     */
@@ -124,25 +163,36 @@
                                         user_created: mStrUserName,
                                         user_updated: mStrUserName
                                     });
-                                }
+                                } 
 
+                                // Incrementa el nuemro de registros actualizados
                                 m_count_update++;
-                            } else {
-                                msg_fbck = msg_fbck + '[' + m_arr[0] + ', ' + m_arr[1] + ']' + '\n';
+                            } else {    // Si no se realizo el update
+                                // Se registra un mensaje de incidencia en el archivo
+                                sheetCustom.setCellValue("C" + mIntNumRow, "Codigo flexline no existente."); 
                             }
 
                         } catch (e) {
                             console.error(e);
-                            throw new Ax.ext.Exception("Error-1: [${error}].",{error : e});
                         }
-                    } else {
-                        msg_fbck = msg_fbck + '[' + m_arr[0] + ', ' + m_arr[1] + ']' + '\n';
+                    } else {    // Si la longitud es diferente de 5
+                        // Se registra un mensaje de incidencia en el archivo
+                        sheetCustom.setCellValue("C" + mIntNumRow, "Codigo Digemid no valido."); 
                     }
-                }
-            } catch (e) {
-                throw new Ax.ext.Exception("Error-2: [${error}].",{error : e});
-                // throw new Ax.ext.Exception('', `Error al procesar el fichero Excel`);
-            }
+
+
+                } else {    // Si alguno de los codigos es nulo/vacio 
+                    // Se registra un mensaje de incidencia en el archivo
+                    sheetCustom.setCellValue("C" + mIntNumRow, "Valores nulos o vacios."); 
+                } 
+
+                // Incremento de la cantidad de iteraciones
+                mIntNumRow++;
+            } 
+
+            // Asignacion de estilos para la columna de observaciones
+            sheetCustom.setCellStyle(fnt_red, "$C2:$C" + mIntNumRow);
+
         } else {
             throw new Ax.ext.Exception('', `Solo permite la carga de ficheros en estado Pendiente`);
         }
@@ -150,15 +200,13 @@
         throw new Ax.ext.Exception('', `Este tipo de fichero no se puede cargar: '${m_blob.file_type}'`);
     }
 
-    if (m_count_update > 0) {
-        if (msg_fbck) {
-            msg_fbck = 'El código de artículo no existe y/o el código Digemid no cumple el formato necesario: \n' + msg_fbck;
-        }
+    if (m_count_update > 0) {   // Si se realizaron registros 
+        // Se actualiza el estado a 'H' (Histórico) de ficheros en estado 'C' (Cargado)
         Ax.db.update('sstd_digemid', { file_status: 'H' }, { file_status: 'C' });
-        Ax.db.update('sstd_digemid', { file_status: 'C', file_memo: msg_fbck }, { file_seqno: p_fileid });
+        Ax.db.update('sstd_digemid', { file_status: 'C', file_data: wbCustom.toBlob() }, { file_seqno: p_fileid });
 
         return m_count_update;
     } else {
         throw new Ax.ext.Exception('', `No se pudo actualizar el estado del fichero anterior.`);
-    }
+    } 
 }
