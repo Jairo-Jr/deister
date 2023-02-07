@@ -133,13 +133,14 @@
 
                         } catch (e) {
                             console.error(e);
+                            throw new Ax.ext.Exception("Error-1: [${error}].",{error : e});
                         }
                     } else {
                         msg_fbck = msg_fbck + '[' + m_arr[0] + ', ' + m_arr[1] + ']' + '\n';
                     }
                 }
             } catch (e) {
-                throw new Ax.ext.Exception("Error: [${error}].",{error : e});
+                throw new Ax.ext.Exception("Error-2: [${error}].",{error : e});
                 // throw new Ax.ext.Exception('', `Error al procesar el fichero Excel`);
             }
         } else {
