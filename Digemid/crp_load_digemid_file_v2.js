@@ -124,10 +124,10 @@
                 if (m_arr[0] || m_arr[1]) {
 
                     if (!m_arr[0]) {  // Si no existe codigo articulo en el fichero
-                        mStrMsgObs = mStrMsgObs + 'Código de artículo nulo - ';
+                        mStrMsgObs = mStrMsgObs + 'Código de artículo nulo ';
 
                     } else if (!m_arr[1]) {  // Si no existe código Digemid en el fichero
-                        mStrMsgObs = mStrMsgObs + 'Código Digemid nulo - ';
+                        mStrMsgObs = mStrMsgObs + 'Código Digemid nulo ';
 
                     } else {    // Si existe ambos codigos articulo/Digemid
                         // Removemos espacios que pueda tener el codigo Digemid
@@ -192,10 +192,10 @@
                                 m_count_update++;
                                 mBoolUpd = true;
                             } else {
-                                mStrMsgObs = mStrMsgObs + 'Código de articulo no existente - ';
+                                mStrMsgObs = mStrMsgObs + 'Código de articulo no existente ';
                             }
                         } else {    // Si la longitud del codigo digemid es diferente de 5
-                            mStrMsgObs = mStrMsgObs + 'Longitud de código Digemid distinto de 5 - ';
+                            mStrMsgObs = mStrMsgObs + 'Longitud de código Digemid distinto de 5 ';
                         }
                     }
                 }
