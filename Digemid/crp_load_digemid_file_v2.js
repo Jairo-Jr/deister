@@ -24,8 +24,8 @@
  * ----------------------------------------------------------------------------- 
  *
  *  JS:  Name Function
- *  Version     : v1.2
- *  Date        : 06-02-2023
+ *  Version     : v1.5
+ *  Date        : 09-02-2023
  *  Description : Procesa fichero en excel y actualiza el código digemid de los artículos en garticul_ext.
  *
  *  CALLED FROM:
@@ -114,33 +114,48 @@
             for (let row of sheet) {
                 mBoolUpd = false;
                 mStrMsgObs = '';
-                let m_arr = row.toArray();
+                let m_arr = row.toArray(); 
+
+                
 
                 // Asignacion de datos del archivo inicial hacia el nuevo fichero
                 sheetCustom.setCellValue("A" + mIntNumRow, m_arr[0]);
-                sheetCustom.setCellValue("B" + mIntNumRow, m_arr[1]);
+                sheetCustom.setCellValue("B" + mIntNumRow, m_arr[1]); 
 
                 // Si existe al menos un codigo articulo/digemid en el fichero
                 if (m_arr[0] || m_arr[1]) {
 
-                    if (!m_arr[0]) {  // Si no existe codigo articulo en el fichero
+                    if (m_arr[0] === null) {  // Si no existe codigo articulo en el fichero
                         mStrMsgObs = mStrMsgObs + 'Código de artículo nulo ';
 
-                    } else if (!m_arr[1]) {  // Si no existe código Digemid en el fichero
+                    } else if (m_arr[1] === null) {  // Si no existe código Digemid en el fichero
                         mStrMsgObs = mStrMsgObs + 'Código Digemid nulo ';
 
                     } else {    // Si existe ambos codigos articulo/Digemid
+
+                        var mStrCodeArt = String(m_arr[0]).replace(/\s/g, '');
+
+                        // Autocompletar formato de codigo de articulo
+                        var mIntLongCode = 7 - mStrCodeArt.length;
+
+                        for (let index = 0; index < mIntLongCode; index++) {
+                            mStrCodeArt = '0' + mStrCodeArt;
+                            
+                        } 
+                        sheetCustom.setCellValue("A" + mIntNumRow, mStrCodeArt);
+
                         // Removemos espacios que pueda tener el codigo Digemid
                         var mStrCodeDigemid = String(m_arr[1]).replace(/\s/g, '');
 
-                        if (mStrCodeDigemid.length == 5) {  // Si la longitud del codigo digemid es igual a 5
+                        if (mStrCodeDigemid.length == 5) {  // Si la longitud del codigo digemid es igual a 5 
 
+                            sheetCustom.setCellValue("A" + mIntNumRow, mStrCodeArt);
                             // Actualizado del codigo Digemid para el articulo determinado
                             var res = Ax.db.update('garticul_ext', {
                                 code_digemid: mStrCodeDigemid,
                                 user_updated: mStrUserName,
                                 date_updated: mStrDate
-                            }, { codigo: m_arr[0] });
+                            }, { codigo: mStrCodeArt });
 
                             // Si se realiza el update
                             if (res.count !== 0) {
@@ -157,14 +172,14 @@
                                             AND file_seqno = ?
                                         </where>
                                     </select> 
-                                `, m_arr[0], p_fileid);
+                                `, mStrCodeArt, p_fileid);
 
                                 if (mIntDigemidId) {    // Si se encuentran registrados
                                     /*
                                     * Update de (flexline y digemid) que se pudieron actualizar en garticul_ext
                                     */
                                     Ax.db.update('crp_sstd_digemid', {
-                                        codart: m_arr[0],
+                                        codart: mStrCodeArt,
                                         code_digemid: m_arr[1],
                                         file_seqno: p_fileid,
                                         user_updated: mStrUserName
@@ -175,7 +190,7 @@
                                     * Insert de los datos (flexline y digemid) que se pudieron actualizar en garticul_ext
                                     */
                                     Ax.db.insert('crp_sstd_digemid', {
-                                        codart: m_arr[0],
+                                        codart: mStrCodeArt,
                                         code_digemid: m_arr[1],
                                         file_seqno: p_fileid,
                                         user_created: mStrUserName,
