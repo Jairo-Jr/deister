@@ -155,7 +155,7 @@
                                 code_digemid: mStrCodeDigemid,
                                 user_updated: mStrUserName,
                                 date_updated: mStrDate
-                            }, { codigo: mStrCodeArt });
+                            }, { codigo: mStrCodeArt });    
 
                             // Si se realiza el update
                             if (res.count !== 0) {
