@@ -1,0 +1,69 @@
+<select>
+    <columns>
+        galmstkc.codart, garticul.nomart, 
+        galmstkc.codalm, galmacen.nomalm, 
+        galmstkc.udmact, <nvl>gart_unidefs.nomuni, gart_unidefs2.nomuni</nvl> nomuni, 
+        garticul.fabric, crp_laboratorio.descri <alias name='nomlab' />,
+        garticul_ext.tipo_producto, crp_tipo_producto.descri,
+        <today /> <alias name='fechoy' />, <!-- usado para las Fonts del reporte -->
+        <nvl>(select MIN(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &gt;= <today />), 
+             (select MAX(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &lt;= <today />)</nvl> fecven, 
+        galmstkc.stkbas, galmstkc.stkadj, galmstkc.stksal, galmstkc.stkblo
+        <!-- SUM(galmstkc.stkbas - galmstkc.stkadj - galmstkc.stksal - galmstkc.stkblo) <alias name='saldo'/>  -->
+    </columns>
+    <from table="galmstkc">
+        <join table="galmacen">
+            <on>galmstkc.codalm = galmacen.codigo</on>
+            <join table="galmgrpl">
+                <on>galmacen.codigo = galmgrpl.almgrp</on>
+            </join>
+        </join>
+        <join table="garticul">
+            <on>galmstkc.codart = garticul.codigo</on> 
+            <join table='garticul_ext'>
+                <on>garticul.codigo = garticul_ext.codigo</on>
+                <join type='left' table='crp_laboratorio'>
+                    <on>garticul.fabric = crp_laboratorio.codigo</on>
+                </join>
+                <join type='left' table='crp_tipo_producto'>
+                    <on>garticul_ext.tipo_producto = crp_tipo_producto.codigo</on>
+                </join>
+            </join>
+        </join>
+        <join table="gartlote">
+            <on>galmstkc.codart = gartlote.codart</on>
+            <on>galmstkc.varlog = gartlote.varlog</on>
+            <on>galmstkc.udmact = gartlote.coduni</on>
+        </join> 
+        
+        <join type='left' table='gart_unidefs'>
+            <on>galmstkc.codart = gart_unidefs.codart</on>
+            <on>galmstkc.varlog = gart_unidefs.varlog</on>
+            <on>galmstkc.udmact = gart_unidefs.coduni</on>
+        </join>
+        <join type='left' table='gart_unidefs' alias='gart_unidefs2'>
+            <on>galmstkc.codart = gart_unidefs2.codart</on>
+            <on>gart_unidefs2.varlog IS NULL</on>
+            <on>galmstkc.udmact = gart_unidefs2.coduni</on>
+        </join>
+    </from>
+    <where>
+            galmstkc.stkbas != 0 AND   
+            galmgrpl.grpalm = 'PERIFERICOS'
+        AND galmacen.estado = 'A' 
+        AND (galmacen.fecbaj IS NULL OR galmacen.fecbaj &gt;= <today />)
+        AND garticul.estado = 'A' 
+        AND (garticul.fecbaj IS NULL OR garticul.fecbaj &gt;= <today />)
+        AND gartlote.feccad IS NOT NULL
+        AND ((<nvl>
+                (select MIN(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &gt;= <today />), 
+                (select MAX(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &lt;= <today />) 
+              </nvl>) &gt; '27-02-2023') <!-- FEC INI -->
+        AND ((<nvl>
+                (select MIN(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &gt;= <today />), 
+                (select MAX(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &lt;= <today />)
+              </nvl>) &lt; '01-03-2023') <!-- FEC FIN -->
+        AND galmstkc.codart = '0054303'
+    </where>
+    <!-- <group>1,2,3,4,5,6,7,8,9,10,11,12</group> -->
+</select> 
