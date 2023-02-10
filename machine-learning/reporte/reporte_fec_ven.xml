@@ -8,15 +8,16 @@
         <today /> <alias name='fechoy' />, <!-- usado para las Fonts del reporte -->
         <nvl>(select MIN(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &gt;= <today />), 
              (select MAX(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &lt;= <today />)</nvl> fecven, 
-        galmstkc.stkbas, galmstkc.stkadj, galmstkc.stksal, galmstkc.stkblo
-        <!-- SUM(galmstkc.stkbas - galmstkc.stkadj - galmstkc.stksal - galmstkc.stkblo) <alias name='saldo'/>  -->
+        SUM(galmstkc.stkbas - galmstkc.stkadj - galmstkc.stksal - galmstkc.stkblo) <alias name='saldo'/> 
     </columns>
     <from table="galmstkc">
         <join table="galmacen">
             <on>galmstkc.codalm = galmacen.codigo</on>
-            <join table="galmgrpl">
+            
+            <!-- <join table="galmgrpl">
                 <on>galmacen.codigo = galmgrpl.almgrp</on>
-            </join>
+            </join> -->
+
         </join>
         <join table="garticul">
             <on>galmstkc.codart = garticul.codigo</on> 
@@ -30,11 +31,12 @@
                 </join>
             </join>
         </join>
-        <join table="gartlote">
+
+        <!-- <join table="gartlote">
             <on>galmstkc.codart = gartlote.codart</on>
             <on>galmstkc.varlog = gartlote.varlog</on>
             <on>galmstkc.udmact = gartlote.coduni</on>
-        </join> 
+        </join>  -->
         
         <join type='left' table='gart_unidefs'>
             <on>galmstkc.codart = gart_unidefs.codart</on>
@@ -49,12 +51,24 @@
     </from>
     <where>
             galmstkc.stkbas != 0 AND   
-            galmgrpl.grpalm = 'PERIFERICOS'
+
+            <!-- galmgrpl.grpalm = 'PERIFERICOS' -->
+
         AND galmacen.estado = 'A' 
+        AND galmacen.auxchr5 = 'F'
         AND (galmacen.fecbaj IS NULL OR galmacen.fecbaj &gt;= <today />)
         AND garticul.estado = 'A' 
         AND (garticul.fecbaj IS NULL OR garticul.fecbaj &gt;= <today />)
-        AND gartlote.feccad IS NOT NULL
+
+        <!-- AND gartlote.feccad IS NOT NULL -->
+
+        AND EXISTS (SELECT gartlote.codart 
+                    FROM gartlote 
+                    WHERE gartlote.codart = galmstkc.codart 
+                          AND gartlote.varlog = galmstkc.varlog
+                          AND gartlote.coduni = galmstkc.udmact
+                          AND gartlote.feccad IS NOT NULL) 
+
         AND ((<nvl>
                 (select MIN(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &gt;= <today />), 
                 (select MAX(gartlote.feccad) from gartlote where gartlote.codart = garticul.codigo AND gartlote.feccad &lt;= <today />) 
@@ -65,5 +79,20 @@
               </nvl>) &lt; '01-03-2023') <!-- FEC FIN -->
         AND galmstkc.codart = '0054303'
     </where>
-    <!-- <group>1,2,3,4,5,6,7,8,9,10,11,12</group> -->
+    <group>1,2,3,4,5,6,7,8,9,10,11,12</group>
 </select> 
+
+
+
+<!-- CORRECCIONES -->
+
+<!--
+    1. Se obvio la join hacia la tabla gartlote que generaba resultados duplicados
+    2. A cambio se agrego una sub-select que valida las mis mas condiciones
+-->
+
+<!--
+    1. Se retiro la join hacia la tabla galmgrpl y la condicon galmgrpl.grpalm = 'PERIFERICOS', 
+       debido a que se queria consultar en todos los alamcenes.
+    2. Se agrego una condicion de que el producto pertenesca a almacenes de famracia 'F'
+-->
