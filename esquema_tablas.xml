@@ -1,0 +1,77 @@
+<table name='crp_ibth_setreceivedpurchase_h'>
+
+   <!-- COLUMNS -->
+   <column name='id_receivedpurchase_h'         type='serial'                                                   required='y'        info='Identificador del registro' />
+   <column name='purchasecode'                  type='char'             size='16'                               required='y'        info='Código de la Orden de Compra' />
+   <column name='referralguide'                 type='char'             size='16'                               required='y'        info='Código de la Guía de Remisión' /> 
+   <column name='version'                       type='char'             size='4'                                required='y'        info='versión de la Orden de Compra' /> 
+   <column name='state'	                        type='char'             size='1'                default='P'                         info='Estado de la entrega' />
+   <column name='cabori'                        type='integer'                                                                      info='Identificador del registro origen' />
+   <column name='user_received'	                type='varchar'	        size='50'                                                   info='Usuario que recibe la entrega' />
+   <column name='date_received'	                type='datetime'         size='year to second'                                       info='Fecha de recepción' />
+   <column name='user_processed'	            type='varchar'	        size='50'                                                   info='Usuario que procesa la entrega' />
+   <column name='date_processed'	            type='datetime'         size='year to second'	                                    info='Fecha de procesado' />
+   <column name='message_error'	                type='varchar'	        size='255'                                                  info='Mensaje de error' />
+   <column name='date_error'	                type='datetime'         size='year to second'                                       info='Fecha del error' />
+   <column name='json_receivedpurchase'	        type='clob'	                                                    required='y'        info='Json recibido' />
+   
+   <!-- DATA CONTROL -->
+   <column name='user_created' type='varchar'   size='20'               default='user'      required='y' />
+   <column name='date_created' type='datetime'  size='year to second'   default='current'   required='y' />
+   <column name='user_updated' type='varchar'   size='20'               default='user'      required='y' />
+   <column name='date_updated' type='datetime'  size='year to second'   default='current'   required='y' />
+   
+   <!-- PRIMARY KEY -->
+   <primary name='p_crp_ibth_setreceivedpurchase_h' columns='id_receivedpurchase_h' />
+
+   <!-- CHECKS -->
+   <check name='c_crp_ibth_setreceivedpurchase_h1'>
+       <constraint>
+           <![CDATA[(estado IN ('P','C','E'))]]>
+       </constraint>
+   </check> 
+
+</table>
+
+
+
+
+<table name='crp_ibth_setreceivedpurchase_l'>
+
+   <!-- COLUMNS -->
+   <column name='id_receivedpurchase_l'         type='serial'                                                   required='y'        info='Identificador del registro' />
+   <column name='id_receivedpurchase_h'         type='serialref'                                                required='y'        info='Identificador de la orden de compra' />
+   <column name='numline'                       type='integer'                                                  required='y'        info='Número de línea' />
+   <column name='productcode'                   type='char'             size='16'                               required='y'        info='código del producto' />
+   <column name='brand'                         type='varchar'          size='50'                                                   info='marca del producto' />
+   <column name='size'                          type='varchar'          size='50'                                                   info='presentación del producto' />
+   <column name='lab'                           type='varchar'          size='50'                                                   info='laboratorio del producto' />
+   <column name='qty'                           type='integer'                                                  required='y'        info='Cantidad del producto' />
+   <column name='serial'                        type='varchar'          size='50'                                                   info='serie del producto' />
+   <column name='batchcode'                     type='char'             size='16'                                                   info='Código del lote' />
+   <column name='expdate'                       type='datetime'         size='year to second'                                       info='Fecha de vencimiento' />
+   <column name='warehouse'                     type='varchar'          size='50'                               required='y'        info='Almacén' /> 
+   <column name='linori'                        type='integer'                                                                      info='Identificador del registro origen' />
+   <column name='missingqty'                    type='integer'                                                                      info='Cantidad pendiente del producto' />
+   
+   <!-- DATA CONTROL -->
+   <column name='user_created' type='varchar'   size='20'               default='user'      required='y' />
+   <column name='date_created' type='datetime'  size='year to second'   default='current'   required='y' />
+   <column name='user_updated' type='varchar'   size='20'               default='user'      required='y' />
+   <column name='date_updated' type='datetime'  size='year to second'   default='current'   required='y' />
+   
+   <!-- PRIMARY KEY -->
+   <primary name='p_crp_ibth_setreceivedpurchase_l' columns='id_receivedpurchase_l' />
+
+   <!-- FOREIGN KEYS -->
+   <foreign name='crp_ibth_setreceivedpurchase_l1' columns='id_receivedpurchase_h' references='crp_ibth_setreceivedpurchase_h' refcols='id_receivedpurchase_h'/> 
+
+</table>
+
+
+<!-- 
+    Estados:
+    * P: Pendiente
+    * C: Completado
+    * E: Error
+ -->
