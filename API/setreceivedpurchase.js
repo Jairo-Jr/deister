@@ -1,35 +1,50 @@
-function main(data) {
+function main(data) { 
 
-    var mStrJsonData = JSON.stringify(data);
-    // Registro de data de Orden de Compra
-    var mObjRes = Ax.db.insert('crp_ibth_setreceivedpurchase_h', {
-        codcom: data.code,
-        codgr: data.gr,
-        json_receivedpurchase: mStrJsonData
-    });
+    try {
+        var mStrJsonData = JSON.stringify(data);
+        // Registro de data de Orden de Compra
+        var mIntSerial = Ax.db.insert('crp_ibth_setreceivedpurchase_h', {
+            purchasecode: data.code,
+            referralguide: data.gr,
+            version: data.version,
+            json_receivedpurchase: mStrJsonData
+        }).getSerial();
 
-    data.purchaseitem.forEach(item => {
 
-        // Registro de productos
-        Ax.db.insert('crp_ibth_setreceivedpurchase_l', {
-            id_receivedpurchase_h: mObjRes.serial,
-            numline: item.numline,
-            codprod: item.code,
-            marca: item.variante.brand,
-            size: item.variante.size,
-            lab: item.variante.lab,
-            cantidad: item.qty,
-            serial: item.serial,
-            lote: item.batch.code,
-            fecven: item.batch.expdate,
-            almacen: item.warehouse
+        data.purchaseitem.forEach(item => {
+            // Registro de productos
+            Ax.db.insert('crp_ibth_setreceivedpurchase_l', {
+                id_receivedpurchase_h: mIntSerial,
+                numline: item.numline,
+                productcode: item.code,
+                brand: item.variante.brand,
+                size: item.variante.size,
+                lab: item.variante.lab,
+                qty: item.qty,
+                serial: item.serial,
+                batchcode: item.batch.code,
+                expdate: item.batch.expdate,
+                warehouse: item.warehouse
+            });
         });
-    });
+
+    } catch (error) { 
+        return new Ax.net.HttpResponseBuilder()
+        .status(400)
+        .entity({
+            "status": "ERROR",
+            "message": error
+        })
+        .type("application/json")
+        .build();
+    }
+
 
     return new Ax.net.HttpResponseBuilder()
         .status(201)
         .entity({
-            "message": "OK"
+            "status": "OK",
+            "message": "Registro realizado"
         })
         .type("application/json")
         .build();
