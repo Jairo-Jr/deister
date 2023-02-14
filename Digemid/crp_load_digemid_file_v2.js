@@ -24,8 +24,8 @@
  * ----------------------------------------------------------------------------- 
  *
  *  JS:  Name Function
- *  Version     : v1.5
- *  Date        : 09-02-2023
+ *  Version     : v1.6
+ *  Date        : 14-02-2023
  *  Description : Procesa fichero en excel y actualiza el código digemid de los artículos en garticul_ext.
  *
  *  CALLED FROM:
@@ -47,6 +47,7 @@
     var mStrUserName = Ax.db.getUser();
     var mStrDate = new Ax.util.Date();
     var mStrMsgObs = '';
+    var mBoolValidCode = true;
 
     // Array con los tipos de ficheros validos
     const m_mimetype_excel = [
@@ -113,6 +114,7 @@
             var mIntNumRow = 2;
             for (let row of sheet) {
                 mBoolUpd = false;
+                mBoolValidCode = true;
                 mStrMsgObs = '';
                 let m_arr = row.toArray(); 
 
@@ -126,16 +128,13 @@
                 if (m_arr[0] || m_arr[1]) {
 
                     if (m_arr[0] === null) {  // Si no existe codigo articulo en el fichero
-                        mStrMsgObs = mStrMsgObs + 'Código de artículo nulo ';
+                        mStrMsgObs = mStrMsgObs + 'Código de artículo nulo';
+                        mBoolValidCode = false;
 
-                    } else if (m_arr[1] === null) {  // Si no existe código Digemid en el fichero
-                        mStrMsgObs = mStrMsgObs + 'Código Digemid nulo ';
+                    } else {
+                        // Autocompletar formato de codigo de articulo 
+                        var mStrCodeArt = String(m_arr[0]).replace(/\s/g, ''); // Retiro de espacios en blanco
 
-                    } else {    // Si existe ambos codigos articulo/Digemid
-
-                        var mStrCodeArt = String(m_arr[0]).replace(/\s/g, '');
-
-                        // Autocompletar formato de codigo de articulo
                         var mIntLongCode = 7 - mStrCodeArt.length;
 
                         for (let index = 0; index < mIntLongCode; index++) {
@@ -143,13 +142,35 @@
                             
                         } 
                         sheetCustom.setCellValue("A" + mIntNumRow, mStrCodeArt);
+                    }
+
+                    // Validación del código Digemid
+
+                    if (m_arr[1] === null) {  // Si no existe código Digemid en el fichero
+                        mStrMsgObs = mStrMsgObs + 'Código Digemid nulo';
+
+                    } else {    // Si existe ambos codigos articulo/Digemid 
 
                         // Removemos espacios que pueda tener el codigo Digemid
                         var mStrCodeDigemid = String(m_arr[1]).replace(/\s/g, '');
 
-                        if (mStrCodeDigemid.length == 5) {  // Si la longitud del codigo digemid es igual a 5 
+                        if (mStrCodeDigemid.length > 5) {  // Si la longitud del codigo digemid es menor o igual a 5 
+                            (mStrMsgObs) ? mStrMsgObs = mStrMsgObs + ' / ' : false;
+                            mStrMsgObs = mStrMsgObs + 'Código Digemid excede el número de dígitos válidos, máximo 5';
+                            mBoolValidCode = false;
+                        }
 
-                            sheetCustom.setCellValue("A" + mIntNumRow, mStrCodeArt);
+                        // Validar existencia de caracteres especiales en el codigo Digemid
+                        var mStrCodeDigemidClean = mStrCodeDigemid.replace(/[ªº·¬¿¡´ç¨~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, '');
+
+                        if (mStrCodeDigemid.length != mStrCodeDigemidClean.length) { // Si la longitud de caracteres no son iguales, el codigo Digemid posee caracteres expeciales 
+                            (mStrMsgObs) ? mStrMsgObs = mStrMsgObs + ' / ' : false;
+                            mStrMsgObs = mStrMsgObs + 'Código Digemid contiene caracteres no validos';
+                            mBoolValidCode = false;
+                        }
+
+                        if (mBoolValidCode) {  // Si código Articulo/Digemid son validos 
+
                             // Actualizado del codigo Digemid para el articulo determinado
                             var res = Ax.db.update('garticul_ext', {
                                 code_digemid: mStrCodeDigemid,
@@ -209,8 +230,6 @@
                             } else {
                                 mStrMsgObs = mStrMsgObs + 'Código de articulo no existente ';
                             }
-                        } else {    // Si la longitud del codigo digemid es diferente de 5
-                            mStrMsgObs = mStrMsgObs + 'Longitud de código Digemid distinto de 5 ';
                         }
                     }
                 }
