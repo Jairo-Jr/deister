@@ -6,14 +6,14 @@ function main(data) {
 
         // Iteracion de órdenes de pedidos finalizados (outputorders)
         data.outputorders.forEach(mObjOrderH => {
-            mObjOrderH.json_receivedpurchase = mStrJsonData;
+            mObjOrderH.json_finishedorders = mStrJsonData;
             // Registro de la data de cabecera
             // var mIntSerialOrderH = Ax.db.insert('crp_ibth_setfinishedorders_h', {
             //     orderclient: mObjOrderH.orderclient,
             //     orderibt: mObjOrderH.orderibt,
             //     ordertype: mObjOrderH.ordertype,
             //     version: mObjOrderH.version,
-            //     json_receivedpurchase: mStrJsonData
+            //     json_finishedorders: mStrJsonData
             // }).getSerial();
             var mIntSerialOrderH = Ax.db.insert('crp_ibth_setfinishedorders_h', mObjOrderH).getSerial();
 
