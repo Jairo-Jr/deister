@@ -10,6 +10,7 @@ function main(data) {
     var mDateError = null;
     let mIntCantPedidos = null;
     var mStrState = 'P';
+    var mDateExpDate = null;
     var i = 0;
 
     // Validación de campos requeridos
@@ -83,7 +84,15 @@ function main(data) {
         ).getSerial();
 
 
-        data.PurchaseItem.forEach(item => {
+        data.PurchaseItem.forEach(item => { 
+
+            // Se da formato a la fecha de expiracion
+            if(item.Batch.ExpDate) {
+                mDateExpDate = new Ax.util.Date(item.Batch.ExpDate);
+                mDateExpDate = mDateExpDate.format("yyyy-MM-dd HH:mm:ss");
+            } else {
+                mDateExpDate = null;
+            }
 
             mArrayPurchaseItems.push({
                 id_receivedpurchase_h:  mIntSerial,
@@ -95,7 +104,7 @@ function main(data) {
                 qty:                    item.Qty,
                 serial:                 item.Serial,
                 batchcode:              item.Batch.Code,
-                expdate:                item.Batch.ExpDate,
+                expdate:                mDateExpDate,
                 warehouse:              item.Warehouse
             });
 
