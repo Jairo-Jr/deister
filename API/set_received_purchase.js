@@ -1,5 +1,6 @@
-function main(data) {
+function main(data) { 
 
+    // Definición de variables
     var mArrayPurchaseItems = [];
     var mObjMessageResponse = {};
     var mArrRequired = [];
@@ -8,6 +9,7 @@ function main(data) {
     var mStrMssgError = null;
     var mDateError = null;
     let mIntCantPedidos = null;
+    var mStrState = 'P';
     var i = 0;
 
     // Validación de campos requeridos
@@ -42,8 +44,7 @@ function main(data) {
     // 
     try {
 
-        // Validación de la existencia de código de la orden de compra
-        /** */ 
+        // Validación de la existencia de código de la orden de compra 
         mIntCantPedidos = Ax.db.executeGet(`
             <select>
                 <columns>
@@ -55,12 +56,14 @@ function main(data) {
                 </where>
             </select> 
         `, data.CodeOC); 
+
         // Si no existe código de la orden de compra
         if(!mIntCantPedidos) { 
-            var mStrMssgError = `Código de la Orden de Compra [${data.CodeOC}] no existe.`;
-            var mDateError = mDateToday;
+            // Se establece como error, agregando mensaje, fecha y estado 
+            mStrMssgError = `Código de la Orden de Compra [${data.CodeOC}] no existe.`;
+            mDateError = mDateToday;
+            mStrState = 'E';
         } 
-        /** */
 
         var mStrJsonData = JSON.stringify(data);
 
@@ -70,6 +73,7 @@ function main(data) {
                 codeoc:                 data.CodeOC,
                 gr:                     data.GR,
                 version:                data.Version,
+                state:                  mStrState,
                 json_receivedpurchase:  mStrJsonData,
                 date_received:          mDateToday,
                 date_processed:         mDateToday,
