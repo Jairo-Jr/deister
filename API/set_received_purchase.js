@@ -3,6 +3,11 @@ function main(data) {
     var mArrayPurchaseItems = [];
     var mObjMessageResponse = {};
     var mArrRequired = [];
+    var mDateToday = new Ax.util.Date();
+
+    var mStrMssgError = null;
+    var mDateError = null;
+    let mIntCantPedidos = null;
     var i = 0;
 
     // Validación de campos requeridos
@@ -19,23 +24,44 @@ function main(data) {
     });
 
     if (mArrRequired.length) {  // Si algún campo requerido fue obviado.
-
+        
         mObjMessageResponse = {
             "response": {
                 "status": "ERROR",
-                "message": `El/Los campo(s) [${mArrRequired}] son requeridos.`
+                "message": `El/los campo(s) [${mArrRequired}] son requeridos.`
             }
-        };
-
+        }; 
+    
         return new Ax.net.HttpResponseBuilder()
             .status(422)
             .entity(mObjMessageResponse)
             .type("application/json")
             .build();
-    }
+    } 
 
-
+    // 
     try {
+
+        // Validación de la existencia de código de la orden de compra
+        /** */ 
+        mIntCantPedidos = Ax.db.executeGet(`
+            <select>
+                <columns>
+                    COUNT(*)
+                </columns>
+                <from table='gcompedh'/>
+                <where>
+                    docser = ?
+                </where>
+            </select> 
+        `, data.CodeOC); 
+        // Si no existe código de la orden de compra
+        if(!mIntCantPedidos) { 
+            var mStrMssgError = `Código de la Orden de Compra [${data.CodeOC}] no existe.`;
+            var mDateError = mDateToday;
+        } 
+        /** */
+
         var mStrJsonData = JSON.stringify(data);
 
         // Registro de data de Orden de Compra
@@ -44,7 +70,11 @@ function main(data) {
                 codeoc:                 data.CodeOC,
                 gr:                     data.GR,
                 version:                data.Version,
-                json_receivedpurchase:  mStrJsonData
+                json_receivedpurchase:  mStrJsonData,
+                date_received:          mDateToday,
+                date_processed:         mDateToday,
+                message_error:          mStrMssgError,
+                date_error:             mDateError
             }
         ).getSerial();
 
@@ -71,32 +101,51 @@ function main(data) {
         Ax.db.insert('crp_ibth_setreceivedpurchase_l', mArrayPurchaseItems);
 
     } catch (error) {
+        
         mObjMessageResponse = {
             "response": {
                 "status": "ERROR",
                 "message": `${error.message}`
             }
         }; 
-
+    
         return new Ax.net.HttpResponseBuilder()
             .status(400)
             .entity(mObjMessageResponse)
             .type("application/json")
             .build();
-    }
+    } 
 
-    mObjMessageResponse = {
-        "response": {
-            "status": "OK",
-            "message": "Registro realizado"
-        }
-    }; 
-
-    return new Ax.net.HttpResponseBuilder()
-        .status(201)
-        .entity(mObjMessageResponse)
-        .type("application/json")
-        .build();
+    // Si no existe código de la orden de compra
+    if(!mIntCantPedidos) {
+        mObjMessageResponse = {
+            "response": {
+                "status": "ERROR",
+                "message": `Código de la Orden de Compra [${data.CodeOC}] no existe.`
+            }
+        }; 
+    
+        return new Ax.net.HttpResponseBuilder()
+            .status(422)
+            .entity(mObjMessageResponse)
+            .type("application/json")
+            .build();
+            
+    } else { // Si se registro correctamente 
+        mObjMessageResponse = {
+            "response": {
+                "status": "OK",
+                "message": `Registro realizado`
+            }
+        }; 
+    
+        return new Ax.net.HttpResponseBuilder()
+            .status(201)
+            .entity(mObjMessageResponse)
+            .type("application/json")
+            .build();
+    } 
+    
 }
 
 
