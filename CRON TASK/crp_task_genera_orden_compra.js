@@ -24,20 +24,18 @@
  * -----------------------------------------------------------------------------
  * 
 
- *  JS:  Name Function
+ *  JS:  crp_task_ibth_genera_albaran_compra
 
- *  Version     : Version
- *  Date        : 17-02-2022
- *  Description : Describe lo que hace la funcion
- *
- *
- *  LOCAL FUNCTIONS:
- *  ==================
+ *  Version     : 1,1
+ *  Date        : 23-02-2023
+ *  Description : 
+ *          Función que genera albaranes de compra de las órdenes de compra 
+ *          que se encuentren en estado pendiente. 
  *
  *
  *  CALLED FROM:
  *  ==================
- *
+ *      
  *
  *  PARAMETERS:
  *  ==================
@@ -48,21 +46,25 @@
 function crp_task_ibth_genera_albaran_compra() {
 
     /**
-     * LOCAL FUNCTION
+     * LOCAL FUNCTION: __insertLineasAlbaran
      * 
-     * mIdOrdComp: Id de la orden de compra.
-     * mObjPedidoOrigen: Obj del pedido de origen.
-     * mIntCabped: Id del cabid de pedido.
-     * mIntCabAlbComp: Id del cabid del albran de compra.
+     * Función local que registras las líneas de la orden de compra en el albarán generado.
+     * 
+     *      @param   {Integer}   mIdOrdComp         Identificador de la orden de compra
+     *      @param   {Integer}   mIntCabped         Identificador del pedido de compra
+     *      @param   {Integer}   mIntCabAlbComp     Identificador del albarán generado
+     * 
      */
-    function __insertLineasAlbaran(mIdOrdComp, mObjPedidoOrigen, mStrDocOri, mIntCabped, mIntCabAlbComp) {
+    function __insertLineasAlbaran(mIdOrdComp, mIntCabped, mIntCabAlbComp) {
 
         try {
 
             var mRsGcompedl = {};
-            var mDateAux = null;
+            var mDateAux = null; 
 
-            // Se obtiene los articulos asociados a la orden de compra 
+            /**
+             * Se obtiene los artículos asociados a la orden de compra.
+             */
             var mObjArticulosCompra = Ax.db.executeQuery(`
                 <select>
                     <columns>
@@ -80,13 +82,10 @@ function crp_task_ibth_genera_albaran_compra() {
             `, mIdOrdComp).toJSONArray();
 
             mObjArticulosCompra.forEach(mArticuloCompra => {
-                console.log('****');
-                console.log(mArticuloCompra);
 
                 /**
                  * Obtener líneas del pedido de compra.
-                 */
-
+                 */ 
                 mRsGcompedl = Ax.db.executeQuery(`
                     <select>
                         <columns>
@@ -106,82 +105,47 @@ function crp_task_ibth_genera_albaran_compra() {
                             AND gcompedl.codart = ?
                         </where>
                     </select>
-                `, mIntCabped, mArticuloCompra.code).toOne();
+                `, mIntCabped, mArticuloCompra.code).toOne(); 
+
+                // ===============================================================
+                // Actualizar pedido de compra.  
+                // =============================================================== 
+                Ax.db.update("gcompedh", {
+                    post_hupd: 1
+                }, {
+                    cabid: mIntCabped
+                });
 
                 /**
-                 * Se valida la existencia del codigo de articulo en el pedido de compra
+                 * Se agrega datos a líneas para el albarán.
                  */
-                if (!mRsGcompedl.cabori) {
-
-                    Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
-                        state: 'E',
-                        message_error: `El codigo de articulo [${mArticuloCompra.code}] no existe en el pedido de compra [${mStrDocOri}].`,
-                        date_error: mDateToday
-                    }, {
-                        id_receivedpurchase_h: mIdOrdComp
-                    });
-
-                    throw "Codigo de articulo no existe en el pedido de compra."
+                mRsGcompedl.cabid = mIntCabAlbComp; 
+                mRsGcompedl.canmov = mArticuloCompra.qty;
+                mRsGcompedl.canpre = mArticuloCompra.qty; 
+                mRsGcompedl.numlot = (mArticuloCompra.batchcode) ? mArticuloCompra.batchcode : mRsGcompedl.numlot;
+                /**
+                 * Se cambia el formato a las fechas para su registro.
+                 */
+                if (mArticuloCompra.expdate) {
+                    mDateAux = new Ax.util.Date(mArticuloCompra.expdate);
+                    mRsGcompedl.batch_expdate = mDateAux.format("dd-MM-yyyy");
+                } else if (mRsGcompedl.batch_expdate) {
+                    mDateAux = new Ax.util.Date(mRsGcompedl.batch_expdate);
+                    mRsGcompedl.batch_expdate = mDateAux.format("dd-MM-yyyy");
                 } else {
+                    mRsGcompedl.batch_expdate = null;
+                } 
 
-                    /**
-                     * Si cantidad de la OC supera la cantidad pendiente registrada en el pedido de compra,
-                     * se genera error en creacion de albarán
-                     */
-                    if (mRsGcompedl.qty > mRsGcompedl.canpen) {
-                        Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
-                            state: 'E',
-                            message_error: `La cantidad [${mRsGcompedl.qty}] del articulo [${mStmArticuloCompra.coderDocOri}] supera a lo registrado en el pedido de compra [${mStrDocOri}].`,
-                            date_error: mDateToday
-                        }, {
-                            id_receivedpurchase_h: mIdOrdComp
-                        });
+                /**
+                 * Se da formato al objeto de líneas para su registro en el albarán.
+                 */
+                mRsGcompedl = JSON.parse(mRsGcompedl); 
 
-                        throw "Cantidad del artículo supera a lo registrado en el pedido de compra."
-                    } else {
-                        /**
-                         * Se genera el albarán
-                         */
-                        // ===============================================================
-                        // Actualizar pedido de compra.  
-                        // =============================================================== 
-                        Ax.db.update("gcompedh", {
-                            post_hupd: 1
-                        }, {
-                            cabid: mIntCabped
-                        });
+                // ===============================================================
+                // Crear líneas de albarán de compra.                                         
+                // ===============================================================   
+                Ax.db.insert("gcommovl", mRsGcompedl);
 
-                        mRsGcompedl.cabid = mIntCabAlbComp;
-
-                        mRsGcompedl.canmov = mArticuloCompra.qty;
-                        mRsGcompedl.canpre = mArticuloCompra.qty;
-
-
-
-                        if (mArticuloCompra.expdate) {
-                            mDateAux = new Ax.util.Date(mArticuloCompra.expdate);
-                            mRsGcompedl.batch_expdate = mDateAux.format("dd-MM-yyyy");
-                        } else if (mRsGcompedl.batch_expdate) {
-                            mDateAux = new Ax.util.Date(mRsGcompedl.batch_expdate);
-                            mRsGcompedl.batch_expdate = mDateAux.format("dd-MM-yyyy");
-                        } else {
-                            mRsGcompedl.batch_expdate = null;
-                        }
-
-                        // mRsGcompedl.batch_expdate = (mArticuloCompra.expdate) ? mArticuloCompra.expdate : mRsGcompedl.batch_expdate;
-
-                        mRsGcompedl.numlot = (mArticuloCompra.batchcode) ? mArticuloCompra.batchcode : mRsGcompedl.numlot;
-
-                        mRsGcompedl = JSON.parse(mRsGcompedl);
-                        console.log('*-*-*');
-                        console.log(mRsGcompedl);
-
-                        // ===============================================================
-                        // Crear líneas de albarán de compra.                                         
-                        // ===============================================================   
-                        Ax.db.insert("gcommovl", mRsGcompedl);
-                    }
-                }
             });
 
 
@@ -194,9 +158,12 @@ function crp_task_ibth_genera_albaran_compra() {
     }
 
     /**
+     * LOCAL FUNCTION: __addDataPedido
      * 
-     * @param {*} mObjPedidoOrigen 
-     * @returns 
+     * Función local que agrega datos y da formato al objeto de cabecera para el albarán.
+     * 
+     *      @param   {Object}   mObjPedidoOrigen         Objeto con informacion del albarán
+     * 
      */
     function __addDataPedido(mObjPedidoOrigen) {
         var __mDateAux = null;
@@ -230,31 +197,126 @@ function crp_task_ibth_genera_albaran_compra() {
     }
 
     /**
+     * LOCAL FUNCTION: __addDataPedido
+     * 
+     * Función local que agrega datos y da formato al objeto de cabecera para el albarán.
+     * 
+     *      @param   {Integer}      mIdOrdComp         Identificador de la orden de compra
+     *      @param   {String}       mStrDocOri         Código del documento de origen
+     *      @param   {Integer}      mIntCabped         Identificador del pedido de compra
+     * 
+     */
+    function __validArticulos(mIdOrdComp, mStrDocOri, mIntCabped) {
+
+        var mRsGcompedl = {};
+
+
+        /**
+         * Se obtiene los artículos asociados a la orden de compra.
+         */
+        var mObjArticulosCompra = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    code,
+                    qty,
+                    warehouse,
+                    expdate,
+                    batchcode
+                </columns>
+                <from table='crp_ibth_setreceivedpurchase_l'/>
+                <where>
+                id_receivedpurchase_h = ?
+                </where>
+            </select> 
+        `, mIdOrdComp).toJSONArray();
+
+
+
+        mObjArticulosCompra.forEach(mArticuloCompra => { 
+
+            /**
+             * Obtener líneas del pedido de compra.
+             */
+
+            mRsGcompedl = Ax.db.executeQuery(`
+                <select>
+                    <columns>
+                        gcompedl.entfin batch_expdate, gcompedl.canped, gcompedl.dtoli3, gcompedl.dtoimp, 
+                        gcompedl.linid  linori,        gcompedl.dtotar, gcompedl.terexp, gcompedl.regalo, 
+                        gcompedl.canped canmov,        gcompedl.codart, gcompedl.varlog, gcompedl.numlot, 
+                        gcompedl.cabid  cabori,        gcompedl.udmalt, gcompedl.precio, gcompedl.dtoli1, 
+                        'gcompedh'      tabori,        gcompedl.desvar, gcompedl.desamp, gcompedl.pretar, 
+                        '0'             ubiori,        gcompedl.linacu, gcompedl.canalt, gcompedl.orden,  
+                        '0'             ubides,        gcompedl.linrel, gcompedl.canpre, gcompedl.udmcom, 
+                        'N'             indmod,        gcompedl.udmpre, gcompedl.direxp, gcompedl.dtoli2,
+                        gcompedl.canped
+                    </columns>
+                    <from table="gcompedl" />
+                    <where>
+                            gcompedl.cabid = ?
+                        AND gcompedl.codart = ?
+                    </where>
+                </select>
+            `, mIntCabped, mArticuloCompra.code).toOne();
+
+            /**
+             * Se valida la existencia del código de artículo en el pedido de compra.
+             */
+            if (!mRsGcompedl.cabori) {
+
+                Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
+                    state: 'E',
+                    message_error: `El codigo de articulo [${mArticuloCompra.code}] no existe en el pedido de compra [${mStrDocOri}].`,
+                    date_error: mDateToday
+                }, {
+                    id_receivedpurchase_h: mIdOrdComp
+                });
+
+                return false;
+            } else {
+
+                /**
+                 * Si cantidad de la OC supera la cantidad pendiente registrada en el pedido de compra,
+                 * se genera error en creación de albarán
+                 */
+                if (mRsGcompedl.qty > mRsGcompedl.canpen) {
+
+                    Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
+                        state: 'E',
+                        message_error: `La cantidad [${mRsGcompedl.qty}] del articulo [${mArticuloCompra.code}] supera a lo registrado en el pedido de compra [${mStrDocOri}].`,
+                        date_error: mDateToday
+                    }, {
+                        id_receivedpurchase_h: mIdOrdComp
+                    });
+
+                    return false;
+                }
+            }
+        })
+
+        return true;
+
+    } 
+
+    /**
+     * INICIO DE LA TRANSACCIÓN.  
+     */
+    
+    /**
      * Deficnion de variables
      */
     var mObjPedidosCompra = {};
-    var mObjPedidosCompra_2 = {};
     var mObjPedidoOrigen = {};
-    var mDateAux = null;
-    var mBoolValidPed = true;
     var mDateToday = new Ax.util.Date();
     var mUserName = Ax.db.getUser();
-
-    // TODO: pendiente estados del documento
-    // var mArrEstadosPed = {
-    //     E: "Provisional",
-
-    // };
-    // var mArrEstadosDoc = {
-
-    // };
+    var mBoolValidArticulos = false; 
 
     try {
 
         Ax.db.beginWork();
 
         /**
-         * Obtencion de Ordenes de compra (cabecera) en estado pendiente, registrados por IBTH.
+         * Obtención de Órdenes de compra (cabecera) en estado pendiente, registrados por IBTH.
          */
         mObjPedidosCompra = Ax.db.executeQuery(`
             <select>
@@ -267,9 +329,8 @@ function crp_task_ibth_genera_albaran_compra() {
                     state = 'P'
                 </where>
             </select> 
-        `).toJSONArray();
+        `).toJSONArray(); 
 
-        // Se genera el albarán para cada orden de compra
         mObjPedidosCompra.forEach(mOrdenCompra => {
 
             console.log(mOrdenCompra);
@@ -300,9 +361,8 @@ function crp_task_ibth_genera_albaran_compra() {
             if (!mObjPedidoOrigen.id_ped_ori) {
                 /**
                  * Si no existe el pedido de compra, se registra el error en la tabla: crp_ibth_setreceivedpurchase_h
-                 * y se obvia la generacion del Albarán
-                 */
-                mBoolValidPed = false;
+                 * y se obvia la generación del Albarán
+                 */ 
                 Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
                     state: 'E',
                     message_error: `Documento de pedido de compra [${mOrdenCompra.codeoc}] no existente.`,
@@ -319,9 +379,8 @@ function crp_task_ibth_genera_albaran_compra() {
                  */
                 if (mObjPedidoOrigen.estcab != 'V' || !['P', 'N'].includes(mObjPedidoOrigen.estado)) {
                     /**
-                     * Si estado del pedido no es valido o el del documento es diferente de P (parcial) o N (pendiente)
-                     */
-                    mBoolValidPed = false;
+                     * Si estado del pedido no es válido o el del documento es diferente de P (parcial) o N (pendiente).
+                     */ 
                     Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
                         state: 'E',
                         message_error: `Documento [${mOrdenCompra.codeoc}] en estado [${mObjPedidoOrigen.estcab}] y [${mObjPedidoOrigen.estado}]`,
@@ -333,46 +392,59 @@ function crp_task_ibth_genera_albaran_compra() {
 
                     /**
                      * La información de cabecera del pedido es válido.
+                     * 
+                     * Se procede a validar los articulos registrados en
+                     * la Orden de Compra y los del pedido de compra
                      */
+                    mBoolValidArticulos = __validArticulos(mOrdenCompra.idordcomp, mObjPedidoOrigen.docori, mObjPedidoOrigen.id_ped_ori);
 
                     /**
-                     * Se agrega data al objeto del pedido origen
+                     * Si los articulos son los correctos se procede a generar el albaran.
                      */
-                    mObjPedidoOrigen = __addDataPedido(mObjPedidoOrigen);
+                    if (mBoolValidArticulos) {
 
-                    // Crear albarán de compras con los datos del pedido de compra      
-                    var mIntCabAlbComp = Ax.db.call('gcommovh_Insert', 'GCOMPEDH', mObjPedidoOrigen);
-                    // var mIntCabAlbComp = '14638';
-                    console.log('CABID-ALBARAN', mIntCabAlbComp);
+                        /**
+                         * Se agrega data al objeto del pedido origen
+                         */
+                        mObjPedidoOrigen = __addDataPedido(mObjPedidoOrigen);
 
-                    // Se registran las lineas al albaran
-                    __insertLineasAlbaran(mOrdenCompra.idordcomp, mObjPedidoOrigen, mObjPedidoOrigen.docori, mObjPedidoOrigen.id_ped_ori, mIntCabAlbComp);
+                        /**
+                         * Crear albarán de compras con los datos del pedido de compra      
+                         */
+                        var mIntCabAlbComp = Ax.db.call('gcommovh_Insert', 'GCOMPEDH', mObjPedidoOrigen); 
 
-                    /**
-                     * Order status is updated
-                     */
-                    Ax.db.executeProcedure("gcompedl_set_head_estado", mObjPedidoOrigen.id_ped_ori); // cabid del pedido
+                        /**
+                         * Se registran las lineas al albaran
+                         */
+                        __insertLineasAlbaran(mOrdenCompra.idordcomp, mObjPedidoOrigen.id_ped_ori, mIntCabAlbComp);
 
-                    /**
-                     * Revalidate the order
-                     */
-                    Ax.db.call("gcompedh_Valida", mObjPedidoOrigen.id_ped_ori); // cabid del pedido
+                        /**
+                         * Se actualiza el estado del pedido
+                         */
+                        Ax.db.executeProcedure("gcompedl_set_head_estado", mObjPedidoOrigen.id_ped_ori);
 
-                    // ===============================================================
-                    // Validar albarán de compras.
-                    // ===============================================================
-                    Ax.db.call("gcommovh_Valida", mIntCabAlbComp); // cabid del albaran
+                        /**
+                         * Revalidar el pedido
+                         */
+                        Ax.db.call("gcompedh_Valida", mObjPedidoOrigen.id_ped_ori);
 
-                    /**
-                     * Actualiza el estado de la Orden de Compra a Completado (C)
-                     */
-                    Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
-                        state : 'C',
-                        user_processed : mUserName,
-                        date_processed : mDateToday
-                    }, {
-                        id_receivedpurchase_h: mOrdenCompra.idordcomp
-                    });
+                        /**
+                         * Validar albarán de compras. 
+                         */ 
+                        Ax.db.call("gcommovh_Valida", mIntCabAlbComp);
+
+                        /**
+                         * Actualiza el estado de la Orden de Compra a Completado (C)
+                         */
+                        Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
+                            state: 'C',
+                            user_processed: mUserName,
+                            date_processed: mDateToday
+                        }, {
+                            id_receivedpurchase_h: mOrdenCompra.idordcomp
+                        });
+
+                    }
 
                 }
 
@@ -385,10 +457,6 @@ function crp_task_ibth_genera_albaran_compra() {
     } catch (error) {
         Ax.db.rollbackWork();
         console.error('ERROR_H-> ', error);
-
-        // throw new Ax.ext.Exception("ERROR: [${error}]", {
-        //     error
-        // });
     }
 
 }
