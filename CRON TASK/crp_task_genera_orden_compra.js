@@ -48,6 +48,8 @@
 function crp_task_ibth_genera_albaran_compra() {
 
     /**
+     * LOCAL FUNCTION
+     * 
      * mIdOrdComp: Id de la orden de compra.
      * mObjPedidoOrigen: Obj del pedido de origen.
      * mIntCabped: Id del cabid de pedido.
@@ -153,16 +155,31 @@ function crp_task_ibth_genera_albaran_compra() {
         }
     }
 
+    /**
+     * Deficnion de variables
+     */
     var mObjPedidosCompra = {};
     var mObjPedidosCompra_2 = {};
     var mObjPedidoOrigen = {};
     var mDateAux = null;
+    var mBoolValidPed = true;
+    var mDateToday = new Ax.util.Date();
+
+    // var mArrEstadosPed = {
+    //     E: "Provisional",
+
+    // };
+    // var mArrEstadosDoc = {
+
+    // };
 
     try {
 
         Ax.db.beginWork();
 
-        // Obtencion de Ordenes de compra (cabecera) en estado pendiente.
+        /**
+         * Obtencion de Ordenes de compra (cabecera) en estado pendiente, registrados por IBTH.
+         */
         mObjPedidosCompra = Ax.db.executeQuery(`
             <select>
                 <columns>
@@ -176,14 +193,9 @@ function crp_task_ibth_genera_albaran_compra() {
             </select> 
         `).toJSONArray();
 
-        // mObjPedidosCompra = mObjPedidosCompra_2;
-        // mObjPedidosCompra_2.close();
-        /**
-         * Validaciones para los articulos
-         */
-
         // Se genera el albarán para cada orden de compra
         mObjPedidosCompra.forEach(mOrdenCompra => {
+
             console.log(mOrdenCompra);
             mObjPedidoOrigen = Ax.db.executeQuery(`
                 <select>
@@ -196,7 +208,7 @@ function crp_task_ibth_genera_albaran_compra() {
                         nommos,         direcc,             codnac,         nomnac,             codpos,
                         poblac,         codprv,             nomprv,         telef1,             telef2,
                         fax,            email,              codpre,         codpar,             indmod,
-                        auxchr4,        delega,             depart
+                        auxchr4,        delega,             depart,         estcab,             estado
                     </columns>
                     <from table='gcompedh'/>
                     <where>
@@ -205,47 +217,102 @@ function crp_task_ibth_genera_albaran_compra() {
                 </select> 
             `, mOrdenCompra.codeoc).toOne();
 
-            // Se agrega al ObjPedidoCompra el tipo de documento.
-            mObjPedidoOrigen.tipdoc = 'ALOG';
-
-            // Se da formato a los campo fecmov y fecrec
-            mDateAux = new Ax.util.Date(mObjPedidoOrigen.fecrec);
-            mObjPedidoOrigen.fecrec = mDateAux.format("dd-MM-yyyy");
-
-            mDateAux = new Ax.util.Date(mObjPedidoOrigen.fecmov);
-            mObjPedidoOrigen.fecmov = mDateAux.format("dd-MM-yyyy");
-
-            mObjPedidoOrigen = JSON.parse(mObjPedidoOrigen);
-
-
-
-            // Crear albarán de compras con los datos del pedido de compra      
-            var mIntCabAlbComp = Ax.db.call('gcommovh_Insert', 'GCOMPEDH', mObjPedidoOrigen);
-            // var mIntCabAlbComp = '14638';
-            console.log('CABID-ALBARAN', mIntCabAlbComp);
-
-            // Se registran las lineas al albaran
-            __insertLineasAlbaran(mOrdenCompra.idordcomp, mObjPedidoOrigen, mObjPedidoOrigen.id_ped_ori, mIntCabAlbComp);
-
             /**
-             * Order status is updated
+             * Se valida la existencia del pedido de compra
              */
-            Ax.db.executeProcedure("gcompedl_set_head_estado", mObjPedidoOrigen.id_ped_ori); // cabid del pedido
 
-            /**
-             * Revalidate the order
-             */
-            Ax.db.call("gcompedh_Valida", mObjPedidoOrigen.id_ped_ori); // cabid del pedido
+            if (!mObjPedidoOrigen.id_ped_ori) {
+                /**
+                 * Si no existe el pedido de compra, se registra el error en la tabla: crp_ibth_setreceivedpurchase_h
+                 * y se obvia la generacion del Albarán
+                 */
+                mBoolValidPed = false;
+                Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
+                    state: 'E',
+                    message_error: `Documento de pedido de compra [${mOrdenCompra.codeoc}] no existente.`,
+                    date_error: mDateToday
+                }, {
+                    id_receivedpurchase_h: mOrdenCompra.idordcomp
+                });
+            } else {
 
-            // ===============================================================
-            // Validar albarán de compras.
-            // ===============================================================
-            Ax.db.call("gcommovh_Valida", mIntCabAlbComp); // cabid del albaran
+                /**
+                 * Se valida el estado del pedido de compra:
+                 *      estcab: Estado del pedido
+                 *      estado: Estado del documento
+                 */
+                if (mObjPedidoOrigen.estcab != 'V' || !['P', 'N'].includes(mObjPedidoOrigen.estado)) {
+                    /**
+                     * Si estado del pedido no es valido o el del documento es diferente de P (parcial) o N (pendiente)
+                     */
+                    mBoolValidPed = false;
+                    Ax.db.update(`crp_ibth_setreceivedpurchase_h`, {
+                        state: 'E',
+                        message_error: `Documento [${mOrdenCompra.codeoc}] en estado [${mObjPedidoOrigen.estcab}] y [${mObjPedidoOrigen.estado}]`,
+                        date_error: mDateToday
+                    }, {
+                        id_receivedpurchase_h: mOrdenCompra.idordcomp
+                    });
+                } else {
+
+                    console.log('SI: ', mOrdenCompra.codeoc);
+
+                    /**
+                     * 
+                     */
+
+                    // Se agrega al ObjPedidoCompra el tipo de documento.
+                    mObjPedidoOrigen.tipdoc = 'ALOG';
+
+                    /**
+                     * Se da formato a los campos:
+                     *      fecmov: Fecha del albarán
+                     *      fecrec: Fecha del proveedor
+                     *      valor:  Fecha de recepción
+                     */
+                    mDateAux = new Ax.util.Date(mObjPedidoOrigen.fecrec);
+                    mObjPedidoOrigen.fecrec = mDateAux.format("dd-MM-yyyy");
+
+                    mDateAux = new Ax.util.Date(mObjPedidoOrigen.fecmov);
+                    mObjPedidoOrigen.fecmov = mDateAux.format("dd-MM-yyyy");
+
+                    mDateAux = new Ax.util.Date(mDateToday);
+                    mObjPedidoOrigen.valor = mDateAux.format("dd-MM-yyyy");
+
+                    /**
+                     * Se da formato al objeto del pedido de origen.
+                     */
+                    mObjPedidoOrigen = JSON.parse(mObjPedidoOrigen);
 
 
+
+                    // Crear albarán de compras con los datos del pedido de compra      
+                    var mIntCabAlbComp = Ax.db.call('gcommovh_Insert', 'GCOMPEDH', mObjPedidoOrigen);
+                    // var mIntCabAlbComp = '14638';
+                    console.log('CABID-ALBARAN', mIntCabAlbComp);
+
+                    // Se registran las lineas al albaran
+                    __insertLineasAlbaran(mOrdenCompra.idordcomp, mObjPedidoOrigen, mObjPedidoOrigen.id_ped_ori, mIntCabAlbComp);
+
+                    /**
+                     * Order status is updated
+                     */
+                    Ax.db.executeProcedure("gcompedl_set_head_estado", mObjPedidoOrigen.id_ped_ori); // cabid del pedido
+
+                    /**
+                     * Revalidate the order
+                     */
+                    Ax.db.call("gcompedh_Valida", mObjPedidoOrigen.id_ped_ori); // cabid del pedido
+
+                    // ===============================================================
+                    // Validar albarán de compras.
+                    // ===============================================================
+                    Ax.db.call("gcommovh_Valida", mIntCabAlbComp); // cabid del albaran
+
+                }
+
+            }
         });
-
-        // mObjPedidosCompra.close();
 
 
         Ax.db.commitWork();
