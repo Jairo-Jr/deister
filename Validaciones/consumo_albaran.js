@@ -22,7 +22,7 @@
                     <where>
                             gcomalbh.refter = ?
                         AND gcomalbl.auxchr2 IN ('P', 'S')
-                        AND  gcomalbh.tipdoc = 'AGCO'
+                        AND  gcomalbh.tipdoc IN ('AGCO', 'AANT')
                     </where>
                 </select>
             `, data.refter);
