@@ -44,7 +44,7 @@
  *
  *
  **/
-function crp_task_ibth__set_solicitudes_consumo() { 
+function crp_task_ibth_set_solicitudes_consumo() { 
     var objOrders = {
         IdCustomer: 'id_cliente_ibth',
         Ordes: []
