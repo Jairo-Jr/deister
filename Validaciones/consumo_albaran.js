@@ -36,4 +36,9 @@
 /**
  * ADICIONAL: 
  *  - gcommovh: es la tabla de validacion debido a que no existe una tabla fisica gcomalbh
+ * 
+ * GRUPO DE VALIDACIONES:
+ *          RCGO
+ *          DGCO
+ * 
  */
