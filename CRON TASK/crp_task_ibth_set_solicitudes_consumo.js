@@ -24,35 +24,42 @@
  * -----------------------------------------------------------------------------
  * 
 
- *  JS:  crp_task_solicitudes_consumo
+ *  JS:  crp_task_ibth_send_solicitudes_consumo
 
- *  Version     : Version
- *  Date        : 17-02-2022
- *  Description : Describe lo que hace la funcion
+ *  Version     : 1.0
+ *  Date        : 28-02-2023
+ *  Description : Función que filtra pedidos de consumo y los envía a IBTH 
+ *                mediante el API desarrollado por ellos.
  *
- *
- *  LOCAL FUNCTIONS:
- *  ==================
- *
+ * 
  *
  *  CALLED FROM:
  *  ==================
- *
- *
- *  PARAMETERS:
- *  ==================
- *
- *
+ *          CRON TASK SCHEDULER -> 'crp_task_ibth_send_solicitudes_consumo' 
+ *                                  Obtiene los pedidos de consumo validados para 
+ *                                  enviarlos al API de IBTH (/SetOrders) 
+ *                                  y posterior a dejar una marca de su envío.
+ * 
+ * 
  **/
-function crp_task_ibth_set_solicitudes_consumo() { 
+ function crp_task_ibth_send_solicitudes_consumo() { 
     
-    var objOrders = {
+    // ===============================================================
+    // Declaración de variables
+    // ===============================================================
+    var mObjBodyOrders = {
         IdCustomer: 'id_cliente_ibth',
         Ordes: []
     };
-    var arrayLineas;
-    
-    var arrayCabeceras = Ax.db.executeQuery(`
+    var mArrayOrderHeaders;
+    var mArrayOrderLines;
+
+    // ===============================================================
+    // Se obtiene los pedidos de consumo (SVLC) validados, 
+    // sin consumo total y no anulada.
+    // Que serán enviadas a IBTH.
+    // ===============================================================
+    mArrayOrderHeaders = Ax.db.executeQuery(`
         <select>
         <columns>
             gcomsolh.docser     <alias name='orderclient' />,
@@ -71,27 +78,41 @@ function crp_task_ibth_set_solicitudes_consumo() {
             </join>
         </from>
         <where>
-                gcomsolh.tipdoc = 'SVLC' <!-- Vale de consumo -->
-            AND gcomsolh.estcab = 'V' <!-- Validada -->
-            AND gcomsolh.estado NOT IN ('S','A') <!-- No debe estar: servida ni anulada  -->
-            AND (gcomsolh.auxnum1 IS NULL OR gcomsolh.auxnum1 = 0) <!-- No debe figurar como enviada  -->
+                gcomsolh.tipdoc = 'SVLC'                            <!-- Vale de consumo -->
+            AND gcomsolh.estcab = 'V'                               <!-- Validada -->
+            AND gcomsolh.estado NOT IN ('S','A')                    <!-- No debe estar: servida ni anulada  -->
+            AND (gcomsolh.auxnum1 IS NULL OR gcomsolh.auxnum1 = 0)  <!-- No debe figurar como enviada  -->
         </where>
     </select>
-    `);
-    var orden = 0;
-    arrayCabeceras.forEach(item => {
-        
-        objOrders.Ordes.push(
+    `).toJSONArray();
+    // ===============================================================
+    // CONSTRUCCIÓN DEL OBJETO CON PEDIDOS DE CONSUMO
+    // ===============================================================
+
+    // ===============================================================
+    // Recorrido de los pedidos de consumo (a nivel de cabecera)
+    // ===============================================================
+    var mIntAux = 0;
+    mArrayOrderHeaders.forEach(mObjOrderHeader => {
+        console.log(mObjOrderHeader.cabid, ' - ', mObjOrderHeader.orderclient);
+        // ===============================================================
+        // Se agrega el pedido de consumo (cabecera) al objeto
+        // ===============================================================
+        mObjBodyOrders.Ordes.push(
             {
-                OrderClient: item.orderclient,
-                OrderType: item.ordertype,
-                LabelDestino: item.labeldestino,
-                Referencia: item.referencia,
-                OrderItem: []
+                OrderClient:    mObjOrderHeader.orderclient,
+                OrderType:      mObjOrderHeader.ordertype,
+                LabelDestino:   mObjOrderHeader.labeldestino,
+                Referencia:     mObjOrderHeader.referencia,
+                OrderItem:      []
             }
         )
     
-        arrayLineas = Ax.db.executeQuery(`
+        // ===============================================================
+        // Se obtiene los artículos (líneas) asociados 
+        // al pedido de consumo.
+        // ===============================================================
+        mArrayOrderLines = Ax.db.executeQuery(`
             <select>
                 <columns>
                     gcomsoll.linid,
@@ -109,23 +130,50 @@ function crp_task_ibth_set_solicitudes_consumo() {
                     AND gcomsoll.cabid = ?
                 </where>
             </select>
-        `, item.cabid);
+        `, mObjOrderHeader.cabid).toJSONArray();
     
-        arrayLineas.forEach(itemLineas => {
+        // ===============================================================
+        // Recorrido de los artículos asociados al pedido de consumo, 
+        // para agregarlos al objeto.
+        // ===============================================================
+        mArrayOrderLines.forEach(mObjOrderLine => { 
     
-            objOrders.Ordes[orden].OrderItem.push(
+            // ===============================================================
+            // Se agrega al objeto los articulos asociados al pedido de consumo
+            // ===============================================================
+            mObjBodyOrders.Ordes[mIntAux].OrderItem.push(
                 {
-                    LineId: itemLineas.linid,
-                    Code: itemLineas.codart,
-                    Qty: itemLineas.cansol
+                    LineId:     mObjOrderLine.linid,
+                    Code:       mObjOrderLine.codart,
+                    Qty:        mObjOrderLine.cansol
                 }
             )
         });
     
-        orden++;
+        mIntAux++;
     });
     
-    console.log(objOrders);
-    
-}
+    // ===============================================================
+    // Se realiza una peticion Http al endpoint '/SetOrders'
+    // =============================================================== 
+    /**
+     * 
+     * HTTP REQUEST
+     * 
+     */
 
+    // ===============================================================
+    // Se deja una marca en 'auxnum1' para identificar 
+    // que fue enviada a IBTH
+    // =============================================================== 
+    mArrayOrderHeaders.forEach(mObjOrderHeader => { 
+        Ax.db.update(`gcomsolh`, 
+            {
+                auxnum1: '1'
+            }, {
+                cabid: mObjOrderHeader.cabid
+            }
+        );
+    })
+    
+}  
