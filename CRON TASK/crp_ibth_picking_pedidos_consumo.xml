@@ -1,10 +1,18 @@
-<xsql-script name='crp_ibth_picking_pedidos_consumo'>
+<xsql-script name='crp_ibth_picking_pedidos'>
     <body>
 
         <!-- CREACION DE VTABLE -->
-    	<vtable name='v_pedidos'>
+    	<vtable name='v_pedidosh'>
             <column name='docser' type='string' />
             <column name='cabid' type='string' />
+        </vtable>
+
+        <vtable name='v_pedidosl'>
+            <column name='numline' type='string' />
+            <column name='qtyrequested' type='string' />
+            <column name='qtyserved' type='string' />
+            <column name='productcode' type='string' />
+            <column name='id_head' type='string' />
         </vtable>
 
         <!-- ITERAR LAS CABECERAS -->
@@ -36,7 +44,7 @@
                     </where>
                 </select>
 
-                <!-- Validar la existencia del pedido de compra -->
+                <!-- VALIDA LA EXISTENCIA DEL PEDIDO DE COMPRA -->
                 <if>
                     <expr>
                         <or>
@@ -51,15 +59,48 @@
                         <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
                         <update table='crp_ibth_setfinishedorders_h'>
                             <column name='state'>E</column>
+                            <column name='message_error'>Solicitud de consumo no esta validada o se encuentra con estado Servida o Anulada.</column>
+                            <column name='date_error'> <date.today /> </column>
                             <where>
                                 id_finishedorders_h = <pc_h_id_finishedorders_h />  
                             </where>
                         </update>
-                        
-                    </then>
-                </if>
 
-                <vtable.insert name='v_pedidos'>
+                    </then>
+                    <else>
+                        <!-- SI EL SVLC ES VALIDA Y NO ESTA SERVIDA POR COMPLETO O ANULADA -->
+                        <!-- SE ITERA LAS LINEAS DEL PEDIDO -->
+                        <foreach>
+                            <select prefix='pc_l_'>
+                                <columns>
+                                    numline,
+                                    qtyrequested,
+                                    qtyserved,
+                                    productcode,
+                                    id_finishedorders_h
+                                </columns>
+                                <from table='crp_ibth_setfinishedorders_l' />
+                                <where>
+                                    id_finishedorders_h = <pc_h_id_finishedorders_h />
+                                </where>
+                            </select>
+                            <do>
+                                <!-- SE VALIDA LA CONCORDANCIA DE LOS ARTICULOS -->
+
+                                <!-- ASIGNACION DE LAS LINEAS A LA VTABLE -->
+                                <vtable.insert name='v_pedidosl'>
+                                    <column name='numline' > <pc_l_numline /> </column>
+                                    <column name='qtyrequested' > <pc_l_qtyrequested /> </column>
+                                    <column name='qtyserved' > <pc_l_qtyserved /> </column>
+                                    <column name='productcode' > <pc_l_productcode /> </column>
+                                    <column name='id_head' > <pc_l_id_finishedorders_h /> </column>
+                                </vtable.insert>
+                            </do>
+                        </foreach>
+                    </else>
+                </if>
+                <!-- ASIGNACION DE LAS CABECERAS A LA VTABLE -->
+                <vtable.insert name='v_pedidosh'>
                     <column name='docser'><pc_h_orderclient /></column>
                     <column name='cabid'><pc_h_id_finishedorders_h /></column>
                 </vtable.insert>
@@ -67,7 +108,8 @@
         </foreach>
 
         <return>
-            <v_pedidos />
+            <!-- <v_pedidosh /> -->
+            <v_pedidosl />
         </return>
 
     </body>
