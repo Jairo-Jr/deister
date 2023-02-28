@@ -1,0 +1,74 @@
+<xsql-script name='crp_ibth_picking_pedidos_consumo'>
+    <body>
+
+        <!-- CREACION DE VTABLE -->
+    	<vtable name='v_pedidos'>
+            <column name='docser' type='string' />
+            <column name='cabid' type='string' />
+        </vtable>
+
+        <!-- ITERAR LAS CABECERAS -->
+        <foreach>
+            <select prefix='pc_h_'>
+                <columns>
+                    orderclient,
+                    id_finishedorders_h
+                </columns>
+                <from table='crp_ibth_setfinishedorders_h' />
+                <where>
+                    state = 'P'
+                </where>
+            </select>
+            <do>
+
+                <select prefix='gcomsolh_'>
+                    <columns>
+                        gcomsolh.cabid,
+                        gcomsolh.estcab,
+                        gcomsolh.estado,
+                        gcomsolh.delega,
+                        gcomsolh.depart,
+                        gcomsolh.codalm
+                    </columns>
+                    <from table='gcomsolh' />
+                    <where>
+                        gcomsolh.docser = <pc_h_orderclient />  
+                    </where>
+                </select>
+
+                <!-- Validar la existencia del pedido de compra -->
+                <if>
+                    <expr>
+                        <or>
+                            <ne><gcomsolh_estcab/>V</ne>   
+                            <eq><gcomsolh_estado/>S</eq>  <!-- Servida -->
+                            <eq><gcomsolh_estado/>A</eq>  <!-- Anulada -->
+                        </or>   
+                    </expr>
+                    <then>
+                        
+                        <!-- NO SE GENERA PICKING -->
+                        <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
+                        <update table='crp_ibth_setfinishedorders_h'>
+                            <column name='state'>E</column>
+                            <where>
+                                id_finishedorders_h = <pc_h_id_finishedorders_h />  
+                            </where>
+                        </update>
+                        
+                    </then>
+                </if>
+
+                <vtable.insert name='v_pedidos'>
+                    <column name='docser'><pc_h_orderclient /></column>
+                    <column name='cabid'><pc_h_id_finishedorders_h /></column>
+                </vtable.insert>
+            </do>
+        </foreach>
+
+        <return>
+            <v_pedidos />
+        </return>
+
+    </body>
+</xsql-script>
