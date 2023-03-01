@@ -3,6 +3,7 @@
 
         <!-- VARIBALES -->
         <set name='m_pedido_valido'>1</set>
+        <set name='m_cod_articulo_error'><null /></set>
 
         <!-- ITERAR LAS CABECERAS (IBTH) -->
         <foreach>
@@ -65,7 +66,7 @@
                     <then>
                         
                         <!-- NO SE GENERA PICKING -->
-                        <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
+                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
                         <update table='crp_ibth_setfinishedorders_h'>
                             <column name='state'>E</column>
                             <column name='message_error'>Solicitud de consumo no esta validada, se encuentra con estado Servida o Anulada o ya fue enviada a IBTH.</column>
@@ -139,7 +140,7 @@
                                         <isnull><gcomsoll_linid /></isnull>
                                     </expr>
                                     <then>
-                                        <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
+                                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>E</column>
                                             <column name='message_error'><string>Error con el articulo [<pc_l_productcode/>].</string></column>
@@ -148,9 +149,13 @@
                                                 id_finishedorders_h = <pc_l_id_finishedorders_h />
                                             </where>
                                         </update>
-                                        <!--  -->
-                                        <set name='m_pedido_valido'>0</set>
 
+                                        <!-- SE DEJA UNA MARCA DE NO VALIDO -->
+                                        <set name='m_pedido_valido'>0</set>
+                                        <!-- SE RESCATA EL ARTICULO QUE GENERO EL ERROR -->
+                                        <set name='m_cod_articulo_error'><pc_l_productcode/></set>
+
+                                        <!-- SE FINALIZA LA ITERACION -->
                                         <foreach.exit/>
                                     </then>
                                     <else>
@@ -226,7 +231,7 @@
                                     </expr>
                                     <then>
                                         <!-- NO SE GENERA PICKING -->
-                                        <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
+                                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>E</column>
                                             <column name='message_error'>No se ha generado picking.</column>
@@ -353,8 +358,8 @@
                                         </update>
 
                                         <!-- ================================================================ -->
-                                        <!-- Recorre las lineas que se seleccionaron, y si no coincide la     -->
-                                        <!-- cantidad informada con la propuesta, entonces se modifica en el  -->
+                                        <!-- Recorre las lineas del pedido, y si no coincide la cantidad      -->
+                                        <!-- informada con la propuesta, entonces se modifica en el           -->
                                         <!-- movimiento interno destino.                                      -->
                                         <!-- ================================================================ -->
                                         <foreach>
@@ -382,12 +387,29 @@
                                             <number>0</number>
                                         </call>
 
+                                        <!-- SE REALIZO EL PICKING CORRECTAMENTE -->
+                                        <!-- SE ACTUALIZA EL ESTADO A INTEGRADO EL PEDIDO CONSIGNADO POR IBTH --> 
+
+
                                     </else>
                                 </if>
 
                                 
 
                             </then>
+                            <else>
+
+                                <!-- PEDIDO NO VALIDO PARA GENERAR PICKING -->
+                                <!-- SE ACTUALIZA EL ESTADO A ERROR -->
+                                <update table='crp_ibth_setfinishedorders_h'>
+                                    <column name='state'>E</column>
+                                    <column name='message_error'><string>Error con el articulo <m_cod_articulo_error /></string></column>
+                                    <column name='date_error'> <date.today /> </column>
+                                    <where>
+                                        id_finishedorders_h = <pc_l_id_finishedorders_h />
+                                    </where>
+                                </update>
+                            </else>
                         </if>
 
                     </else>
