@@ -314,7 +314,7 @@
                 </columns>
                 <from table='crp_ibth_setreceivedpurchase_h'/>
                 <where>
-                    state = 'P'
+                    state = '0'
                 </where>
             </select> 
         `).toJSONArray();
@@ -422,7 +422,7 @@
                         // ===============================================================
                         Ax.db.update(`crp_ibth_setreceivedpurchase_h`, 
                             {
-                                state: 'C',
+                                state: '1',
                                 user_processed: mUserName,
                                 date_processed: mDateToday
                             }, {
@@ -453,7 +453,9 @@
 
         Ax.db.update(`crp_ibth_setreceivedpurchase_h`, 
             {
-                state: 'E',
+                state: '3',
+                user_processed: mUserName,
+                date_processed: mDateToday,
                 message_error: `${error.message || error}`,
                 date_error: mDateToday
             }, {

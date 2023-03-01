@@ -9,7 +9,7 @@ function main(data) {
     var mStrMssgError = null;
     var mDateError = null;
     let mIntCantPedidos = null;
-    var mStrState = 'P';
+    var mStrState = '0';
     var mDateExpDate = null;
     var i = 0;
 
@@ -63,7 +63,7 @@ function main(data) {
             // Se establece como error, agregando mensaje, fecha y estado 
             mStrMssgError = `Código de la Orden de Compra [${data.CodeOC}] no existe.`;
             mDateError = mDateToday;
-            mStrState = 'E';
+            mStrState = '3';
         } 
 
         var mStrJsonData = JSON.stringify(data);
@@ -77,7 +77,6 @@ function main(data) {
                 state:                  mStrState,
                 json_receivedpurchase:  mStrJsonData,
                 date_received:          mDateToday,
-                date_processed:         mDateToday,
                 message_error:          mStrMssgError,
                 date_error:             mDateError
             }
@@ -160,16 +159,3 @@ function main(data) {
     } 
     
 }
-
-
-// /lista/precio/producto
-// /guia-interna
-// /guia-interna-v1
-
-
-
-/**
- * OBJ: gcompedh
- * - filtro: gcompedh.tipdoc = 'PLOG' AND  gcompedh.user_created LIKE 'deister_cce'
- * 
- */
