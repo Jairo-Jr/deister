@@ -1,8 +1,10 @@
 <xsql-script name='crp_ibth_picking_pedidos'>
     <body>
 
-        <!-- CREACION DE VTABLE -->
-    	<vtable name='v_pedidosh'>
+        <!-- VARIBALES -->
+        <set name='m_pedido_valido'>1</set>
+
+        <!-- <vtable name='v_pedidosh'>
             <column name='docser' type='string' />
             <column name='cabid' type='string' />
         </vtable>
@@ -13,9 +15,9 @@
             <column name='qtyserved' type='string' />
             <column name='productcode' type='string' />
             <column name='id_head' type='string' />
-        </vtable>
+        </vtable> -->
 
-        <!-- ITERAR LAS CABECERAS -->
+        <!-- ITERAR LAS CABECERAS (IBTH) -->
         <foreach>
             <select prefix='pc_h_'>
                 <columns>
@@ -28,6 +30,22 @@
                 </where>
             </select>
             <do>
+                <!-- SE INICIA COMO NO VALIDA -->
+                <set name='m_pedido_valido'>0</set>
+
+                <!-- CREACION DE VTABLE -->
+                <vtable name='v_pedidosh'>
+                    <column name='docser' type='string' />
+                    <column name='cabid' type='string' />
+                </vtable>
+
+                <vtable name='v_pedidosl'>
+                    <column name='numline' type='string' />
+                    <column name='qtyrequested' type='string' />
+                    <column name='qtyserved' type='string' />
+                    <column name='productcode' type='string' />
+                    <column name='id_head' type='string' />
+                </vtable>
 
                 <select prefix='gcomsolh_'>
                     <columns>
@@ -36,6 +54,7 @@
                         gcomsolh.estado,
                         gcomsolh.delega,
                         gcomsolh.depart,
+                        gcomsolh.auxnum1,
                         gcomsolh.codalm
                     </columns>
                     <from table='gcomsolh' />
@@ -44,13 +63,14 @@
                     </where>
                 </select>
 
-                <!-- VALIDA LA EXISTENCIA DEL PEDIDO DE COMPRA -->
+                <!-- El estado de la solicitud debe ser validado, no encontrarse servida por completo ni anulada y no haber sido enviado a IBTH  -->
                 <if>
                     <expr>
                         <or>
-                            <ne><gcomsolh_estcab/>V</ne>   
-                            <eq><gcomsolh_estado/>S</eq>  <!-- Servida -->
-                            <eq><gcomsolh_estado/>A</eq>  <!-- Anulada -->
+                            <ne> <gcomsolh_estcab/>V</ne>  <!-- Valida --> 
+                            <eq> <gcomsolh_estado/>S</eq>  <!-- Servida -->
+                            <eq> <gcomsolh_estado/>A</eq>  <!-- Anulada -->
+                            <eq> <gcomsolh_auxnum1/>1</eq>  <!-- Enviado -->
                         </or>   
                     </expr>
                     <then>
@@ -59,16 +79,25 @@
                         <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
                         <update table='crp_ibth_setfinishedorders_h'>
                             <column name='state'>E</column>
-                            <column name='message_error'>Solicitud de consumo no esta validada o se encuentra con estado Servida o Anulada.</column>
+                            <column name='message_error'>Solicitud de consumo no esta validada, se encuentra con estado Servida o Anulada o ya fue enviada a IBTH.</column>
                             <column name='date_error'> <date.today /> </column>
                             <where>
-                                id_finishedorders_h = <pc_h_id_finishedorders_h />  
+                                id_finishedorders_h = <pc_h_id_finishedorders_h />
                             </where>
                         </update>
 
+                        <!-- CONTINUA CON LA SIGUIENTE ITERACION -->
+                        <foreach.continue />
+
                     </then>
                     <else>
-                        <!-- SI EL SVLC ES VALIDA Y NO ESTA SERVIDA POR COMPLETO O ANULADA -->
+                        <!-- LA SVLC ES VALIDA (cabecera) -->
+                        <!-- ASIGNACION DE LAS CABECERAS A LA VTABLE -->
+                        <vtable.insert name='v_pedidosh'>
+                            <column name='docser'><pc_h_orderclient /></column>
+                            <column name='cabid'><pc_h_id_finishedorders_h /></column>
+                        </vtable.insert>
+
                         <!-- SE ITERA LAS LINEAS DEL PEDIDO -->
                         <foreach>
                             <select prefix='pc_l_'>
@@ -85,25 +114,95 @@
                                 </where>
                             </select>
                             <do>
-                                <!-- SE VALIDA LA CONCORDANCIA DE LOS ARTICULOS -->
+                                <!-- SE OBTIENE EL ARTICULO ASOCIADO AL PEDIDO DE CONSUMO -->
+                                <select prefix='gcomsoll_'>
+                                    <columns>
+                                        linid,
+                                        cabid,
+                                        codart,
+                                        cansol,
+                                        canser
+                                    </columns>
+                                    <from table='gcomsoll' />
+                                    <where>
+                                        cabid = <gcomsolh_cabid />
+                                        AND codart = <pc_l_productcode/>
+                                        AND cansol >= <pc_l_qtyrequested />
+                                    </where>
+                                </select>
 
-                                <!-- ASIGNACION DE LAS LINEAS A LA VTABLE -->
-                                <vtable.insert name='v_pedidosl'>
-                                    <column name='numline' > <pc_l_numline /> </column>
-                                    <column name='qtyrequested' > <pc_l_qtyrequested /> </column>
-                                    <column name='qtyserved' > <pc_l_qtyserved /> </column>
-                                    <column name='productcode' > <pc_l_productcode /> </column>
-                                    <column name='id_head' > <pc_l_id_finishedorders_h /> </column>
-                                </vtable.insert>
+                                <!-- SE VALIDA LA CONCORDANCIA DE LOS ARTICULOS -->
+                                <if>
+                                    <expr>
+                                        <isnull><gcomsoll_linid /></isnull>
+                                    </expr>
+                                    <then>
+                                        <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
+                                        <update table='crp_ibth_setfinishedorders_h'>
+                                            <column name='state'>E</column>
+                                            <column name='message_error'><string>Error con el articulo [<pc_l_productcode/>].</string></column>
+                                            <column name='date_error'> <date.today /> </column>
+                                            <where>
+                                                id_finishedorders_h = <pc_l_id_finishedorders_h />
+                                            </where>
+                                        </update>
+                                        <!--  -->
+                                        <set name='m_pedido_valido'>0</set>
+
+                                        <foreach.exit/>
+                                    </then>
+                                    <else>
+                                        <!-- EL ARTICULO ES VALIDO -->
+                                        <set name='m_pedido_valido'>1</set>
+
+                                        <!-- SE AGREGA LAS LINEAS -->
+                                        <vtable.insert name='v_pedidosl'>
+                                            <column name='numline' > <pc_l_numline /> </column>
+                                            <column name='qtyrequested' > <pc_l_qtyrequested /> </column>
+                                            <column name='qtyserved' > <pc_l_qtyserved /> </column>
+                                            <column name='productcode' > <pc_l_productcode /> </column>
+                                            <column name='id_head' > <pc_l_id_finishedorders_h /> </column>
+                                        </vtable.insert>
+                                        <foreach.continue />
+                                    </else>
+                                </if>
+                                
                             </do>
                         </foreach>
+
+                        <if>
+                            <expr>
+                                <eq><m_pedido_valido/>1</eq>  <!-- Pedido es valido -->
+                            </expr>
+                            <then>
+                                <!-- INICIO DE GENERAR PICKING -->
+
+                                <!-- SE GENERA PROPUESTA DE MOVIMIENTO -->
+                                <call name='gmovproh_gcomsolh' into='log_id'>
+                                    <null />
+                                    <number>1</number>
+                                    <gcomsolh_cabid/>
+                                    <null />
+                                    <null />
+                                    <string>*</string>
+                                    <string>*</string>
+                                    <string>*</string>
+                                    <string>%</string>
+                                    <null/>
+                                    <string>%</string>
+                                    <null/>
+                                    <string>*</string>
+                                    <string>*</string>
+                                </call>
+
+
+
+                            </then>
+                        </if>
+
                     </else>
                 </if>
-                <!-- ASIGNACION DE LAS CABECERAS A LA VTABLE -->
-                <vtable.insert name='v_pedidosh'>
-                    <column name='docser'><pc_h_orderclient /></column>
-                    <column name='cabid'><pc_h_id_finishedorders_h /></column>
-                </vtable.insert>
+                
             </do>
         </foreach>
 
