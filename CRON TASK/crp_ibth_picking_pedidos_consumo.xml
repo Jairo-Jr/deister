@@ -4,19 +4,6 @@
         <!-- VARIBALES -->
         <set name='m_pedido_valido'>1</set>
 
-        <!-- <vtable name='v_pedidosh'>
-            <column name='docser' type='string' />
-            <column name='cabid' type='string' />
-        </vtable>
-
-        <vtable name='v_pedidosl'>
-            <column name='numline' type='string' />
-            <column name='qtyrequested' type='string' />
-            <column name='qtyserved' type='string' />
-            <column name='productcode' type='string' />
-            <column name='id_head' type='string' />
-        </vtable> -->
-
         <!-- ITERAR LAS CABECERAS (IBTH) -->
         <foreach>
             <select prefix='pc_h_'>
@@ -40,11 +27,13 @@
                 </vtable>
 
                 <vtable name='v_pedidosl'>
-                    <column name='numline' type='string' />
+                    <column name='linid' type='string' />
                     <column name='qtyrequested' type='string' />
                     <column name='qtyserved' type='string' />
                     <column name='productcode' type='string' />
                     <column name='id_head' type='string' />
+                    <column name='cabid' type='string' />
+                    <column name='canpic' type='integer' />
                 </vtable>
 
                 <select prefix='gcomsolh_'>
@@ -121,7 +110,20 @@
                                         cabid,
                                         codart,
                                         cansol,
-                                        canser
+                                        canser,
+                                        CASE WHEN <nvl>(SELECT SUM(galmstkc.stkact) 
+                                                            FROM galmstkc
+                                                            WHERE galmstkc.codalm = <gcomsolh_codalm />
+                                                            AND galmstkc.cuenta = 'DISP'
+                                                            AND galmstkc.codart = gcomsoll.codart
+                                                            AND galmstkc.udmact = gcomsoll.udmsol
+                                                            AND galmstkc.stkact != 0),0</nvl> &gt; gcomsoll.cansol THEN gcomsoll.cansol - gcomsoll.canser ELSE <nvl>(SELECT SUM(galmstkc.stkact) 
+                                                                                                                                                                        FROM galmstkc
+                                                                                                                                                                        WHERE galmstkc.codalm = <gcomsolh_codalm />
+                                                                                                                                                                        AND galmstkc.cuenta = 'DISP'
+                                                                                                                                                                        AND galmstkc.codart = gcomsoll.codart
+                                                                                                                                                                        AND galmstkc.udmact = gcomsoll.udmsol
+                                                                                                                                                                        AND galmstkc.stkact != 0),0</nvl> END <alias name='canpic' />
                                     </columns>
                                     <from table='gcomsoll' />
                                     <where>
@@ -157,11 +159,13 @@
 
                                         <!-- SE AGREGA LAS LINEAS -->
                                         <vtable.insert name='v_pedidosl'>
-                                            <column name='numline' > <pc_l_numline /> </column>
+                                            <column name='linid' > <gcomsoll_linid /> </column>
                                             <column name='qtyrequested' > <pc_l_qtyrequested /> </column>
                                             <column name='qtyserved' > <pc_l_qtyserved /> </column>
                                             <column name='productcode' > <pc_l_productcode /> </column>
                                             <column name='id_head' > <pc_l_id_finishedorders_h /> </column>
+                                            <column name='cabid' > <gcomsoll_cabid /> </column>
+                                            <column name='canpic' > <gcomsoll_canpic /> </column>
                                         </vtable.insert>
                                         <foreach.continue />
                                     </else>
@@ -234,6 +238,151 @@
                                         <!-- CONTINUA CON LA SIGUIENTE ITERACION -->
                                         <foreach.continue />
                                     </then>
+                                    <else>
+                                        
+                                        <vtable name='v_picking_movs'>
+                                            <column name='linid'  type='integer'  />
+                                            <column name='cabid'  type='integer'  />
+                                            <column name='ubiori' type='string'   />
+                                            <column name='ubipas' type='string'   />
+                                            <column name='ubiest' type='string'   />
+                                            <column name='ubialt' type='string'   />
+                                            <column name='codart' type='string'   />
+                                            <column name='varlog' type='string'   />
+                                            <column name='numlot' type='string'   />
+                                            <column name='udmori' type='string'   />
+                                            <column name='canmov' type='decimal'  />
+                                            <column name='qtycon' type='decimal'  />
+                                            <column name='lineok' type='smallint' />
+                                        </vtable> 
+                                        <!-- ================================================================ -->
+                                        <!-- Recorre las líneas de la solicitud para procesar su picking      -->
+                                        <!-- Para ellos primeramente monta una tabla virtual como la que      -->
+                                        <!-- trabaja con el proceso estándar de gmovproh_confirm              -->
+                                        <!-- ================================================================ -->
+                                        <foreach>
+                                            <in prefix='v_'>
+                                                <v_pedidosl />
+                                            </in>
+                                            <do>
+                                                <select prefix='m_'>
+                                                    <columns>
+                                                        gmovprol.linid,
+                                                        gmovprol.cabid,
+                                                        gmovprol.ubiori,
+                                                        galmubic.ubipas,
+                                                        galmubic.ubiest,
+                                                        galmubic.ubialt,
+                                                        gmovprol.codart,
+                                                        gmovprol.varlog,
+                                                        gmovprol.numlot,
+                                                        gmovprol.udmori,
+                                                        gmovprol.canmov - gmovprol.canrea <alias name='canmov' />,
+                                                        0 lineok
+                                                    </columns>
+                                                    <from table='gmovprol'>
+                                                        <join table='gmovproh'>
+                                                            <on>gmovprol.cabid = gmovproh.cabid</on>
+                                                        </join>
+                                                        <join table='galmubic'>
+                                                            <on>gmovproh.recint = galmubic.recint</on>
+                                                            <on>gmovprol.ubiori = galmubic.codigo</on>
+                                                        </join>
+                                                    </from>
+                                                    <where>
+                                                        gmovproh.cabid = <gmovproh_cabid /> AND
+                                                        gmovprol.estado = 'N' AND
+                                                        gmovprol.tabori  = 'gcomsolh' AND
+                                                        gmovprol.cabori = <v_cabid /> AND
+                                                        gmovprol.linori = <v_linid />
+                                                    </where>
+                                                </select>
+                                                
+                                                <vtable.insert name='v_picking_movs'>
+                                                    <column name='linid'><m_linid /></column>
+                                                    <column name='cabid'><m_cabid /></column>
+                                                    <column name='ubiori'><m_ubiori /></column>
+                                                    <column name='ubipas'><m_ubipas /></column>
+                                                    <column name='ubiest'><m_ubiest /></column>
+                                                    <column name='ubialt'><m_ubialt /></column>
+                                                    <column name='codart'><m_codart /></column>
+                                                    <column name='varlog'><m_varlog /></column>
+                                                    <column name='numlot'><m_numlot /></column>
+                                                    <column name='udmori'><m_udmori /></column>
+                                                    <column name='canmov'><m_canmov /></column>
+                                                    <column name='qtycon'><v_canpic /></column>
+                                                    <column name='lineok'><m_lineok /></column>
+                                                </vtable.insert>
+                                            </do>
+                                        </foreach>
+
+                                        <!-- ======================================================================== -->
+                                        <!-- Realiza la confirmación.                                                 -->
+                                        <!-- ======================================================================== -->
+                                        <call name='gmovproh_confirm'>
+                                            <gmovproh_cabid />
+                                            <v_picking_movs />
+                                        </call>
+
+                                        <!-- ======================================================================== -->
+                                        <!-- Obtener el ID. del movimiento interno destino realizado a partir de la   -->
+                                        <!-- propuesta de movimiento                                                  -->
+                                        <!-- ======================================================================== -->
+                                        <select prefix='geanmovh_'>
+                                            <columns>
+                                                geanmovh.cabid
+                                            </columns>
+                                            <from table='geanmovh' />
+                                            <where>
+                                                    geanmovh.tipdoc = 'SINL'
+                                                AND geanmovh.docori = <gmovproh_docser />
+                                            </where>
+                                        </select>
+
+                                        <!-- ======================================================================== -->
+                                        <!-- Informar el almacen del 2 paso                                           -->
+                                        <!-- ======================================================================== -->
+                                        <set name='m_codalm_2paso'><string><string.trim><gcomsolh_delega /></string.trim><string.trim><gcomsolh_depart /></string.trim></string></set>
+                                        
+                                        <update table='geanmovh'>
+                                            <column name='auxchr5'><m_codalm_2paso /></column> 
+                                            <where>
+                                                    geanmovh.cabid = <geanmovh_cabid /> 
+                                                AND geanmovh.auxchr5 IS NULL
+                                            </where>
+                                        </update>
+
+                                        <!-- ================================================================ -->
+                                        <!-- Recorre las lineas que se seleccionaron, y si no coincide la     -->
+                                        <!-- cantidad informada con la propuesta, entonces se modifica en el  -->
+                                        <!-- movimiento interno destino.                                      -->
+                                        <!-- ================================================================ -->
+                                        <foreach>
+                                            <in prefix='v_'>
+                                                <v_picking_movs />
+                                            </in>
+                                            <do>
+                                                <update table='geanmovl'>
+                                                    <column name='canmov'><v_qtycon /></column>
+                                                    <where>
+                                                        geanmovl.cabid = <geanmovh_cabid /> AND
+                                                        geanmovl.linext = <v_linid /> AND
+                                                        geanmovl.canmov != <v_qtycon />
+                                                    </where>
+                                                </update>
+                                            </do>
+                                        </foreach>
+                                        
+                                        <!-- ================================================================ -->
+                                        <!-- Finalmente se marca como realizada aunque no hubiera quedado     -->
+                                        <!-- completa.                                                        -->
+                                        <!-- ================================================================ -->
+                                        <call name='gmovproh_servir'>
+                                            <gmovproh_cabid />
+                                            <number>0</number>
+                                        </call>
+
+                                    </else>
                                 </if>
 
                                 
@@ -248,8 +397,8 @@
         </foreach>
 
         <return>
-            <!-- <v_pedidosh /> -->
-            <v_pedidosl />
+            <v_pedidosh />
+            <!-- <v_pedidosl /> -->
         </return>
 
     </body>
