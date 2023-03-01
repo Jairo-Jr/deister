@@ -195,7 +195,48 @@
                                     <string>*</string>
                                 </call>
 
+                                <!-- ================================================================ -->
+                                <!-- Comprobar que se ha generado la propuesta de movimiento          -->
+                                <!-- ================================================================ -->
+                                <select prefix='gmovproh_'>
+                                    <columns>
+                                        gmovproh.cabid,
+                                        gmovproh.docser
+                                    </columns>
+                                    <from table='gmovproh' />
+                                    <where>
+                                        
+                                            gmovproh.cabid IN (SELECT gmovprol.cabid 
+                                                                FROM gmovprol, 
+                                                                    gcomsoll 
+                                                                WHERE gmovprol.tabori = 'gcomsolh' 
+                                                                AND gmovprol.linori = gcomsoll.linid 
+                                                                AND gmovprol.cabori = <gcomsolh_cabid />)
+                                        AND gmovproh.estado = 'N' <!-- No realizada -->
+                                    </where>
+                                </select>
 
+                                <if>
+                                    <expr>
+                                        <isnull><gmovproh_cabid /></isnull>
+                                    </expr>
+                                    <then>
+                                        <!-- NO SE GENERA PICKING -->
+                                        <!-- SE ACTUALIZA EL ESTADO A ERROR DEL PEDIDO CONSIGNADO POR IBTH -->
+                                        <update table='crp_ibth_setfinishedorders_h'>
+                                            <column name='state'>E</column>
+                                            <column name='message_error'>No se ha generado picking.</column>
+                                            <column name='date_error'> <date.today /> </column>
+                                            <where>
+                                                id_finishedorders_h = <pc_h_id_finishedorders_h />
+                                            </where>
+                                        </update>
+                                        <!-- CONTINUA CON LA SIGUIENTE ITERACION -->
+                                        <foreach.continue />
+                                    </then>
+                                </if>
+
+                                
 
                             </then>
                         </if>
