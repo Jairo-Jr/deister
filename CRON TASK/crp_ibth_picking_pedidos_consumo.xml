@@ -14,7 +14,7 @@
                 </columns>
                 <from table='crp_ibth_setfinishedorders_h' />
                 <where>
-                    state = 'P'
+                    state = '0'
                 </where>
             </select>
             <do>
@@ -68,9 +68,11 @@
                         <!-- NO SE GENERA PICKING -->
                         <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
                         <update table='crp_ibth_setfinishedorders_h'>
-                            <column name='state'>E</column>
+                            <column name='state'>3</column>
                             <column name='message_error'>Solicitud de consumo no esta validada, se encuentra con estado Servida o Anulada o ya fue enviada a IBTH.</column>
-                            <column name='date_error'> <date.today /> </column>
+                            <column name='date_error'><date.today /></column>
+                            <column name='user_processed'><system.user.getCode/></column> 
+                            <column name='date_processed'><date.today/></column>
                             <where>
                                 id_finishedorders_h = <pc_h_id_finishedorders_h />
                             </where>
@@ -142,9 +144,11 @@
                                     <then>
                                         <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
                                         <update table='crp_ibth_setfinishedorders_h'>
-                                            <column name='state'>E</column>
+                                            <column name='state'>3</column>
                                             <column name='message_error'><string>Error con el articulo [<pc_l_productcode/>].</string></column>
-                                            <column name='date_error'> <date.today /> </column>
+                                            <column name='date_error'><date.today /></column>
+                                            <column name='user_processed'><system.user.getCode/></column>
+                                            <column name='date_processed'><date.today/></column>
                                             <where>
                                                 id_finishedorders_h = <pc_l_id_finishedorders_h />
                                             </where>
@@ -170,7 +174,7 @@
                                             <column name='productcode' > <pc_l_productcode /> </column>
                                             <column name='id_head' > <pc_l_id_finishedorders_h /> </column>
                                             <column name='cabid' > <gcomsoll_cabid /> </column>
-                                            <column name='canpic' > <gcomsoll_canpic /> </column>
+                                            <column name='canpic' > <pc_l_qtyserved /> </column> <!-- pc_l_qtyserved -->
                                         </vtable.insert>
                                         <foreach.continue />
                                     </else>
@@ -233,9 +237,11 @@
                                         <!-- NO SE GENERA PICKING -->
                                         <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
                                         <update table='crp_ibth_setfinishedorders_h'>
-                                            <column name='state'>E</column>
-                                            <column name='message_error'>No se ha generado picking.</column>
-                                            <column name='date_error'> <date.today /> </column>
+                                            <column name='state'>3</column>
+                                            <column name='message_error'><string>No se ha generado picking. No hay stock de las líneas para almacén <gcomsolh_codalm />.</string></column>
+                                            <column name='date_error'><date.today /></column>
+                                            <column name='user_processed'><system.user.getCode/></column>
+                                            <column name='date_processed'><date.today/></column>
                                             <where>
                                                 id_finishedorders_h = <pc_h_id_finishedorders_h />
                                             </where>
@@ -389,7 +395,14 @@
 
                                         <!-- SE REALIZO EL PICKING CORRECTAMENTE -->
                                         <!-- SE ACTUALIZA EL ESTADO A INTEGRADO EL PEDIDO CONSIGNADO POR IBTH --> 
-
+                                        <update table='crp_ibth_setfinishedorders_h'>
+                                            <column name='state'>1</column>
+                                            <column name='user_processed'><system.user.getCode/></column>
+                                            <column name='date_processed'><date.today/></column>
+                                            <where>
+                                                id_finishedorders_h = <pc_l_id_finishedorders_h />
+                                            </where>
+                                        </update>
 
                                     </else>
                                 </if>
@@ -402,9 +415,11 @@
                                 <!-- PEDIDO NO VALIDO PARA GENERAR PICKING -->
                                 <!-- SE ACTUALIZA EL ESTADO A ERROR -->
                                 <update table='crp_ibth_setfinishedorders_h'>
-                                    <column name='state'>E</column>
+                                    <column name='state'>3</column>
                                     <column name='message_error'><string>Error con el articulo <m_cod_articulo_error /></string></column>
                                     <column name='date_error'> <date.today /> </column>
+                                    <column name='user_processed'><system.user.getCode/></column> 
+                                    <column name='date_processed'><date.today/></column>
                                     <where>
                                         id_finishedorders_h = <pc_l_id_finishedorders_h />
                                     </where>
