@@ -70,9 +70,9 @@
                         <update table='crp_ibth_setfinishedorders_h'>
                             <column name='state'>3</column>
                             <column name='message_error'>Solicitud de consumo no esta validada, se encuentra con estado Servida o Anulada o ya fue enviada a IBTH.</column>
-                            <column name='date_error'><date.today /></column>
+                            <column name='date_error'><date.current /></column>
                             <column name='user_processed'><system.user.getCode/></column> 
-                            <column name='date_processed'><date.today/></column>
+                            <column name='date_processed'><date.current/></column>
                             <where>
                                 id_finishedorders_h = <pc_h_id_finishedorders_h />
                             </where>
@@ -133,9 +133,9 @@
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>3</column>
                                             <column name='message_error'><string>Error con el articulo [<pc_l_productcode/>].</string></column>
-                                            <column name='date_error'><date.today /></column>
+                                            <column name='date_error'><date.current /></column>
                                             <column name='user_processed'><system.user.getCode/></column>
-                                            <column name='date_processed'><date.today/></column>
+                                            <column name='date_processed'><date.current/></column>
                                             <where>
                                                 id_finishedorders_h = <pc_l_id_finishedorders_h />
                                             </where>
@@ -155,13 +155,13 @@
 
                                         <!-- SE AGREGA LAS LINEAS -->
                                         <vtable.insert name='v_pedidosl'>
-                                            <column name='linid' > <gcomsoll_linid /> </column>
-                                            <column name='qtyrequested' > <pc_l_qtyrequested /> </column>
-                                            <column name='qtyserved' > <pc_l_qtyserved /> </column>
-                                            <column name='productcode' > <pc_l_productcode /> </column>
-                                            <column name='id_head' > <pc_l_id_finishedorders_h /> </column>
-                                            <column name='cabid' > <gcomsoll_cabid /> </column>
-                                            <column name='canpic' > <pc_l_qtyserved /> </column> <!-- pc_l_qtyserved -->
+                                            <column name='linid' ><gcomsoll_linid /></column>
+                                            <column name='qtyrequested' ><pc_l_qtyrequested /></column>
+                                            <column name='qtyserved' ><pc_l_qtyserved /></column>
+                                            <column name='productcode' ><pc_l_productcode /></column>
+                                            <column name='id_head' ><pc_l_id_finishedorders_h /></column>
+                                            <column name='cabid' ><gcomsoll_cabid /></column>
+                                            <column name='canpic' ><pc_l_qtyserved /></column> <!-- pc_l_qtyserved -->
                                         </vtable.insert>
                                         <foreach.continue />
                                     </else>
@@ -226,9 +226,9 @@
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>3</column>
                                             <column name='message_error'><string>No se ha generado picking. No hay stock de las líneas para almacén <gcomsolh_codalm />.</string></column>
-                                            <column name='date_error'><date.today /></column>
+                                            <column name='date_error'><date.current /></column>
                                             <column name='user_processed'><system.user.getCode/></column>
-                                            <column name='date_processed'><date.today/></column>
+                                            <column name='date_processed'><date.current/></column>
                                             <where>
                                                 id_finishedorders_h = <pc_h_id_finishedorders_h />
                                             </where>
@@ -399,7 +399,7 @@
                                             <column name='state'>1</column>
                                             <column name='cabori'><gmovproh_cabid/></column>
                                             <column name='user_processed'><system.user.getCode/></column>
-                                            <column name='date_processed'><date.today/></column>
+                                            <column name='date_processed'><date.current/></column>
                                             <where>
                                                 id_finishedorders_h = <pc_l_id_finishedorders_h />
                                             </where>
@@ -418,9 +418,9 @@
                                 <update table='crp_ibth_setfinishedorders_h'>
                                     <column name='state'>3</column>
                                     <column name='message_error'><string>Error con el articulo <m_cod_articulo_error /></string></column>
-                                    <column name='date_error'> <date.today /> </column>
+                                    <column name='date_error'> <date.current /> </column>
                                     <column name='user_processed'><system.user.getCode/></column> 
-                                    <column name='date_processed'><date.today/></column>
+                                    <column name='date_processed'><date.current/></column>
                                     <where>
                                         id_finishedorders_h = <pc_l_id_finishedorders_h />
                                     </where>
