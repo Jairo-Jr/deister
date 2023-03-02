@@ -3,7 +3,7 @@
 
         <!-- VARIBALES -->
         <set name='m_pedido_valido'>1</set>
-        <set name='m_cod_articulo_error'><null /></set>
+        <set name='m_cod_articulo_error'><null/></set> 
 
         <!-- ITERAR LAS CABECERAS (IBTH) -->
         <foreach>
@@ -113,26 +113,13 @@
                                         cabid,
                                         codart,
                                         cansol,
-                                        canser,
-                                        CASE WHEN <nvl>(SELECT SUM(galmstkc.stkact) 
-                                                            FROM galmstkc
-                                                            WHERE galmstkc.codalm = <gcomsolh_codalm />
-                                                            AND galmstkc.cuenta = 'DISP'
-                                                            AND galmstkc.codart = gcomsoll.codart
-                                                            AND galmstkc.udmact = gcomsoll.udmsol
-                                                            AND galmstkc.stkact != 0),0</nvl> &gt; gcomsoll.cansol THEN gcomsoll.cansol - gcomsoll.canser ELSE <nvl>(SELECT SUM(galmstkc.stkact) 
-                                                                                                                                                                        FROM galmstkc
-                                                                                                                                                                        WHERE galmstkc.codalm = <gcomsolh_codalm />
-                                                                                                                                                                        AND galmstkc.cuenta = 'DISP'
-                                                                                                                                                                        AND galmstkc.codart = gcomsoll.codart
-                                                                                                                                                                        AND galmstkc.udmact = gcomsoll.udmsol
-                                                                                                                                                                        AND galmstkc.stkact != 0),0</nvl> END <alias name='canpic' />
+                                        canser
                                     </columns>
                                     <from table='gcomsoll' />
                                     <where>
                                         cabid = <gcomsolh_cabid />
                                         AND codart = <pc_l_productcode/>
-                                        AND cansol >= <pc_l_qtyrequested />
+                                        AND canpen >= <pc_l_qtyserved />
                                     </where>
                                 </select>
 
@@ -394,9 +381,23 @@
                                         </call>
 
                                         <!-- SE REALIZO EL PICKING CORRECTAMENTE -->
+
+                                        <!-- SE OBTIENE EL ID DE LA PROPUESTA DE MOVIMIENTO (EXSO) --> 
+                                        <select prefix='gmovprol_'>
+                                            <columns>
+                                                cabid
+                                            </columns>
+                                            <from table='gmovprol' />
+                                            <where>
+                                                gmovprol.tabori = 'gcomsolh' 
+                                                AND gmovprol.cabori = <gmovproh_cabid/>
+                                            </where>
+                                        </select>
+
                                         <!-- SE ACTUALIZA EL ESTADO A INTEGRADO EL PEDIDO CONSIGNADO POR IBTH --> 
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>1</column>
+                                            <column name='cabori'><gmovproh_cabid/></column>
                                             <column name='user_processed'><system.user.getCode/></column>
                                             <column name='date_processed'><date.today/></column>
                                             <where>
@@ -434,8 +435,8 @@
         </foreach>
 
         <return>
-            <v_pedidosh />
-            <!-- <v_pedidosl /> -->
+            <!-- <v_pedidosh /> -->
+            <v_pedidosl />
         </return>
 
     </body>
