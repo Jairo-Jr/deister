@@ -43,9 +43,9 @@ function main(data) {
         return new Ax.net.HttpResponseBuilder()
             .status(400)
             .entity({
-                "response": {
-                    "status": "ERROR",
-                    "message": error
+                "Response": {
+                    "Status": "ERROR",
+                    "Message": error
                 }
             })
             .type("application/json")
@@ -56,9 +56,9 @@ function main(data) {
     return new Ax.net.HttpResponseBuilder()
         .status(201)
         .entity({
-            "response": {
-                "status": "OK",
-                "message": "Registro realizado"
+            "Response": {
+                "Status": "OK",
+                "Message": "Registro realizado"
             }
         })
         .type("application/json")
