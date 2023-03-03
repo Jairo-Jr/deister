@@ -107,10 +107,14 @@ function main(data) {
                 <!-- Filtros:                                                                           -->
                 <!-- (1) Parámetro de entrada de IBTH puede ser una OC o RUC del proveedor.             -->
                 <!-- (2) Aplica a documentos validados en estado "Pendientes"[N] y "Parciales"[P].      -->
-                <!-- (3) Se acota por almacén de IBTH y la tipología de logística.                      -->
+                <!-- (3) Aplica a documentos que se pueden Modificar.                                   --> 
+                <!-- (4) Aplica a documentos que no hayan sido enviados a IBTH antes.                   --> 
+                <!-- (5) Se acota por almacén de IBTH y la tipología de logística.                      -->
                 <!-- ================================================================================== -->
                     (tabnameh.docser = ? OR ctercero.cif = ?)
                 AND (tabnameh.estcab = 'V' AND tabnameh.estado IN ('N','P'))
+                AND tabnameh.indmod = 'S'
+                AND (tabnameh.auxnum1 IS NULL OR tabnameh.auxnum1 = 0)
                 ${mSqlcond}
             </where>
             <group>
@@ -129,6 +133,20 @@ function main(data) {
             PurchaseHead 
             
         };
+        
+        PurchaseHead.forEach(mPurchase => {
+            
+            Ax.db.update(mStrTabnameHead, 
+                {   
+                    indmod  : 'N',
+                    auxnum2 : 1
+                }, 
+                {
+                    docser: mPurchase.code
+                }
+            ); 
+
+        });
         
       return new Ax.net.HttpResponseBuilder()            
             .status(200)
