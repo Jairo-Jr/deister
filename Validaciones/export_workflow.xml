@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<sqltransaction>
+ <atomic>
+<!-- EXPORTING cworkflow_val_prog cond=[cworkflow_val_prog.user_created LIKE 'deister_jha'] -->
+<insert table='cworkflow_val_prog'>
+ <row>
+  <prog_num>26235</prog_num>
+  <prog_name><![CDATA[ALBARÁN DE COMPRA A DEVOLVER Y/O REVERTIR TIENE CONSUMO]]></prog_name>
+  <prog_mode>D</prog_mode>
+  <prog_notas></prog_notas>
+  <prog_table><![CDATA[gcommovh]]></prog_table>
+  <prog_code><![CDATA[ class w26235 extends workflowProg {
+    constructor() {
+        super("w26235", ["refter"]);
+    }
+    
+    
+    run(data) {
+        // Número de líneas con consumo total o parcial.
+        var mIntCount = Ax.db.executeGet(`
+                <select>
+                    <columns>
+                        COUNT(*)
+                    </columns>
+                    <from table='gcomalbh'>
+                        <join table='gcomalbl'>
+                            <on>gcomalbh.cabid = gcomalbl.cabid</on>
+                        </join>
+                    </from>
+                    <where>
+                            gcomalbh.refter = ?
+                        AND gcomalbl.auxchr2 IN ('P', 'S')
+                        AND  gcomalbh.tipdoc IN ('AGCO', 'AANT')
+                    </where>
+                </select>
+            `, data.refter);
+        
+        return (mIntCount > 0 ) ? true : false
+        
+    }
+}]]></prog_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='27' mm='2' yy='2023' HH='8' MM='32' SS='22'>2023-02-27 08:32:22</date_created>
+  <user_updated><![CDATA[deister_egc]]></user_updated>
+  <date_updated dd='27' mm='2' yy='2023' HH='11' MM='38' SS='40'>2023-02-27 11:38:40</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_prog -->
+<!-- pktable=[cworkflow_val_prog.prog_num]->fktable[cworkflow_val_item.prog_num] query=[prog_num = 26235] -->
+<!-- pktable=[cworkflow_val_prog.prog_num]->fktable[cworkflow_val_log.prog_num] query=[prog_num = 26235] -->
+<!-- EXPORTING cworkflow_val_log cond=[prog_num = 26235] -->
+ <insert table='cworkflow_val_log'>
+  <row>
+   <log_id/>
+   <log_cabid>14707</log_cabid>
+   <log_linid>0</log_linid>
+   <log_table><![CDATA[gcommovh]]></log_table>
+   <prog_num>{cworkflow_val_prog.prog_num}</prog_num>
+   <log_hash>86e24d8f6b2789825a0c17c1c563a31b</log_hash>
+   <log_lock></log_lock>
+   <log_state>P</log_state>
+   <log_trackid></log_trackid>
+   <flow_code></flow_code>
+   <run_id></run_id>
+   <user_created><![CDATA[informix]]></user_created>
+   <date_created dd='27' mm='2' yy='2023' HH='8' MM='56' SS='31'>2023-02-27 08:56:31</date_created>
+   <user_updated><![CDATA[deister_egc]]></user_updated>
+   <date_updated dd='27' mm='2' yy='2023' HH='11' MM='39' SS='52'>2023-02-27 11:39:52</date_updated>
+  </row>
+<!-- GETTING exportedKeys of cworkflow_val_log -->
+ </insert>
+ <insert table='cworkflow_val_log'>
+  <row>
+   <log_id/>
+   <log_cabid>14731</log_cabid>
+   <log_linid>0</log_linid>
+   <log_table><![CDATA[gcommovh]]></log_table>
+   <prog_num>{cworkflow_val_prog.prog_num}</prog_num>
+   <log_hash>574a29ed8a7a5c71577378c899379d9f</log_hash>
+   <log_lock></log_lock>
+   <log_state>P</log_state>
+   <log_trackid></log_trackid>
+   <flow_code></flow_code>
+   <run_id></run_id>
+   <user_created><![CDATA[informix]]></user_created>
+   <date_created dd='27' mm='2' yy='2023' HH='15' MM='39' SS='4'>2023-02-27 15:39:04</date_created>
+   <user_updated><![CDATA[deister_egc]]></user_updated>
+   <date_updated dd='27' mm='2' yy='2023' HH='15' MM='39' SS='4'>2023-02-27 15:39:04</date_updated>
+  </row>
+<!-- GETTING exportedKeys of cworkflow_val_log -->
+ </insert>
+<!-- EXPORTING cworkflow_val_item cond=[prog_num = 26235] -->
+ <insert table='cworkflow_val_item'>
+  <row>
+   <item_id/>
+   <val_code>RGCO</val_code>
+   <item_phase>13</item_phase>
+   <prog_num>{cworkflow_val_prog.prog_num}</prog_num>
+   <item_lock>V</item_lock>
+   <item_manual>0</item_manual>
+   <flow_code></flow_code>
+   <user_created><![CDATA[deister_jha]]></user_created>
+   <date_created dd='27' mm='2' yy='2023' HH='8' MM='34' SS='27'>2023-02-27 08:34:27</date_created>
+   <user_updated><![CDATA[deister_jha]]></user_updated>
+   <date_updated dd='27' mm='2' yy='2023' HH='8' MM='34' SS='27'>2023-02-27 08:34:27</date_updated>
+  </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+ </insert>
+ <insert table='cworkflow_val_item'>
+  <row>
+   <item_id/>
+   <val_code>DGCO</val_code>
+   <item_phase>13</item_phase>
+   <prog_num>{cworkflow_val_prog.prog_num}</prog_num>
+   <item_lock>V</item_lock>
+   <item_manual>0</item_manual>
+   <flow_code></flow_code>
+   <user_created><![CDATA[deister_jha]]></user_created>
+   <date_created dd='27' mm='2' yy='2023' HH='8' MM='34' SS='55'>2023-02-27 08:34:55</date_created>
+   <user_updated><![CDATA[deister_jha]]></user_updated>
+   <date_updated dd='27' mm='2' yy='2023' HH='8' MM='34' SS='55'>2023-02-27 08:34:55</date_updated>
+  </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+ </insert>
+</insert>
+ </atomic>
+</sqltransaction>
