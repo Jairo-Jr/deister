@@ -94,7 +94,7 @@
     // ===============================================================
     var mIntAux = 0;
     mArrayOrderHeaders.forEach(mObjOrderHeader => {
-        console.log(mObjOrderHeader.cabid, ' - ', mObjOrderHeader.orderclient);
+        
         // ===============================================================
         // Se agrega el pedido de consumo (cabecera) al objeto
         // ===============================================================
