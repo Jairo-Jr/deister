@@ -1,11 +1,15 @@
 <xsql-script name='crp_ibth_picking_pedidos'>
-    <body>
+    <body> 
 
-        <!-- VARIBALES -->
+        <!-- ================================================================ -->
+        <!-- VARIBALES                                                        -->
+        <!-- ================================================================ --> 
         <set name='m_pedido_valido'>1</set>
         <set name='m_cod_articulo_error'><null/></set> 
 
-        <!-- ITERAR LAS CABECERAS (IBTH) -->
+        <!-- ================================================================ -->
+        <!-- ITERAR LAS CABECERAS (IBTH)                                      -->
+        <!-- ================================================================ -->
         <foreach>
             <select prefix='pc_h_'>
                 <columns>
@@ -18,10 +22,14 @@
                 </where>
             </select>
             <do>
-                <!-- SE INICIA COMO NO VALIDA -->
-                <set name='m_pedido_valido'>0</set>
+                <!-- ================================================================ -->
+                <!-- SE INICIA COMO NO VALIDA                                         -->
+                <!-- ================================================================ -->
+                <set name='m_pedido_valido'>0</set> 
 
-                <!-- CREACION DE VTABLE -->
+                <!-- ================================================================ -->
+                <!-- CREACION DE VTABLE                                               -->
+                <!-- ================================================================ -->
                 <vtable name='v_pedidosh'>
                     <column name='docser' type='string' />
                     <column name='cabid' type='string' />
@@ -35,8 +43,11 @@
                     <column name='id_head' type='string' />
                     <column name='cabid' type='string' />
                     <column name='canpic' type='integer' />
-                </vtable>
+                </vtable> 
 
+                <!-- ================================================================ -->
+                <!-- SE OBTIENE LA SOLICITUD DE CONSUMO ORIGINAL                      -->
+                <!-- ================================================================ -->
                 <select prefix='gcomsolh_'>
                     <columns>
                         gcomsolh.cabid,
@@ -51,9 +62,12 @@
                     <where>
                         gcomsolh.docser = <pc_h_orderclient />  
                     </where>
-                </select>
+                </select> 
 
-                <!-- El estado de la solicitud debe ser validado, no encontrarse servida por completo ni anulada y no haber sido enviado a IBTH  -->
+                <!-- ================================================================ -->
+                <!-- EL ESTADO DE LA SOLICITUD DEBE ESTAR VALIDADO, NO ENCONTRARSE    -->
+                <!-- SERVIDA POR COMPLETO NI ANULADA Y NO HABER SIDO ENVIADO A IBTH   --> 
+                <!-- ================================================================ -->
                 <if>
                     <expr>
                         <or>
@@ -65,8 +79,13 @@
                     </expr>
                     <then>
                         
-                        <!-- NO SE GENERA PICKING -->
-                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
+                        <!-- ================================================================ -->
+                        <!-- NO SE GENERA PICKING                                             -->
+                        <!-- ================================================================ -->
+
+                        <!-- ================================================================ -->
+                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH     -->
+                        <!-- ================================================================ -->
                         <update table='crp_ibth_setfinishedorders_h'>
                             <column name='state'>3</column>
                             <column name='message_error'>Solicitud de consumo no esta validada, se encuentra con estado Servida o Anulada o ya fue enviada a IBTH.</column>
@@ -76,21 +95,28 @@
                             <where>
                                 id_finishedorders_h = <pc_h_id_finishedorders_h />
                             </where>
-                        </update>
+                        </update> 
 
-                        <!-- CONTINUA CON LA SIGUIENTE ITERACION -->
+                        <!-- ================================================================ -->
+                        <!-- CONTINUA CON LA SIGUIENTE ITERACION                              -->
+                        <!-- ================================================================ -->
                         <foreach.continue />
 
                     </then>
                     <else>
-                        <!-- LA SVLC ES VALIDA (cabecera) -->
-                        <!-- ASIGNACION DE LAS CABECERAS A LA VTABLE -->
+
+                        <!-- ================================================================ -->
+                        <!-- LA SVLC ES VALIDA (A NIVEL DE CABECERA) Y SE REALIZA LA          -->
+                        <!-- ASIGNACION DE LAS CABECERAS A LA VTABLE (v_pedidosh)             -->
+                        <!-- ================================================================ -->
                         <vtable.insert name='v_pedidosh'>
                             <column name='docser'><pc_h_orderclient /></column>
                             <column name='cabid'><pc_h_id_finishedorders_h /></column>
-                        </vtable.insert>
+                        </vtable.insert> 
 
-                        <!-- SE ITERA LAS LINEAS DEL PEDIDO -->
+                        <!-- ================================================================ -->
+                        <!-- SE ITERA LAS LINEAS DEL PEDIDO                                   -->
+                        <!-- ================================================================ -->
                         <foreach>
                             <select prefix='pc_l_'>
                                 <columns>
@@ -106,7 +132,10 @@
                                 </where>
                             </select>
                             <do>
+
+                                <!-- ================================================================ -->
                                 <!-- SE OBTIENE EL ARTICULO ASOCIADO AL PEDIDO DE CONSUMO -->
+                                <!-- ================================================================ -->
                                 <select prefix='gcomsoll_'>
                                     <columns>
                                         linid,
@@ -121,15 +150,20 @@
                                         AND codart = <pc_l_productcode/>
                                         AND canpen >= <pc_l_qtyserved />
                                     </where>
-                                </select>
+                                </select> 
 
-                                <!-- SE VALIDA LA CONCORDANCIA DE LOS ARTICULOS -->
+                                <!-- ================================================================ -->
+                                <!-- SE VALIDA LA CONCORDANCIA DE LOS ARTICULOS                       -->
+                                <!-- ================================================================ -->
                                 <if>
                                     <expr>
                                         <isnull><gcomsoll_linid /></isnull>
                                     </expr>
                                     <then>
-                                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
+
+                                        <!-- ================================================================ -->
+                                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH     -->
+                                        <!-- ================================================================ -->
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>3</column>
                                             <column name='message_error'><string>Error con el articulo [<pc_l_productcode/>].</string></column>
@@ -139,21 +173,33 @@
                                             <where>
                                                 id_finishedorders_h = <pc_l_id_finishedorders_h />
                                             </where>
-                                        </update>
+                                        </update> 
 
-                                        <!-- SE DEJA UNA MARCA DE NO VALIDO -->
+                                        <!-- ================================================================ -->
+                                        <!-- SE DEJA UNA MARCA DE NO VALIDO                                   -->
+                                        <!-- ================================================================ -->
                                         <set name='m_pedido_valido'>0</set>
-                                        <!-- SE RESCATA EL ARTICULO QUE GENERO EL ERROR -->
-                                        <set name='m_cod_articulo_error'><pc_l_productcode/></set>
 
-                                        <!-- SE FINALIZA LA ITERACION -->
+                                        <!-- ================================================================ -->
+                                        <!-- SE RESCATA EL ARTICULO QUE GENERO EL ERROR                       -->
+                                        <!-- ================================================================ -->
+                                        <set name='m_cod_articulo_error'><pc_l_productcode/></set> 
+
+                                        <!-- ================================================================ -->
+                                        <!-- SE FINALIZA LA ITERACION                                         -->
+                                        <!-- ================================================================ -->
                                         <foreach.exit/>
                                     </then>
                                     <else>
-                                        <!-- EL ARTICULO ES VALIDO -->
-                                        <set name='m_pedido_valido'>1</set>
 
-                                        <!-- SE AGREGA LAS LINEAS -->
+                                        <!-- ================================================================ -->
+                                        <!-- EL ARTICULO ES VALIDO                                            -->
+                                        <!-- ================================================================ -->
+                                        <set name='m_pedido_valido'>1</set> 
+
+                                        <!-- ================================================================ -->
+                                        <!-- SE AGREGA LAS LINEAS                                             -->
+                                        <!-- ================================================================ -->
                                         <vtable.insert name='v_pedidosl'>
                                             <column name='linid' ><gcomsoll_linid /></column>
                                             <column name='qtyrequested' ><pc_l_qtyrequested /></column>
@@ -175,9 +221,13 @@
                                 <eq><m_pedido_valido/>1</eq>  <!-- Pedido es valido -->
                             </expr>
                             <then>
-                                <!-- INICIO DE GENERAR PICKING -->
+                                <!-- ================================================================ -->
+                                <!-- INICIO DE GENERAR PICKING                                        -->
+                                <!-- ================================================================ --> 
 
-                                <!-- SE GENERA PROPUESTA DE MOVIMIENTO -->
+                                <!-- ================================================================ -->
+                                <!-- SE GENERA PROPUESTA DE MOVIMIENTO                                -->
+                                <!-- ================================================================ -->
                                 <call name='gmovproh_gcomsolh' into='log_id'>
                                     <null />
                                     <number>1</number>
@@ -221,8 +271,11 @@
                                         <isnull><gmovproh_cabid /></isnull>
                                     </expr>
                                     <then>
-                                        <!-- NO SE GENERA PICKING -->
-                                        <!-- SE ACTUALIZA EL ESTADO A ERROR EL PEDIDO CONSIGNADO POR IBTH -->
+
+                                        <!-- ================================================================ -->
+                                        <!-- NO SE GENERA PICKING Y SE ACTUALIZA EL ESTADO A ERROR            -->
+                                        <!-- EL PEDIDO CONSIGNADO POR IBTH                                    -->
+                                        <!-- ================================================================ -->
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>3</column>
                                             <column name='message_error'><string>No se ha generado picking. No hay stock de las líneas para almacén <gcomsolh_codalm />.</string></column>
@@ -233,7 +286,10 @@
                                                 id_finishedorders_h = <pc_h_id_finishedorders_h />
                                             </where>
                                         </update>
+
+                                        <!-- ================================================================ -->
                                         <!-- CONTINUA CON LA SIGUIENTE ITERACION -->
+                                        <!-- ================================================================ -->
                                         <foreach.continue />
                                     </then>
                                     <else>
@@ -378,11 +434,15 @@
                                         <call name='gmovproh_servir'>
                                             <gmovproh_cabid />
                                             <number>0</number>
-                                        </call>
+                                        </call> 
 
-                                        <!-- SE REALIZO EL PICKING CORRECTAMENTE -->
+                                        <!-- ================================================================ -->
+                                        <!-- SE REALIZO EL PICKING CORRECTAMENTE                              -->
+                                        <!-- ================================================================ --> 
 
-                                        <!-- SE OBTIENE EL ID DE LA PROPUESTA DE MOVIMIENTO (EXSO) --> 
+                                        <!-- ================================================================ -->
+                                        <!-- SE OBTIENE EL ID DE LA PROPUESTA DE MOVIMIENTO (EXSO)            --> 
+                                        <!-- ================================================================ -->
                                         <select prefix='gmovprol_'>
                                             <columns>
                                                 cabid
@@ -392,9 +452,11 @@
                                                 gmovprol.tabori = 'gcomsolh' 
                                                 AND gmovprol.cabori = <gmovproh_cabid/>
                                             </where>
-                                        </select>
+                                        </select> 
 
+                                        <!-- ================================================================ -->
                                         <!-- SE ACTUALIZA EL ESTADO A INTEGRADO EL PEDIDO CONSIGNADO POR IBTH --> 
+                                        <!-- ================================================================ -->
                                         <update table='crp_ibth_setfinishedorders_h'>
                                             <column name='state'>1</column>
                                             <column name='cabori'><gmovproh_cabid/></column>
@@ -406,15 +468,15 @@
                                         </update>
 
                                     </else>
-                                </if>
-
-                                
+                                </if> 
 
                             </then>
-                            <else>
+                            <else> 
 
-                                <!-- PEDIDO NO VALIDO PARA GENERAR PICKING -->
-                                <!-- SE ACTUALIZA EL ESTADO A ERROR -->
+                                <!-- ================================================================ -->
+                                <!-- PEDIDO NO VALIDO PARA GENERAR PICKING, SE ACTUALIZA              -->
+                                <!-- EL ESTADO A ERROR                                                -->
+                                <!-- ================================================================ -->
                                 <update table='crp_ibth_setfinishedorders_h'>
                                     <column name='state'>3</column>
                                     <column name='message_error'><string>Error con el articulo <m_cod_articulo_error /></string></column>
@@ -432,8 +494,9 @@
                 </if>
                 
             </do>
-        </foreach>
+        </foreach> 
 
+        <!-- RETURN TEMPORAL PARA DEV -->
         <return>
             <!-- <v_pedidosh /> -->
             <v_pedidosl />
