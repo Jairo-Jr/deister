@@ -441,20 +441,6 @@
                                         <!-- ================================================================ --> 
 
                                         <!-- ================================================================ -->
-                                        <!-- SE OBTIENE EL ID DE LA PROPUESTA DE MOVIMIENTO (EXSO)            --> 
-                                        <!-- ================================================================ -->
-                                        <select prefix='gmovprol_'>
-                                            <columns>
-                                                cabid
-                                            </columns>
-                                            <from table='gmovprol' />
-                                            <where>
-                                                gmovprol.tabori = 'gcomsolh' 
-                                                AND gmovprol.cabori = <gmovproh_cabid/>
-                                            </where>
-                                        </select> 
-
-                                        <!-- ================================================================ -->
                                         <!-- SE ACTUALIZA EL ESTADO A INTEGRADO EL PEDIDO CONSIGNADO POR IBTH --> 
                                         <!-- ================================================================ -->
                                         <update table='crp_ibth_setfinishedorders_h'>
@@ -465,7 +451,32 @@
                                             <where>
                                                 id_finishedorders_h = <pc_l_id_finishedorders_h />
                                             </where>
-                                        </update>
+                                        </update> 
+
+                                        <foreach>
+                                            <select prefix='gmovprol_'>
+                                                <columns>
+                                                    codart,
+                                                    linid,
+                                                    cabid
+                                                </columns>
+                                                <from table='gmovprol' />
+                                                <where>
+                                                    cabid = <gmovproh_cabid/>
+                                                </where>
+                                            </select>
+                                            <do> 
+
+                                                <update table='crp_ibth_setfinishedorders_l'>
+                                                    <column name='linori'><gmovprol_linid/></column>
+                                                    <where>
+                                                        id_finishedorders_h = <pc_l_id_finishedorders_h />
+                                                        AND productcode = <gmovprol_codart/>
+                                                    </where>
+                                                </update> 
+
+                                            </do>
+                                        </foreach>
 
                                     </else>
                                 </if> 
