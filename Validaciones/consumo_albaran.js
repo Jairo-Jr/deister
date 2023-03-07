@@ -40,5 +40,5 @@
  * GRUPO DE VALIDACIONES:
  *          RCGO
  *          DGCO
- * 
+ * EN QA: cod- 26238
  */
