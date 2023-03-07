@@ -26,8 +26,8 @@
 
  *  JS:  crp_task_ibth_genera_albaran_compra
 
- *  Version     : 1,1
- *  Date        : 23-02-2023
+ *  Version     : 1,2
+ *  Date        : 07-03-2023
  *  Description : Función que genera albaranes de compra de las órdenes de compra 
  *                que se encuentren en estado pendiente. 
  *
@@ -286,6 +286,7 @@
     // ===============================================================
     var mObjPedidosCompra = {};
     var mObjPedidoOrigen = {};
+    var mObjAlbaranLog = {};
     var mDateToday = new Ax.util.Date();
     var mUserName = Ax.db.getUser();
     var mBoolValidArticulos = false;
@@ -418,17 +419,53 @@
                         Ax.db.call("gcommovh_Valida", mIntCabAlbComp);
 
                         // ===============================================================
-                        // Actualiza el estado de la Orden de Compra a Completado (C)
+                        // Actualiza el estado de la Orden de Compra a Integrado (1)
                         // ===============================================================
                         Ax.db.update(`crp_ibth_setreceivedpurchase_h`, 
                             {
                                 state: '1',
+                                cabori: mIntCabAlbComp,
                                 user_processed: mUserName,
                                 date_processed: mDateToday
                             }, {
                                 id_receivedpurchase_h: mOrdenCompra.idordcomp
                             }
                         );
+
+                        // ===============================================================
+                        // Listado de las líneas del documento origen
+                        // ===============================================================
+                        mObjAlbaranLog = Ax.db.executeQuery(`
+                            <select>
+                                <columns>
+                                    cabid,
+                                    linid,
+                                    codart
+                                </columns>
+                                <from table='gcomalbl'/>
+                                <where>
+                                    cabid = ?
+                                </where>
+                            </select> 
+                        `, mIntCabAlbComp).toJSONArray(); 
+
+                        // ===============================================================
+                        // Actualiza el campo linori, para las líneas del pedido 
+                        // consignado por IBTH.
+                        // =============================================================== 
+                        mObjAlbaranLog.forEach(mImtLinid => { 
+                            console.log('ID: ', mOrdenCompra.idordcomp);
+                            console.log('CODART: ', mImtLinid.codart);
+                            Ax.db.update(`crp_ibth_setreceivedpurchase_l`, 
+                            {
+                                linori: mImtLinid.linid,
+                            }, {
+                                id_receivedpurchase_h: mOrdenCompra.idordcomp,
+                                code: mImtLinid.codart
+                            }
+                        );
+                        });
+
 
                         // ===========================================================================================
                         // La función registra el proceso realizado correctamente.
