@@ -45,21 +45,24 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
      * 
      * Description: Función local que construye las filas para la tabla
      * 
-     * PARAMETERS:
-     *      @param  {integer}       pIntNumFacturas     Número total de registros asociado a un grupo de error
-     *      @param  {string}        pStrMsgError        Mensaje de error
-     *      @param  {integer}       pIntMsgId           Identificador del mensaje de error
-     *      @param  {integer}       pIntMsgRuc          Numero de RUC
-     *      @param  {string}        pStrNomComercial    Nombre comercial asociado al RUC
-     *      @param  {string}        pHtmlRow            Cadena con el conjunto de filas
-     *      @param  {integer}       pIntRowNum          Número de registro
+     * PARAMETERS: 
+     *      @param  {Object}        pObjCellName        Objeto que contiene el valor de las celdas, segun el grupo de mensajes de error
+     *      @param  {string}        pStrHtmlRow         Cadena Html con las filas de la tabla
+     *      @param  {integer}       pIntGroupMsgError   Grupo de mensajes de error '0' (Funcionales) y '1' (Tecnicos)
      */ 
-    function __build_html_row(pStrColumn1, pStrColumn2, pStrColumn3, pHtmlRow){
+    function __build_html_row(pObjCellName, pStrHtmlRow, pIntGroupMsgError){ 
+
+        var mStrRowHtml = `<tr>
+                                <td class="col-left">${pObjCellName.cell1}</td>
+                                <td class="col-left">${pObjCellName.cell2}</td>
+                                <td class="col-left">${pObjCellName.cell3}</td>
+                                ${ (pIntGroupMsgError == 0) ? ``: `<td class="col-left">${pObjCellName.cell4}</td>`}
+                           </tr>`; 
 
         // ===============================================================
         // Se concatena la fila con los valores determinados
         // ===============================================================
-        return pHtmlRow +  `<tr><td class="col-left">${pStrColumn1}</td><td class="col-left">${pStrColumn2}</td><td class="col-left">${pStrColumn3}</td></tr>`;
+        return pStrHtmlRow + mStrRowHtml;
         
     }
 
@@ -69,10 +72,12 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
      * Description: Función local que construye la tabla con el conjunto de filas
      * 
      * PARAMETERS:
-     *      @param  {string}        pHtmlRows           Cadena con el conjunto de filas
+     *      @param  {Object}        mObjNameColmuns     Objeto que contiene el valor de las columnas, segun el grupo de mensajes de error
+     *      @param  {string}        pStrHtmlRows        Cadena con el conjunto de filas
      *      @param  {integer}       pIntNumTotal        Cantidad total de registros
+     *      @param  {integer}       pIntGroupMsgError   Grupo de mensajes de error '0' (Funcionales) y '1' (Tecnicos)
      */
-    function __build_html_table(mObjNameColmuns , pHtmlRows, pIntNumTotal){
+    function __build_html_table(mObjNameColmuns , pStrHtmlRows, pIntNumTotal, pIntGroupMsgError){ 
 
         return `<div class="tbl-header">
                     <table cellspacing="0" border="0" class="tb-format">
@@ -81,13 +86,15 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
                                 <th class="borderhd col-left">${mObjNameColmuns.nameColumn1}</th>
                                 <th class="borderhd col-left">${mObjNameColmuns.nameColumn2}</th> 
                                 <th class="borderhd col-left">${mObjNameColmuns.nameColumn3}</th>
+                                ${ (pIntGroupMsgError == 0) ? `` : `<th class="borderhd col-left">${mObjNameColmuns.nameColumn4}</th>`}
                             </tr>
                         </thead>
                         <tbody>
-                            ${pHtmlRows}
+                            ${pStrHtmlRows}
                             <tr>
                                 <td class="col-left" style="font-weight:bold;">TOTAL</td>
                                 <td></td> 
+                                ${ (pIntGroupMsgError == 0) ? '' : '<td></td>' } 
                                 <td class="col-right" style="font-weight:bold;">${pIntNumTotal}</td>
                             </tr>
                         </tbody>
@@ -101,11 +108,11 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
      * Description: Función local que construye el HTML que se enviará por email
      * 
      * PARAMETERS:
-     *      @param  {string}        pHtmlTable          Tabla HTML
+     *      @param  {string}        pStrHtmlTable       Tabla HTML
      *      @param  {Date}          pDateToday          Fecha actual
      *      @param  {string}        pStrTitle           Titulo del mensaje
      */
-    function __build_html(pHtmlTable, pDateToday, pStrTitle){
+    function __build_html(pStrHtmlTable, pDateToday, pStrTitle){
       
         return `
             <html>
@@ -198,7 +205,7 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
                         <h4 class="center">Fecha: ${pDateToday}</h4>
                     </div>                
                     <div>
-                        ${pHtmlTable}
+                        ${pStrHtmlTable}
                     </div>
                 </body>
             </html>`;
@@ -217,6 +224,30 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
      *      @param  {string}        pHtmlCode           Cuerpo HTML del email
      */
     function __send_mail(pStrFrom, pStrTo, pStrBcc, pStrSubject, pHtmlCode) {
+
+        // ===============================================================
+        // Obtencion del usuario y contraseña del email 
+        // que sera usado como remitente
+        // =============================================================== 
+        var mObjEmailParameters = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    crp_email_parameters.email_adress,
+                    crp_email_parameters.email_pass
+                </columns>
+                <from table='crp_email_parameters'/>
+                <where>
+                    email_type = ?
+                    AND email_bbdd = ?
+                </where>
+            </select>
+        `, pStrTypeEmail, mStrDBName).toOne();
+
+        // ===============================================================
+        // Definición de credenciales
+        // ===============================================================
+        var mStrEmailUser       = mObjEmailParameters.email_adress;
+        var mStrEmailPassword   = mObjEmailParameters.email_pass;
 
         var m_mail = new Ax.mail.MailerMessage();
 
@@ -278,6 +309,7 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
                         pe_msg_xml_proveed.msg_ruc, 
                         pe_msg_xml_proveed.msg_type, 
                         pe_msg_xml_proveed.msg_error,
+                        pe_msg_xml_proveed.msg_date_received,
                         ctercero.nomcom
                     </columns>
                     <from table='pe_msg_xml_proveed'>
@@ -308,12 +340,17 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
                     // ===============================================================
                     // Construccion de filas
                     // ===============================================================
-                    mHtmlRow = __build_html_row(mObjIncorrectInvoice.msg_id, mObjIncorrectInvoice.msg_ruc, mObjIncorrectInvoice.nomcom, mHtmlRow); 
+                    var mObjParameters = {
+                        cell1: mObjIncorrectInvoice.msg_id,
+                        cell2: mObjIncorrectInvoice.msg_date_received,
+                        cell3: mObjIncorrectInvoice.msg_ruc + ' - ' + mObjIncorrectInvoice.nomcom
+                    }
+                    mHtmlRow = __build_html_row(mObjParameters, mHtmlRow, mIntEmailGroup); 
 
                 });
             } else { 
                 
-                mHtmlRow = __build_and_group(mRsIncorrectInvoices, mHtmlRow);
+                mHtmlRow = __build_and_group(mRsIncorrectInvoices, mHtmlRow, mIntEmailGroup);
             }
             
             
@@ -324,9 +361,10 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
         // Se define el nombre de las columnas segun el tipo de error
         // =============================================================== 
         var mObjNameColmuns = {
-            nameColumn1: (mIntEmailGroup == 0) ? 'ID Mensaje'   : 'Tipo de documento',
-            nameColumn2: (mIntEmailGroup == 0) ? 'RUC'          : 'Mensaje de error',
-            nameColumn3: (mIntEmailGroup == 0) ? 'Razón social' : 'Cantidad de errores'
+            nameColumn1: (mIntEmailGroup == 0) ? 'ID Mensaje'     : 'Tipo de documento',
+            nameColumn2: (mIntEmailGroup == 0) ? 'Fecha recibida' : 'Mensaje de error',
+            nameColumn3: (mIntEmailGroup == 0) ? 'Proveedor'      : 'RUC',
+            nameColumn4: (mIntEmailGroup == 0) ? ''               : 'Cantidad de errores'
         };
         // ===============================================================
         // Si existe registros a ser informados, se realiza 
@@ -334,7 +372,7 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
         // =============================================================== 
         if (mIntTotalRegisters > 0) { 
 
-            var mHtmlTable = __build_html_table(mObjNameColmuns, mHtmlRow, mIntTotalRegisters);
+            var mHtmlTable = __build_html_table(mObjNameColmuns, mHtmlRow, mIntTotalRegisters, mIntEmailGroup);
             var mHtmlBody  = __build_html(mHtmlTable, mStrDate, mStrTitle); 
 
             // ===============================================================
@@ -358,9 +396,9 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
      * 
      * PARAMETERS:
      *      @param  {ResultSet}         pRsIncorrectInvoices            ResultSet con inconsistencias segun un grupo de error
-     *      @param  {String}            pHtmlRow                        Concatenado de filas <tr></tr>
+     *      @param  {String}            pStrHtmlRow                     Concatenado de filas <tr></tr>
      */
-    function __build_and_group(pRsIncorrectInvoices, pHtmlRow) { 
+    function __build_and_group(pRsIncorrectInvoices, pStrHtmlRow, pIntEmailGroup) { 
         
         if (pRsIncorrectInvoices.length > 0) {
             
@@ -368,16 +406,21 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
             // Definición de variables
             // ===============================================================
             var mIntNumberRegisters = 1;
-            var mTypeMsgInit = pRsIncorrectInvoices[0].msg_type;     // Captura del primer tipo de mensaje
-            var mStringMessage; 
+            var mTypeMsgInit = pRsIncorrectInvoices[0].msg_type;     // Captura del primer tipo de mensaje 
             var mHtmlTmp = ''; 
+            var mObjParameters = {};
 
             // ===============================================================
             // Recorrido de inconsistencias
             // ===============================================================
             pRsIncorrectInvoices.forEach(item => {
                 
-                mStringMessage = item.msg_error;
+                mObjParameters = {
+                    cell1: mTypeMsgInit,
+                    cell2: item.msg_error,
+                    cell3: item.msg_ruc,
+                    cell4: mIntNumberRegisters
+                }
 
                 // ===============================================================
                 // Si el tipo de mensaje es diferente al inicial, 
@@ -386,10 +429,9 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
                 //  * Tipo de mensaje inicial (mTypeMsgInit) al de la siguiente iteracion
                 // ===============================================================
                 if (mTypeMsgInit != item.msg_type) {
-                    pHtmlRow = pHtmlRow + mHtmlTmp;
-                    mIntNumberRegisters = 1;
-                    mTypeMsgInit = item.msg_type;
-                    mHtmlTmp = `<tr><td class="col-left">${mTypeMsgInit}</td><td class="col-left">${mStringMessage}</td><td class="col-left">${mIntNumberRegisters}</td></tr>`; 
+                    pStrHtmlRow = pStrHtmlRow + mHtmlTmp;
+                    mObjParameters.cell4 = 1;
+                    mObjParameters.cell1 = item.msg_type;
                     
                 } else {
 
@@ -398,23 +440,57 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
                     // una fila temporal y se incrementa en uno 
                     // el número de registros.
                     // ===============================================================
-                    mHtmlTmp = `<tr><td class="col-left">${mTypeMsgInit}</td><td class="col-left">${mStringMessage}</td><td class="col-left">${mIntNumberRegisters}</td></tr>`;
                     mIntNumberRegisters++
                     
                 } 
+                mHtmlTmp = __build_html_row(mObjParameters, '', pIntEmailGroup);
             }); 
-            pHtmlRow = pHtmlRow + mHtmlTmp;
+            pStrHtmlRow = pStrHtmlRow + mHtmlTmp;
         }
         
-        return pHtmlRow;
+        return pStrHtmlRow;
+    }
+
+    /**
+     * LOCAL FUNCTION: __clean_duplicate_msg
+     * 
+     * Description: Función local que actualiza el estado a 'D' (Descartado) 
+     *              a mensajes de error de facturas duplicadas.
+     */
+    function __clean_duplicate_msg() { 
+        // ===============================================================
+        // Facturas en estado de error y duplicados.
+        // ===============================================================
+        var mRsDuplicateInvoices = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    pe_msg_xml_proveed.msg_id
+                </columns>
+                <from table='pe_msg_xml_proveed'/>
+                <where>
+                    msg_status = 'E'
+                    AND msg_error LIKE '%i_gcomfach4%'
+                </where>
+            </select>
+        `);
+
+        // ===============================================================
+        // Actualizado del estado a Descartado (D) y el mensaje de error.
+        // ===============================================================
+        mRsDuplicateInvoices.forEach(mObjFactura => {
+            Ax.db.update("pe_msg_xml_proveed", {
+                msg_status: 'D',
+                msg_error: 'Documento duplicado, ya procesado.'
+            }, {
+                msg_id: mObjFactura.msg_id
+            });
+        });
     }
 
     // ===============================================================
     // Definición de variables
     // ===============================================================
     var mStrEmailFrom        = 'no-reply@crp.com.pe';
-    var mStrEmailUser        = '';
-    var mStrEmailPassword    = '';
     var mStrEmailTo          = '';
     var mStrEmailBcc         = '';
     var mDateToday           = new Ax.util.Date();
@@ -464,53 +540,9 @@ function pe_task_clean_msg_xml(pStrTypeEmail) {
     } 
 
     // ===============================================================
-    // Obtencion del usuario y contraseña del email 
-    // que sera usado remitente
-    // =============================================================== 
-    var mObjEmailParameters = Ax.db.executeQuery(`
-        <select>
-            <columns>
-                crp_email_parameters.email_adress,
-                crp_email_parameters.email_pass
-            </columns>
-            <from table='crp_email_parameters'/>
-            <where>
-                email_type = ?
-                AND email_bbdd = ?
-            </where>
-        </select>
-    `, pStrTypeEmail, mStrDBName).toOne();
-
-    mStrEmailUser       = mObjEmailParameters.email_adress;
-    mStrEmailPassword   = mObjEmailParameters.email_pass;
-
+    // Cambio de estado a 'D' (Descartado) y mensaje de error
     // ===============================================================
-    // Facturas en estado de error y duplicados.
-    // ===============================================================
-    var mRsDuplicateInvoices = Ax.db.executeQuery(`
-        <select>
-            <columns>
-                pe_msg_xml_proveed.msg_id
-            </columns>
-            <from table='pe_msg_xml_proveed'/>
-            <where>
-                msg_status = 'E'
-                AND msg_error LIKE '%i_gcomfach4%'
-            </where>
-        </select>
-    `);
-
-    // ===============================================================
-    // Actualizado del estado a Descartado (D) y el mensaje de error.
-    // ===============================================================
-    mRsDuplicateInvoices.array.forEach(mObjFactura => {
-        Ax.db.update("pe_msg_xml_proveed", {
-            msg_status: 'D',
-            msg_error: 'Documento duplicado, ya procesado.'
-        }, {
-            msg_id: mObjFactura.msg_id
-        });
-    });
+    __clean_duplicate_msg();
 
     // ===============================================================
     // Construye y envía el email a CRP para informar 
