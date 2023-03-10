@@ -25,8 +25,8 @@
  * 
  *  JS:  pe_task_clean_msg_xml 
  * 
- *  Version     : 1.0
- *  Date        : 08-03-2023
+ *  Version     : 1.1
+ *  Date        : 10-03-2023
  *  Description : Funcion encargada de realizar limpieza a mensajes referente a facturas. 
  * 
  *  CALLED FROM:
