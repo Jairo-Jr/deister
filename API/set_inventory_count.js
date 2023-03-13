@@ -1,10 +1,12 @@
 function main(data) {
 
     try {
-        var mStrJsonData = JSON.stringify(data);
+        
         // Registro de data de Orden de Compra 
 
         data.inventoryproduct.forEach(mObjProduct => {
+            var mStrJsonData = JSON.stringify(mObjProduct);
+
             // Registro de productos
             Ax.db.insert('crp_ibth_setinventorycount', { 
                 qtysystem:                  mObjProduct.qtysystem,
@@ -24,9 +26,9 @@ function main(data) {
         return new Ax.net.HttpResponseBuilder()
             .status(400)
             .entity({
-                "response": {
-                    "status": "ERROR",
-                    "message": error
+                "Response": {
+                    "Status": "ERROR",
+                    "Message": error
                 }
             })
             .type("application/json")
@@ -37,9 +39,9 @@ function main(data) {
     return new Ax.net.HttpResponseBuilder()
         .status(201)
         .entity({
-            "response": {
-                "status": "OK",
-                "message": "Registro realizado"
+            "Response": {
+                "Status": "OK",
+                "Message": "Registro realizado"
             }
         })
         .type("application/json")

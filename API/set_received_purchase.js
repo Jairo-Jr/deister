@@ -29,9 +29,9 @@ function main(data) {
     if (mArrRequired.length) {  // Si algún campo requerido fue obviado.
         
         mObjMessageResponse = {
-            "response": {
-                "status": "ERROR",
-                "message": `El/los campo(s) [${mArrRequired}] son requeridos.`
+            "Response": {
+                "Status": "ERROR",
+                "Message": `El/los campo(s) [${mArrRequired}] son requeridos.`
             }
         }; 
     
@@ -115,9 +115,9 @@ function main(data) {
     } catch (error) {
         
         mObjMessageResponse = {
-            "response": {
-                "status": "ERROR",
-                "message": `${error.message}`
+            "Response": {
+                "Status": "ERROR",
+                "Message": `${error.message}`
             }
         }; 
     
@@ -131,9 +131,9 @@ function main(data) {
     // Si no existe código de la orden de compra
     if(!mIntCantPedidos) {
         mObjMessageResponse = {
-            "response": {
-                "status": "ERROR",
-                "message": `Código de la Orden de Compra [${data.CodeOC}] no existe.`
+            "Response": {
+                "Status": "ERROR",
+                "Message": `Código de la Orden de Compra [${data.CodeOC}] no existe.`
             }
         }; 
     
@@ -145,9 +145,9 @@ function main(data) {
             
     } else { // Si se registro correctamente 
         mObjMessageResponse = {
-            "response": {
-                "status": "OK",
-                "message": `Registro realizado`
+            "Response": {
+                "Status": "OK",
+                "Message": `Registro realizado`
             }
         }; 
     
