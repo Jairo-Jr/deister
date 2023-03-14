@@ -1,9 +1,9 @@
 /** 
  * 
  */
- class w26235 extends workflowProg {
+ class w26238 extends workflowProg {
     constructor() {
-        super("w26235", ["refter"]);
+        super("w26238", ["refter"]);
     }
     
     
@@ -41,4 +41,7 @@
  *          RCGO
  *          DGCO
  * EN QA: cod- 26238
+ * 
+ * 
+ * ELIMINAR EN DEV: 26235
  */
