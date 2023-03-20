@@ -209,7 +209,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 </where>
             </select> 
         `, 'RRHH');
-        if (mIntExistGroupAux === 0) {
+        if (mIntExistGroupAux == 0) {
             /**
              * Insert del grupo auxiliar debido a su inexistencia.
              */
@@ -229,9 +229,11 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
      *      @param  {integer}   pIntLoteId      Identificador de lote
      */
     function __insCodEmp(pIntLoteId) {
-        /**
-         * Agrupado de los códigos de empleado.
-         */
+
+        // ===============================================================
+        // Se agrupan los códigos de empleados recién ingresados, 
+        // según el código de lote.
+        // ===============================================================
         var mRsCtaAux = Ax.db.executeQuery(` 
             <select>
                 <columns>
@@ -243,17 +245,20 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 </where>
             </select>
         `, pIntLoteId);
-        /**
-         * Recorrido de los códigos de empleado.
-         */
+
+        // ===============================================================
+        // Iteración de los códigos de empleado.
+        // ===============================================================
         mRsCtaAux.forEach(mIntCtaAux => {
-            /**
-             * Si no es null
-             */
+
+            // ===============================================================
+            // Si el código no es null
+            // ===============================================================
             if (mIntCtaAux.ctaaux !== null) {
-                /**
-                 * Búsqueda si se encuentra ya registrado el código de empleado.
-                 */
+
+                // ===============================================================
+                // Búsqueda del código de empleado en Códigos auxiliares (cctaauxl)
+                // ===============================================================
                 var mIntExistCtaAux = Ax.db.executeGet(` 
                     <select>
                         <columns>
@@ -265,13 +270,15 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                         </where>
                     </select>
                 `, mIntCtaAux.ctaaux);
-                /**
-                 * Si la cantidad de registro es menor/igual a cero (No está registrado).
-                 */
-                if (mIntExistCtaAux === 0) {
-                    /**
-                     * Insert del código de empleado en el registro auxiliar (cctaauxl).
-                     */
+
+                // ===============================================================
+                // Si no se encuentra registrado.
+                // ===============================================================
+                if (mIntExistCtaAux == 0) {
+
+                    // ===============================================================
+                    // Se registra el código de empleado en Códigos auxiliares (cctaauxl).
+                    // ===============================================================
                     Ax.db.insert("cctaauxl", {
                         codaux: 'RRHH',
                         ctaaux: mIntCtaAux.ctaaux,
@@ -294,9 +301,10 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
      *      @param {integer}    pIntFileId      Identificador del fichero
      */
     function __updFileStatus(pStrStatus, pIntLoteId, pStrUserName, pIntFileId) {
-        /**
-         * Update de estado de fichero.
-         */
+
+        // ===============================================================
+        // Update de estado de fichero.
+        // ===============================================================
         Ax.db.update("crp_rrhh_file",
             {
                 file_status  : pStrStatus,
@@ -526,7 +534,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 _mObjWorkbook = Ax.ms.Excel.load(mFileBiff8.toBlob()); 
             }
             else {
-                // console.log(_mPB.getStdErr());
+
                 throw new Ax.ext.Exception("Error workbook: [${eWB}]",{eWB: _mPB.getStdErr()});
             }
         } catch(e){
@@ -544,6 +552,9 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
      *
      */
     function __delFile() {
+        // ===============================================================
+        // Eliminación de ficheros de apoyo temporales.
+        // ===============================================================
         mFileBiff5.delete();
         mFileBiff8.delete();
     }
@@ -628,32 +639,47 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Registro de planillas
                 // ===============================================================
-                mIntLoteId = __insPlanilla(mRsSheet, mStrUserName);
+                mIntLoteId = __insPlanilla(mRsSheet, mStrUserName); 
 
-                /**
-                 * Registro de los códigos de empleados.
-                 */
-                // __insCodEmp(mIntLoteId);
-                /**
-                 * Update del estado del fichero a En contabilidad (1)
-                 */
+                // ===============================================================
+                // Registro de los códigos de empleados.
+                // ===============================================================
+                __insCodEmp(mIntLoteId);
+
+                // ===============================================================
+                // Update del estado del fichero a En contabilidad (1)
+                // ===============================================================
                 __updFileStatus('1', mIntLoteId, mStrUserName, pIntFileId);
+
                 break;
 
             default:
                 __delFile();
                 throw new Ax.ext.Exception('El tipo de proceso es no soportado.');
         }
+
+        // ===============================================================
+        // Eliminado de ficheros de apoyo temporales.
+        // ===============================================================
         __delFile();
+
         Ax.db.commitWork();
     } catch(error) {
-        console.error(error);
+        console.error(error); // Log error
+        
         Ax.db.rollbackWork();
-        /**
-         * Update del estado del fichero a En contabilidad (1)
-         */
+
+        // ===============================================================
+        // Update del estado del fichero a Error (3)
+        // ===============================================================
         __updFileStatus('3', null, mStrUserName, pIntFileId);
+
+        // ===============================================================
+        // Se elimina los archivos temporales usados como apoyo 
+        // en el procesado de lectura de ficheros.
+        // ===============================================================
         __delFile();
+
         throw new Ax.ext.Exception("ERROR: [${error}]", {error});
     }
 }
