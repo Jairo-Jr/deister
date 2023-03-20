@@ -26,8 +26,8 @@
  *
  *  JS:  crp_load_rrhh_file
  *
- *  Version     : v2.6
- *  Date        : 2023-01-31
+ *  Version     : v1.9
+ *  Date        : 2023-03-20
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla);
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign)
  *                y las planillas en los Mov. Contables (capuntes).
