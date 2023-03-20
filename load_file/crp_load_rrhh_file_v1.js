@@ -316,7 +316,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 file_status  : pStrStatus,
                 loteid: pIntLoteId,
                 user_updated : pStrUserName,
-                date_updated : new Ax.util.Date()
+                date_updated : mTodayDate
             },
             {
                 file_seqno : pIntFileId
@@ -566,21 +566,165 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     /**
      * LOCAL FUNCTION: __insCarteraEfectos
      *
-     * Description: Función local que registra la cabecera para la Cartera de Efectos.
-     *
-     *      @param   {Resultset}   pRsSheet         Resultset con la data del fichero de planilla.
+     * Description: Función local que registra la cabecera para la Cartera de Efectos. 
      *
      */
-    function __insCarteraEfectos(pRsSheet) { 
+    function __insCarteraEfectos() { 
 
-
-        Ax.db.insert("nomTabla",
+        var _mIntSerial = Ax.db.insert("cefecges_pcs",
             {
-                column_1 : valor_1,
-                column_2 : valor_2
+                // pcs_loteid : '',    // Por evaluar - loteid del fichero?
+                pcs_empcode : '001',
+                pcs_proyec : 'CRP0',
+                pcs_seccio : '0', // Por evaluar - Sección
+                pcs_clase : 'C',
+                pcs_accion : 'CPLN',
+                // pcs_tipefe : '', // Por evaluar - Tipo efecto
+                pcs_ctafin : 'PR00CRPCH',
+                pcs_moneda : 'PEN',
+                pcs_cambio : '1',
+                pcs_fecpro : mTodayDate,
+                pcs_estado : 'A',
+                pcs_tipgen : '0'
             }
-        );
-     
+        ).getSerial(); 
+
+        return _mIntSerial;
+    }
+
+    /**
+     * LOCAL FUNCTION: __insDetallesCarteraEfectos
+     *
+     * Description: Local function definition
+     *
+     *      @param   {Integer}      pIntIdCarteraEfectos            Identificador de la Cartera de Efectos.
+     *      @param   {ResultSet}    pRsSheetPln                     Resultset con la data de la planilla.
+     *
+     */
+    function __insDetallesCarteraEfectos(pIntIdCarteraEfectos, pRsSheetPln) { 
+
+        // ===============================================================
+        // Variables locales
+        // =============================================================== 
+        var _mObjEfectos = null;     // Cartera de Efectos
+        var _mStrFecFactura = null;         // Fecha de factura
+        var _mStrDocumento = null;         // Documento o número de factura 
+        var _mDoubleImporte = null;         // Importe local 
+        var cefecges_pcsImpdiv = 0;
+        var cefecges_pcsTotimp = 0;
+        var _mIntNumOrden = 1;         // Número de orden del Efecto 
+
+        // ===============================================================
+        // Recorrido de las filas del fichero de planilla.
+        // ===============================================================
+        pRsSheetPln.forEach(_mRowFilePln => { 
+
+            if(_mRowFilePln.A != null) {
+
+                _mStrFecFactura = _mRowFilePln.C;
+                _mStrDocumento = _mRowFilePln.I + '-' + _mRowFilePln.J; 
+                _mDoubleImporte = _mRowFilePln.N - _mRowFilePln.M;
+
+                // ===============================================================
+                // Busqueda de la cartera de efectos correspondiente 
+                // a la fila del fichero de planilla.
+                // ===============================================================
+                _mObjEfectos = Ax.db.executeQuery(`
+                    <select>
+                        <columns> 
+                            cefectos.numero, cefectos.clase,
+                            cefectos.tercer, cefectos.fecven,
+                            CASE WHEN cefectos.clase = 'C' THEN +cefectos.impdiv ELSE -cefectos.impdiv END impdiv,
+                            cefectos.moneda,
+                            CASE WHEN cefectos.clase = 'C' THEN +cefectos.import ELSE -cefectos.import END import,
+                            CASE WHEN cefectos.clase = 'C' THEN +cefectos.impppa ELSE -cefectos.impppa END impppa,
+                            cefectos.docser, cefectos.numefe, cefectos.fecha,
+                            cefectos.tipefe, cefectos.estado, cefectos.caduca, 
+                            cefectos.ctafin, cefectos.jusser, 
+                            cefectos.tipdoc, cefectos.refban,
+                            cefectos.proyec, 
+                            cefectos.seccio, 
+                            cefectos.empcode,cefectos.cuenta,
+
+
+                            (SELECT COUNT(*)
+                                FROM cefecges_pcs g, cefecges_det d
+                                WHERE g.pcs_empcode = '001'
+                                    AND g.pcs_fecpro >= (SELECT MIN(s.fecini) 
+                                                        FROM cperiodo s 
+                                                        WHERE s.empcode = '001' 
+                                                            AND s.estado  = 'A')
+                                    AND g.pcs_seqno   = d.pcs_seqno
+                                    AND g.pcs_estado  = 'A'
+                                    AND d.det_numero  = cefectos.numero) cefectos_in_gestion, 
+
+                            CASE WHEN cefectos.clase = 'C' 
+                                 THEN +cefectos.impdiv 
+                                 ELSE -cefectos.impdiv 
+                            END pcs_totimp
+
+                        </columns>
+                        <from table='cefectos'/>
+                        <where>
+                            clase = 'C' 
+                            AND tercer = '00000021' 
+                            AND estado = 'PE' 
+                            AND fecha &lt;= ?
+                            AND docser = ?
+                            AND import = ?
+                        </where>
+                    </select>
+                `, _mStrFecFactura, _mStrDocumento, _mDoubleImporte).toOne();
+
+                // ===============================================================
+                // Validar que el efecto no se encuentre registrado como gestion de otra Cartera.
+                // ===============================================================
+                if (_mObjEfectos.cefectos_in_gestion == 0) {
+
+                    /** 
+                    * El valor de cefectos_impdiv viene devuelto según la transformación
+                    * realizada desde el objeto cefectos_sel , la cual permite procesar
+                    * grupos de efectos de ambos tipos de carteras, esto es :
+                    * 
+                    *       case clase = 'C' then +impdiv else -impdiv end
+                    * 
+                    * En este punto los importes deben adquirir de nuevo su signo según se
+                    * expresa en el registro de la tabla cefectos, que a dia de hoy, es decir
+                    * la versión actual , en ambas carteras se registran en signo positivo las
+                    * facturas y en signo negativo los abonos. 
+                    */
+                    if (_mObjEfectos.clase == 'P') {
+                        _mObjEfectos.impdiv = - _mObjEfectos.impdiv;
+                        _mObjEfectos.import = - _mObjEfectos.import;
+                        _mObjEfectos.pcs_totimp = - _mObjEfectos.pcs_totimp;            
+                    }
+
+                    _mObjEfectos.pcs_seqno  = pIntIdCarteraEfectos;
+                    _mObjEfectos.det_numero = _mObjEfectos.numero;
+                    _mObjEfectos.det_impdiv = _mObjEfectos.impdiv;
+                    _mObjEfectos.det_import = _mObjEfectos.import;
+                    _mObjEfectos.ori_numero = _mObjEfectos.numero;
+                    _mObjEfectos.cabid = _mObjEfectos.cabid;
+                    _mObjEfectos.apteid = 0;
+                    _mObjEfectos.rowenl = pIntIdCarteraEfectos;
+                    _mObjEfectos.estcon = 'N';
+                    _mObjEfectos.det_agrupa = _mIntNumOrden++;
+
+                    Ax.db.insert("cefecges_det", _mObjEfectos); 
+
+                    cefecges_pcsImpdiv = Ax.math.bc.add(cefecges_pcsImpdiv, _mObjEfectos.det_impdiv);
+                    cefecges_pcsTotimp = Ax.math.bc.add(cefecges_pcsTotimp, _mObjEfectos.pcs_totimp);
+
+                    Ax.db.execute(`
+                        UPDATE cefecges_pcs
+                        SET pcs_impdiv = ${cefecges_pcsImpdiv},
+                            pcs_totimp = ${cefecges_pcsTotimp}
+                        WHERE pcs_seqno = ?
+                    `, pIntIdCarteraEfectos);  
+                    
+                } 
+            }
+        });
     }
 
     /**
@@ -605,11 +749,12 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     var mIntLoteId = null;                          // Identificador de lote
     var mStrUserName = Ax.db.getUser();             // Nombre de usuario 
     var mObjRRHHFile = null;
-    
+    var mTodayDate = new Ax.util.Date();
     var wb = null;                                        // Excel workbook
     var mXlsSheet = null;                              // Excel sheet
     var mIntLastRow = null;                            // Número de la ultima fila del fichero.
     var mObjCodCon = {F: 'FV', B: 'BV'};                // Códigos de conceptos contables
+    var mIntIdCarteraEfectos = null;                // Identificador de la Cartera de Efectos.
 
     // ===============================================================
     // INICIO DE LA TRANSACCION
@@ -672,22 +817,34 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Validar la existencia del grupo auxiliar de RRHH
                 // ===============================================================
-                __validateGroupAux(); 
+                // __validateGroupAux(); 
 
                 // ===============================================================
                 // Registro de planillas
                 // ===============================================================
-                mIntLoteId = __insPlanilla(mRsSheet, mStrUserName); 
+                // mIntLoteId = __insPlanilla(mRsSheet, mStrUserName); 
 
                 // ===============================================================
                 // Registro de los códigos de empleados.
                 // ===============================================================
-                __insCodEmp(mIntLoteId);
+                // __insCodEmp(mIntLoteId);
 
                 // ===============================================================
-                // Se registra la Gestion de cartera de efectos (cefecges_pcs).
+                // Se registra la Gestion de Cartera de Efectos (cefecges_pcs).
                 // ===============================================================
-                __insCarteraEfectos(mRsSheet);
+                mIntIdCarteraEfectos = __insCarteraEfectos();
+
+                // ===============================================================
+                // Se registra los detalles (lineas) de la Cartera
+                // de Efectos (cefecges_det).
+                // ===============================================================
+                __insDetallesCarteraEfectos(mIntIdCarteraEfectos, mRsSheet);
+
+
+                // ===============================================================
+                // Se cierra la gestión de cartera
+                // ===============================================================
+                Ax.db.call("cefecges_estado_ava", mIntIdCarteraEfectos, 0);
 
                 // ===============================================================
                 // Update del estado del fichero a En contabilidad (1)
