@@ -26,8 +26,8 @@
  *
  *  JS:  crp_load_rrhh_file
  *
- *  Version     : v1.9
- *  Date        : 2023-03-20
+ *  Version     : v1.10
+ *  Date        : 2023-03-21
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla);
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign)
  *                y las planillas en los Mov. Contables (capuntes).
@@ -209,6 +209,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 </where>
             </select> 
         `, 'RRHH');
+
         if (mIntExistGroupAux == 0) {
             /**
              * Insert del grupo auxiliar debido a su inexistencia.
@@ -219,6 +220,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
             });
         }
     }
+
     /**
      * LOCAL FUNCTION: __insCodEmp
      *
@@ -295,6 +297,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
             }
         });
     }
+
     /**
      * LOCAL FUNCTION: __updFileStatus
      *
@@ -454,7 +457,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     /**
      * LOCAL FUNCTION: __validateFile
      *
-     * Función local que valida el fichero de planilla. 
+     * Description: Función local que valida el CODIGO CRC y estado del fichero. 
      *
      */
     function __validateFile() { 
@@ -518,7 +521,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     /**
      * LOCAL FUNCTION: __fileTransformation
      *
-     * Description: Local function definition 
+     * Description: Función local que transforma el fichero de Biff5 a Biff8.
      *
      */
     function __fileTransformation() { 
@@ -526,29 +529,42 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         // ===============================================================
         // Variables locales
         // ===============================================================
-        var _mStrPath = null;                                // Ruta del fichero Biff5
-        let _mStrPathNewFile = null;                       // Ruta del fichero Biff8
-        var _mPB = null;                                     // Procesador Biff5
-        var _mIntConverStatus = null;                      // Estado de conversión
-        var _mObjWorkbook = null;                           // Fichero de planilla
+        var _mStrPath           = null;     // Ruta del fichero Biff5
+        let _mStrPathNewFile    = null;     // Ruta del fichero Biff8
+        var _mPB                = null;     // Procesador Biff5
+        var _mIntConverStatus   = null;     // Estado de conversión
+        var _mObjWorkbook       = null;     // Fichero de planilla
 
         try{
+            
+            // ===============================================================
             // Creación de archivo .xls y se agrega la data (blob).
+            // ===============================================================
             mFileBiff5 = new Ax.io.File("tmp/excel_biff5.xls");
             mFileBiff5.write(mObjRRHHFile);
             _mStrPath = mFileBiff5.getAbsolutePath();
     
-            // Creación de archivo .xls transformado a una nueva versión actualizada.
-            _mStrPathNewFile = new Ax.io.File("tmp").getAbsolutePath() + `/excel_convert_${pIntFileId}.xls`;
-            _mPB = new Ax.lang.ProcessBuilder();
-            _mIntConverStatus = _mPB.directory('/home/axional').command('/bin/bash', '-c', `./xlsx-cli.sh ${_mStrPath} ${_mStrPathNewFile}`);
+            // ===============================================================
+            // Creación de archivo .xls transformado a una nueva 
+            // versión actualizada.
+            // ===============================================================
+            _mStrPathNewFile    = new Ax.io.File("tmp").getAbsolutePath() + `/excel_convert_${pIntFileId}.xls`;
+            _mPB                = new Ax.lang.ProcessBuilder();
+            _mIntConverStatus   = _mPB.directory('/home/axional').command('/bin/bash', '-c', `./xlsx-cli.sh ${_mStrPath} ${_mStrPathNewFile}`);
     
+            // ===============================================================
             // Validación de la correcta transformación del archivo.
-            if (_mIntConverStatus === 0) {
+            // ===============================================================
+            if (_mIntConverStatus == 0) {
+
+                // ===============================================================
                 // Se obtiene el nuevo archivo transformado a la nueva versión.
+                // ===============================================================
                 mFileBiff8 = new Ax.io.File(_mStrPathNewFile);
     
+                // ===============================================================
                 // Carga del nuevo archivo.
+                // ===============================================================
                 _mObjWorkbook = Ax.ms.Excel.load(mFileBiff8.toBlob()); 
             }
             else {
@@ -572,20 +588,18 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     function __insCarteraEfectos() { 
 
         var _mIntSerial = Ax.db.insert("cefecges_pcs",
-            {
-                // pcs_loteid : '',    // Por evaluar - loteid del fichero?
-                pcs_empcode : '001',
-                pcs_proyec : 'CRP0',
-                pcs_seccio : '0', // Por evaluar - Sección
-                pcs_clase : 'C',
-                pcs_accion : 'CPLN',
-                // pcs_tipefe : '', // Por evaluar - Tipo efecto
-                pcs_ctafin : 'PR00CRPCH',
-                pcs_moneda : 'PEN',
-                pcs_cambio : '1',
-                pcs_fecpro : mTodayDate,
-                pcs_estado : 'A',
-                pcs_tipgen : '0'
+            { 
+                pcs_empcode : '001',        // Código de empresa.
+                pcs_proyec : 'CRP0',        // Código de proyecto.
+                pcs_seccio : '0',           // Sección contable
+                pcs_clase : 'C',            // Clase de cartera
+                pcs_accion : 'CPLN',        // Código de acción asociada al proceso
+                pcs_ctafin : 'PR00CRPCH',   // Cuenta financiera
+                pcs_moneda : 'PEN',         // Moneda
+                pcs_cambio : '1',           // Cambio de divisa
+                pcs_fecpro : mTodayDate,    // Fecha del proceso
+                pcs_estado : 'A',           // Estado del proceso
+                pcs_tipgen : '0'            // Tipo de gestion
             }
         ).getSerial(); 
 
@@ -595,7 +609,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     /**
      * LOCAL FUNCTION: __insDetallesCarteraEfectos
      *
-     * Description: Local function definition
+     * Description: Función local que asigna detalles a la Cartera de Efectos
      *
      *      @param   {Integer}      pIntIdCarteraEfectos            Identificador de la Cartera de Efectos.
      *      @param   {ResultSet}    pRsSheetPln                     Resultset con la data de la planilla.
@@ -606,23 +620,23 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         // ===============================================================
         // Variables locales
         // =============================================================== 
-        var _mObjEfectos = null;     // Cartera de Efectos
-        var _mStrFecFactura = null;         // Fecha de factura
-        var _mStrDocumento = null;         // Documento o número de factura 
-        var _mDoubleImporte = null;         // Importe local 
-        var cefecges_pcsImpdiv = 0;
-        var cefecges_pcsTotimp = 0;
-        var _mIntNumOrden = 1;         // Número de orden del Efecto 
+        var _mObjEfectos = null;        // Cartera de Efectos
+        var _mStrFecFactura = null;     // Fecha de factura
+        var _mStrDocumento = null;      // Documento o número de factura 
+        var _mDoubleImporte = null;     // Importe local 
+        var _cefecges_pcsImpdiv = 0;    // Importe de divisas
+        var _cefecges_pcsTotimp = 0;    // Importe total
+        var _mIntNumOrden = 1;          // Número de orden del Efecto 
 
         // ===============================================================
         // Recorrido de las filas del fichero de planilla.
         // ===============================================================
         pRsSheetPln.forEach(_mRowFilePln => { 
 
-            if(_mRowFilePln.A != null) {
+            if(_mRowFilePln.H != null && _mRowFilePln.I != null && _mRowFilePln.J && null) {
 
                 _mStrFecFactura = _mRowFilePln.C;
-                _mStrDocumento = _mRowFilePln.I + '-' + _mRowFilePln.J; 
+                _mStrDocumento  = _mRowFilePln.I + '-' + _mRowFilePln.J;
                 _mDoubleImporte = _mRowFilePln.N - _mRowFilePln.M;
 
                 // ===============================================================
@@ -712,13 +726,13 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
 
                     Ax.db.insert("cefecges_det", _mObjEfectos); 
 
-                    cefecges_pcsImpdiv = Ax.math.bc.add(cefecges_pcsImpdiv, _mObjEfectos.det_impdiv);
-                    cefecges_pcsTotimp = Ax.math.bc.add(cefecges_pcsTotimp, _mObjEfectos.pcs_totimp);
+                    _cefecges_pcsImpdiv = Ax.math.bc.add(_cefecges_pcsImpdiv, _mObjEfectos.det_impdiv);
+                    _cefecges_pcsTotimp = Ax.math.bc.add(_cefecges_pcsTotimp, _mObjEfectos.pcs_totimp); 
 
                     Ax.db.execute(`
                         UPDATE cefecges_pcs
-                        SET pcs_impdiv = ${cefecges_pcsImpdiv},
-                            pcs_totimp = ${cefecges_pcsTotimp}
+                        SET pcs_impdiv = ${_cefecges_pcsImpdiv},
+                            pcs_totimp = ${_cefecges_pcsTotimp}
                         WHERE pcs_seqno = ?
                     `, pIntIdCarteraEfectos);  
                     
