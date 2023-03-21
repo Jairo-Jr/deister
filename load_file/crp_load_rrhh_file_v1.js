@@ -817,17 +817,17 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Validar la existencia del grupo auxiliar de RRHH
                 // ===============================================================
-                // __validateGroupAux(); 
+                __validateGroupAux(); 
 
                 // ===============================================================
                 // Registro de planillas
                 // ===============================================================
-                // mIntLoteId = __insPlanilla(mRsSheet, mStrUserName); 
+                mIntLoteId = __insPlanilla(mRsSheet, mStrUserName); 
 
                 // ===============================================================
                 // Registro de los códigos de empleados.
                 // ===============================================================
-                // __insCodEmp(mIntLoteId);
+                __insCodEmp(mIntLoteId);
 
                 // ===============================================================
                 // Se registra la Gestion de Cartera de Efectos (cefecges_pcs).
