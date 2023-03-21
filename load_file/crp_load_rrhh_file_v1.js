@@ -26,7 +26,7 @@
  *
  *  JS:  crp_load_rrhh_file
  *
- *  Version     : v1.10
+ *  Version     : v1.11
  *  Date        : 2023-03-21
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla);
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign)
@@ -106,11 +106,11 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         // ===============================================================
         // Variables locales.
         // =============================================================== 
-        var _mObjMaximos = null;
-        var _mIntAsient = 0;
-        var _mIntLoteId = 0;
-        var _mIntNumOrden = 1; 
-        var _mStrDocSer = '';
+        var _mObjMaximos    = null;
+        var _mIntAsient     = 0;
+        var _mIntLoteId     = 0;
+        var _mIntNumOrden   = 1; 
+        var _mStrDocSer     = '';
 
         // ===============================================================
         // Obtención de los números máximos de asientos 
@@ -151,36 +151,36 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // registro del Movimiento contable (capuntes)
                 // ===============================================================
                 Ax.db.insert("capuntes", {
-                    empcode:        '001',                     // Código de Empresa
-                    proyec:         'CRP0',                     // Línea de negocio
-                    sistem:         'A',                        // Sistema
-                    seccio:         '0',                        // Sección
-                    fecha:          _mRowSheetPln.C,                 // Fecha
-                    asient:         _mIntAsient,                 // Número de asiento
-                    diario:         '40',                       // Código de diario
-                    orden:          _mIntNumOrden++,              // Número de Orden
-                    jusser:         'GL',                       // Justificante
-                    origen:         'F',                        // Origen de apunte
-                    docser:         _mStrDocSer,                 // Documento o número de factura
-                    punteo:         'N',                        // Apunte auditado
-                    placon:         'CH',                       // Plan contable
-                    cuenta:         _mRowSheetPln.E,                // Cuenta contable
-                    codaux:         'RRHH',                     // Grupo auxiliar
-                    ctaaux:         _mRowSheetPln.F,                // Código auxiliar
-                    contra:         null,                       // Contrapartida
-                    codcon:         mObjCodCon[_mRowSheetPln.H],    // Conceptos contables
-                    concep:         _mRowSheetPln.G,                // Descripción del apunte
-                    fecval:         _mRowSheetPln.K,                // Fecha de valor
-                    moneda:         'PEN',                      // Moneda de transacción
-                    divdeb:         _mRowSheetPln.M,                // Debe divisa
-                    divhab:         _mRowSheetPln.N,                // Haber divisa
-                    cambio:         '1.000000',                 // Cambio
-                    divemp:         'PEN',                      // Moneda de la empresa
-                    debe:           _mRowSheetPln.M,                  // Debe
-                    haber:          _mRowSheetPln.N,                 // Haber
-                    loteid:         _mIntLoteId,                 // Identificador de lote
-                    user_created:   pStrUserName,
-                    user_updated:   pStrUserName
+                    empcode         :   '001',                          // Código de Empresa
+                    proyec          :   'CRP0',                         // Línea de negocio
+                    sistem          :   'A',                            // Sistema
+                    seccio          :   '0',                            // Sección
+                    fecha           :   _mRowSheetPln.C,                // Fecha
+                    asient          :   _mIntAsient,                    // Número de asiento
+                    diario          :   '40',                           // Código de diario
+                    orden           :   _mIntNumOrden++,                // Número de Orden
+                    jusser          :   'GL',                           // Justificante
+                    origen          :   'F',                            // Origen de apunte
+                    docser          :   _mStrDocSer,                    // Documento o número de factura
+                    punteo          :   'N',                            // Apunte auditado
+                    placon          :   'CH',                           // Plan contable
+                    cuenta          :   _mRowSheetPln.E,                // Cuenta contable
+                    codaux          :   'RRHH',                         // Grupo auxiliar
+                    ctaaux          :   _mRowSheetPln.F,                // Código auxiliar
+                    contra          :   null,                           // Contrapartida
+                    codcon          :   mObjCodCon[_mRowSheetPln.H],    // Conceptos contables
+                    concep          :   _mRowSheetPln.G,                // Descripción del apunte
+                    fecval          :   _mRowSheetPln.K,                // Fecha de valor
+                    moneda          :   'PEN',                          // Moneda de transacción
+                    divdeb          :   _mRowSheetPln.M,                // Debe divisa
+                    divhab          :   _mRowSheetPln.N,                // Haber divisa
+                    cambio          :   '1.000000',                     // Cambio
+                    divemp          :   'PEN',                          // Moneda de la empresa
+                    debe            :   _mRowSheetPln.M,                // Debe
+                    haber           :   _mRowSheetPln.N,                // Haber
+                    loteid          :   _mIntLoteId,                    // Identificador de lote
+                    user_created    :   pStrUserName,
+                    user_updated    :   pStrUserName
                 });
             } 
         });
@@ -306,10 +306,11 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
      * PARAMETERS:
      *      @param {string}     pStrStatus      Estado del fichero (P: Pendiente, C: Cargado, E: Error)
      *      @param {integer}    pIntLoteId      Identificador de lote
+     *      @param {integer}    pIntGestCartera Identificador de la gestión de cartera
      *      @param {string}     pStrUserName    Usuario que realiza el proceso
      *      @param {integer}    pIntFileId      Identificador del fichero
      */
-    function __updFileStatus(pStrStatus, pIntLoteId, pStrUserName, pIntFileId) {
+    function __updFileStatus(pStrStatus, pIntLoteId, pIntGestCartera, pStrUserName, pIntFileId) {
 
         // ===============================================================
         // Update de estado de fichero.
@@ -317,7 +318,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         Ax.db.update("crp_rrhh_file",
             {
                 file_status  : pStrStatus,
-                loteid: pIntLoteId,
+                loteid       : pIntLoteId, 
                 user_updated : pStrUserName,
                 date_updated : mTodayDate
             },
@@ -325,6 +326,20 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 file_seqno : pIntFileId
             }
         );
+
+        // ===============================================================
+        // Actualizado del identificador de la gestión de cartera.
+        // 
+        // - Uso temporal por error al no detectar la columna 
+        // 'pcs_seqno', al usar el método update de axional -
+        // ===============================================================
+        if (pIntGestCartera != null) {
+            Ax.db.execute(`
+                UPDATE crp_rrhh_file
+                SET pcs_seqno = ${pIntGestCartera}
+                WHERE file_seqno = ?
+            `, pIntFileId);  
+        }
     }
 
     /**
@@ -407,7 +422,10 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 _mObjApunte = Ax.db.executeQuery(`
                     <select first='1'>
                         <columns>
-                            *
+                            empcode,  proyec,  fecha,    apteid,
+                            diario,   jusser,  docser,   sistem,
+                            placon,   cuenta,  dimcode1, cantid1,
+                            dimcode2, cantid2, codcon,   concep
                         </columns>
                         <from table='capuntes'/>
                         <where>
@@ -423,30 +441,30 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                  * Insert en Apuntes de Costes (ccoscont)
                  */
                 Ax.db.insert('ccoscont', {
-                    empcode:  _mObjApunte.empcode,       // Código de Empresa
-                    proyec:   _mObjApunte.proyec,        // Línea de negocio
-                    seccio:   _mStrCodAx,              // Sección
-                    fecha:    _mObjApunte.fecha,         // Fecha
-                    apteid:   _mObjApunte.apteid,        // Identificador de apunte
-                    diario:   _mObjApunte.diario,        // Código de diario
-                    jusser:   _mObjApunte.jusser,        // Justificante
-                    docser:   _mObjApunte.docser,        // Documento o número de factura
-                    sistem:   _mObjApunte.sistem,        // Sistema
-                    placon:   _mObjApunte.placon,        // Plan contable
-                    centro:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
-                    ctaexp:   '0',                      /* DATO POR DEFINIR - TEMPORAL */
-                    cuenta:   _mObjApunte.cuenta,        // Cuenta contable
-                    dimcode1: _mObjApunte.dimcode1,      // Dimensión 1
-                    cantid1:  _mObjApunte.cantid1,       // Cantidad 1
-                    dimcode2: _mObjApunte.dimcode2,      // Dimensión 2
-                    cantid2:  _mObjApunte.cantid2,       // Cantidad 2
-                    codcon:   _mObjApunte.codcon,        // Concepto
-                    concep:   _mObjApunte.concep,        // Descripción
-                    porcen:   '100',                    /* DATO POR DEFINIR - TEMPORAL */
-                    debe:     _mPlRowSheet.D,              // Debe
-                    haber:    '0',                      // Haber
-                    user_created: pStrUserName,
-                    user_updated: pStrUserName
+                    empcode         : _mObjApunte.empcode,      // Código de Empresa
+                    proyec          : _mObjApunte.proyec,       // Línea de negocio
+                    seccio          : _mStrCodAx,               // Sección
+                    fecha           : _mObjApunte.fecha,        // Fecha
+                    apteid          : _mObjApunte.apteid,       // Identificador de apunte
+                    diario          : _mObjApunte.diario,       // Código de diario
+                    jusser          : _mObjApunte.jusser,       // Justificante
+                    docser          : _mObjApunte.docser,       // Documento o número de factura
+                    sistem          : _mObjApunte.sistem,       // Sistema
+                    placon          : _mObjApunte.placon,       // Plan contable
+                    centro          : '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                    ctaexp          : '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                    cuenta          : _mObjApunte.cuenta,       // Cuenta contable
+                    dimcode1        : _mObjApunte.dimcode1,     // Dimensión 1
+                    cantid1         : _mObjApunte.cantid1,      // Cantidad 1
+                    dimcode2        : _mObjApunte.dimcode2,     // Dimensión 2
+                    cantid2         : _mObjApunte.cantid2,      // Cantidad 2
+                    codcon          : _mObjApunte.codcon,       // Concepto
+                    concep          : _mObjApunte.concep,       // Descripción
+                    porcen          : '100',                    /* DATO POR DEFINIR - TEMPORAL */
+                    debe            : _mPlRowSheet.D,           // Debe
+                    haber           : '0',                      // Haber
+                    user_created    : pStrUserName,
+                    user_updated    : pStrUserName
                 });
             }
         });
@@ -586,23 +604,35 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
      *
      */
     function __insCarteraEfectos() { 
+        
+        var _mIntSerial = 0;
 
-        var _mIntSerial = Ax.db.insert("cefecges_pcs",
+        // ===============================================================
+        // Se genera la cabecera para la Cartera de Efectos solo para 
+        // los procesos de Empleados (EMP) y Practicantes (PRAC). 
+        // Para el caso de Provisión (PROV) se lanza una excepción.
+        // ===============================================================
+        if (pStrTipProc == 'PROV') { 
+            throw new Ax.ext.Exception('No es posible generar Cartera de Efectos para el proceso de Provisión');
+            
+        } 
+
+        _mIntSerial = Ax.db.insert("cefecges_pcs",
             { 
-                pcs_empcode : '001',        // Código de empresa.
-                pcs_proyec : 'CRP0',        // Código de proyecto.
-                pcs_seccio : '0',           // Sección contable
-                pcs_clase : 'C',            // Clase de cartera
-                pcs_accion : 'CPLN',        // Código de acción asociada al proceso
-                pcs_ctafin : 'PR00CRPCH',   // Cuenta financiera
-                pcs_moneda : 'PEN',         // Moneda
-                pcs_cambio : '1',           // Cambio de divisa
-                pcs_fecpro : mTodayDate,    // Fecha del proceso
-                pcs_estado : 'A',           // Estado del proceso
-                pcs_tipgen : '0'            // Tipo de gestion
+                pcs_empcode : '001',         // Código de empresa.
+                pcs_proyec  : 'CRP0',        // Código de proyecto.
+                pcs_seccio  : '0',           // Sección contable
+                pcs_clase   : 'C',           // Clase de cartera
+                pcs_accion  : 'CPLN',        // Código de acción asociada al proceso
+                pcs_ctafin  : 'PR00CRPCH',   // Cuenta financiera
+                pcs_moneda  : 'PEN',         // Moneda
+                pcs_cambio  : '1',           // Cambio de divisa
+                pcs_fecpro  : mTodayDate,    // Fecha del proceso
+                pcs_estado  : 'A',           // Estado del proceso
+                pcs_tipgen  : '0'            // Tipo de gestion
             }
         ).getSerial(); 
-
+        
         return _mIntSerial;
     }
 
@@ -620,20 +650,27 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         // ===============================================================
         // Variables locales
         // =============================================================== 
-        var _mObjEfectos = null;        // Cartera de Efectos
-        var _mStrFecFactura = null;     // Fecha de factura
-        var _mStrDocumento = null;      // Documento o número de factura 
-        var _mDoubleImporte = null;     // Importe local 
-        var _cefecges_pcsImpdiv = 0;    // Importe de divisas
-        var _cefecges_pcsTotimp = 0;    // Importe total
-        var _mIntNumOrden = 1;          // Número de orden del Efecto 
+        var _mObjEfectos        = null;     // Cartera de Efectos
+        var _mStrFecFactura     = null;     // Fecha de factura
+        var _mStrDocumento      = null;     // Documento o número de factura 
+        var _mDoubleImporte     = null;     // Importe local 
+        var _cefecges_pcsImpdiv = 0;        // Importe de divisas
+        var _cefecges_pcsTotimp = 0;        // Importe total
+        var _mIntNumOrden       = 1;        // Número de orden del Efecto 
 
         // ===============================================================
         // Recorrido de las filas del fichero de planilla.
         // ===============================================================
         pRsSheetPln.forEach(_mRowFilePln => { 
 
-            if(_mRowFilePln.H != null && _mRowFilePln.I != null && _mRowFilePln.J && null) {
+            // ===============================================================
+            // Se procesa la planilla solo si las columnas del fichero 
+            // correspondientes a TIPO_DOC, SERIE y COMPROBANTE, 
+            // respectivamente, son diferentes de null.
+            // ===============================================================
+            if(_mRowFilePln.H != null && _mRowFilePln.I != null && _mRowFilePln.J) {
+
+                console.log('SI');
 
                 _mStrFecFactura = _mRowFilePln.C;
                 _mStrDocumento  = _mRowFilePln.I + '-' + _mRowFilePln.J;
@@ -689,7 +726,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                         </where>
                     </select>
                 `, _mStrFecFactura, _mStrDocumento, _mDoubleImporte).toOne();
-
+                console.log(_mObjEfectos);
                 // ===============================================================
                 // Validar que el efecto no se encuentre registrado como gestion de otra Cartera.
                 // ===============================================================
@@ -708,8 +745,8 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                     * facturas y en signo negativo los abonos. 
                     */
                     if (_mObjEfectos.clase == 'P') {
-                        _mObjEfectos.impdiv = - _mObjEfectos.impdiv;
-                        _mObjEfectos.import = - _mObjEfectos.import;
+                        _mObjEfectos.impdiv     = - _mObjEfectos.impdiv;
+                        _mObjEfectos.import     = - _mObjEfectos.import;
                         _mObjEfectos.pcs_totimp = - _mObjEfectos.pcs_totimp;            
                     }
 
@@ -718,10 +755,10 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                     _mObjEfectos.det_impdiv = _mObjEfectos.impdiv;
                     _mObjEfectos.det_import = _mObjEfectos.import;
                     _mObjEfectos.ori_numero = _mObjEfectos.numero;
-                    _mObjEfectos.cabid = _mObjEfectos.cabid;
-                    _mObjEfectos.apteid = 0;
-                    _mObjEfectos.rowenl = pIntIdCarteraEfectos;
-                    _mObjEfectos.estcon = 'N';
+                    _mObjEfectos.cabid      = _mObjEfectos.cabid;
+                    _mObjEfectos.apteid     = 0;
+                    _mObjEfectos.rowenl     = pIntIdCarteraEfectos;
+                    _mObjEfectos.estcon     = 'N';
                     _mObjEfectos.det_agrupa = _mIntNumOrden++;
 
                     Ax.db.insert("cefecges_det", _mObjEfectos); 
@@ -819,7 +856,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Actualizado del estado del fichero a En contabilidad (1)
                 // ===============================================================
-                __updFileStatus('1', mIntLoteId, mStrUserName, pIntFileId);
+                __updFileStatus('1', mIntLoteId, null, mStrUserName, pIntFileId);
                 
                 break;
 
@@ -863,7 +900,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Update del estado del fichero a En contabilidad (1)
                 // ===============================================================
-                __updFileStatus('1', mIntLoteId, mStrUserName, pIntFileId);
+                __updFileStatus('1', mIntLoteId, mIntIdCarteraEfectos, mStrUserName, pIntFileId);
 
                 break;
 
@@ -886,7 +923,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         // ===============================================================
         // Update del estado del fichero a Error (3)
         // ===============================================================
-        __updFileStatus('3', null, mStrUserName, pIntFileId);
+        __updFileStatus('3', null, null, mStrUserName, pIntFileId);
 
         // ===============================================================
         // Se elimina los archivos temporales usados como apoyo 
