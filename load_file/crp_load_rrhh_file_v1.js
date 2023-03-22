@@ -402,7 +402,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // Valida la existencia de un código equivalente de coste chavin
                 // ===============================================================
                 if (_mStrCodAx === null) {
-                    throw new Ax.ext.Exception("El centro de coste Chavin [${codAx}] no posee una sección contable de destino.",{codAx : mRowSheet.C});
+                    throw new Ax.ext.Exception("El centro de coste Chavin [${codAx}] no posee una sección contable de destino.",{codAx : _mPlRowSheet.C});
                 }
 
                 // ===============================================================
@@ -426,35 +426,38 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                     </select> 
                 `, _mIntPlanillaLoteId, _mPlRowSheet.B).toOne(); 
 
-                // ===============================================================
-                // Registro en Apuntes de Costes (ccoscont)
-                // ===============================================================
-                Ax.db.insert('ccoscont', {
-                    empcode         : _mObjApunte.empcode,      // Código de Empresa
-                    proyec          : _mObjApunte.proyec,       // Línea de negocio
-                    seccio          : _mStrCodAx,               // Sección
-                    fecha           : _mObjApunte.fecha,        // Fecha
-                    apteid          : _mObjApunte.apteid,       // Identificador de apunte
-                    diario          : _mObjApunte.diario,       // Código de diario
-                    jusser          : _mObjApunte.jusser,       // Justificante
-                    docser          : _mObjApunte.docser,       // Documento o número de factura
-                    sistem          : _mObjApunte.sistem,       // Sistema
-                    placon          : _mObjApunte.placon,       // Plan contable
-                    centro          : '0',                      /* DATO POR DEFINIR - TEMPORAL */
-                    ctaexp          : '0',                      /* DATO POR DEFINIR - TEMPORAL */
-                    cuenta          : _mObjApunte.cuenta,       // Cuenta contable
-                    dimcode1        : _mObjApunte.dimcode1,     // Dimensión 1
-                    cantid1         : _mObjApunte.cantid1,      // Cantidad 1
-                    dimcode2        : _mObjApunte.dimcode2,     // Dimensión 2
-                    cantid2         : _mObjApunte.cantid2,      // Cantidad 2
-                    codcon          : _mObjApunte.codcon,       // Concepto
-                    concep          : _mObjApunte.concep,       // Descripción
-                    porcen          : '100',                    /* DATO POR DEFINIR - TEMPORAL */
-                    debe            : _mPlRowSheet.D,           // Debe
-                    haber           : '0',                      // Haber
-                    user_created    : pStrUserName,
-                    user_updated    : pStrUserName
-                });
+                if (_mObjApunte.apteid != null) { 
+                    
+                    // ===============================================================
+                    // Registro en Apuntes de Costes (ccoscont)
+                    // ===============================================================
+                    Ax.db.insert('ccoscont', {
+                        empcode         : _mObjApunte.empcode,      // Código de Empresa
+                        proyec          : _mObjApunte.proyec,       // Línea de negocio
+                        seccio          : _mStrCodAx,               // Sección
+                        fecha           : _mObjApunte.fecha,        // Fecha
+                        apteid          : _mObjApunte.apteid,       // Identificador de apunte
+                        diario          : _mObjApunte.diario,       // Código de diario
+                        jusser          : _mObjApunte.jusser,       // Justificante
+                        docser          : _mObjApunte.docser,       // Documento o número de factura
+                        sistem          : _mObjApunte.sistem,       // Sistema
+                        placon          : _mObjApunte.placon,       // Plan contable
+                        centro          : '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                        ctaexp          : '0',                      /* DATO POR DEFINIR - TEMPORAL */
+                        cuenta          : _mObjApunte.cuenta,       // Cuenta contable
+                        dimcode1        : _mObjApunte.dimcode1,     // Dimensión 1
+                        cantid1         : _mObjApunte.cantid1,      // Cantidad 1
+                        dimcode2        : _mObjApunte.dimcode2,     // Dimensión 2
+                        cantid2         : _mObjApunte.cantid2,      // Cantidad 2
+                        codcon          : _mObjApunte.codcon,       // Concepto
+                        concep          : _mObjApunte.concep,       // Descripción
+                        porcen          : '100',                    /* DATO POR DEFINIR - TEMPORAL */
+                        debe            : _mPlRowSheet.D,           // Debe
+                        haber           : '0',                      // Haber
+                        user_created    : pStrUserName,
+                        user_updated    : pStrUserName
+                    });
+                }
             }
         });
 
@@ -773,7 +776,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
      *
      */
     function __delFile() {
-        
+
         // ===============================================================
         // Eliminación de ficheros de apoyo temporales.
         // ===============================================================
