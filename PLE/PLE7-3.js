@@ -4,7 +4,7 @@ var mIntYear = Ax.context.variable.YEAR;
 var mRsPle7_3 = Ax.db.executeQuery(` 
     <select>
         <columns>
-            '20220000' <alias name='campo1' />,
+            '${mIntYear}0000' <alias name='campo1' />,
             'CUO0001' <alias name='campo2' />,
             'MCUO0001' <alias name='campo3' />,
             9 <alias name='campo4' />,
@@ -34,15 +34,15 @@ var mRsPle7_3 = Ax.db.executeQuery(`
 `); 
 
 var mStrRuc = '20100121809';
-var mStrYear = 2022; // mIntYear
-var mIntO = 1;
+var mStrYear = mIntYear; // mIntYear
+var mIntIndOperacion = 1;
 var mIntContLibro = 1;
 var mIntMoneda = 1;
 
-var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntO + mIntContLibro + mIntMoneda +'1.txt';
+var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntIndOperacion + mIntContLibro + mIntMoneda +'1.txt';
 
-if (pStrCondicion == 'F') {
-
+if (pStrCondicion == 'F') { 
+    var blob = new Ax.sql.Blob(mStrNameFile);
     new Ax.rs.Writer(mRsPle7_3).csv(options => { 
         options.setHeader(false); 
         options.setDelimiter("|"); 
@@ -52,7 +52,7 @@ if (pStrCondicion == 'F') {
     // Agregar temporal en memoria 
 
     var mRsFile = new Ax.rs.Reader().memory(options => {
-    	options.setColumnNames([ "Nombre", "Archivo" ]);
+    	options.setColumnNames([ "nombre", "archivo" ]);
     	options.setColumnTypes([ Ax.sql.Types.CHAR, Ax.sql.Types.BLOB]); 
     });
 
