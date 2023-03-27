@@ -1,6 +1,21 @@
 var pStrCondicion = Ax.context.variable.TIPO;
 var mIntYear = Ax.context.variable.YEAR;
 
+var mDecTipoCambio = Ax.db.executeGet(`
+    <select first='1'>
+        <columns>
+            ccambios.camcom
+        </columns>
+        <from table='ccambios'/>
+        <where>
+            tipcam = 'D' 
+            AND monori = 'PEN' 
+            AND moneda = 'USD' 
+            AND fecha = '31-12-${mIntYear}'
+        </where>
+    </select>
+`);
+
 let mTmpTable = Ax.db.getTempTableName(`tmp_cinmcomp_fecha`);
 Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTable}`);
 
@@ -10,16 +25,37 @@ Ax.db.execute(`
             cinmelem.empcode, 
             cinmelem.codinm, 
             cinmelem.codele, 
-            MAX(cinmcomp.fecfac) fecfac
+            MAX(cinmcomp.fecfac) fecfac,
+            SUM(cinmamor.porcen) porcen
+
         </columns>
         <from table='cinmelem'>
             <join table='cinmcomp'>
                 <on>cinmelem.empcode = cinmcomp.empcode</on>
                 <on>cinmelem.codinm = cinmcomp.codinm</on>
                 <on>cinmelem.codele = cinmcomp.codele</on>
+
+                <join table='cinmamor'>
+                    <on>cinmcomp.empcode = cinmamor.empcode</on>
+                    <on>cinmcomp.codinm = cinmamor.codinm</on>
+                    <on>cinmcomp.codele = cinmamor.codele</on>
+                    <on>cinmcomp.codcom = cinmamor.codcom</on>
+                    <on>cinmcomp.numhis = cinmamor.numhis</on>
+                </join>
+
             </join>
         </from>
-        <group>1, 2,3</group>
+        <where>
+            <!-- 1=1 -->
+            EXISTS (SELECT cinmhead.estcom 
+                    FROM cinmhead 
+                    WHERE cinmhead.empcode = cinmcomp.empcode 
+                            AND cinmhead.codinm = cinmcomp.codinm
+                            AND cinmhead.estcom = 'A')
+            AND cinmcomp.tipcom IN ('I', 'A')
+            <!-- AND cinmamor.fecfin &lt;= '31-12-2024' -->
+        </where>
+        <group>1, 2, 3</group>
     </select>
 `);
 
@@ -35,9 +71,9 @@ var mRsPle7_3 = Ax.db.executeQuery(`
             CAST(ROUND(0.00, 2) AS VARCHAR(15))             <alias name='campo7' />,
             CAST(ROUND(0.00, 3) AS VARCHAR(5))              <alias name='campo8' />,
             CAST(ROUND(cinmeval.iniele, 2) AS VARCHAR(15))  <alias name='campo9' />,
-            CAST(ROUND(0.00, 3) AS VARCHAR(5))              <alias name='campo10' />,
-            CAST(ROUND(0.00, 2) AS VARCHAR(15))             <alias name='campo11' />,
-            CAST(ROUND(0.00, 2) AS VARCHAR(15))             <alias name='campo12' />,
+            NVL( CAST(ROUND(${mDecTipoCambio}, 3) AS VARCHAR(5)) , '0.000')     <alias name='campo10' />,
+            CAST(ROUND(0.00, 2) AS VARCHAR(15))                                 <alias name='campo11' />,
+            NVL( CAST(ROUND(${mTmpTable}.porcen, 2) AS VARCHAR(15)) , '0.00')   <alias name='campo12' />,
             CAST(ROUND(0.00, 2) AS VARCHAR(15))             <alias name='campo13' />,
             CAST(ROUND(0.00, 2) AS VARCHAR(15))             <alias name='campo14' />,
             1   <alias name='campo15' />,
@@ -60,6 +96,8 @@ var mRsPle7_3 = Ax.db.executeQuery(`
         </where>
     </select>
 `);
+
+return mRsPle7_3;
 
 // Variables del nombre del archivo
 var mStrRuc             = '20100121809';
