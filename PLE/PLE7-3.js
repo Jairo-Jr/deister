@@ -109,8 +109,6 @@ Ax.db.execute(`
             cinmelem.codinm, 
             cinmelem.codele, 
             MAX(cinmcomp.fecfac) fecfac,
-            SUM(cinmamor.import) import,
-            SUM(cinmamor.import) import,
             SUM(cinmamor.import) import
 
         </columns>
