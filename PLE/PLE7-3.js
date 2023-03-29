@@ -83,6 +83,18 @@ Ax.db.execute(`
                     <on>gcomfach.cabid IN (SELECT gcomfacl.cabid FROM cinmcomp_orig, gcomfacl WHERE gcomfacl.linid = cinmcomp_orig.docid AND cinmcomp_orig.seqno = cinmcomp.seqno AND cinmcomp_orig.tabori = 'gcomfacl')</on>
                 </join>
 
+                <!-- <join type='left' table='cinmcomp_orig'>
+                    <on>cinmcomp.seqno = cinmcomp_orig.seqno</on>
+
+                    <join table='gcomfacl'>
+                        <on>cinmcomp_orig.docid = gcomfacl.linid</on>
+
+                        <join table='gcomfach'>
+                            <on>gcomfacl.cabid = gcomfach.cabid</on>
+                        </join>
+                    </join>
+                </join> -->
+
             </join>
         </from>
         <where>
