@@ -79,11 +79,11 @@ Ax.db.execute(`
                     <on>cinmcomp.numhis = cinmamor.numhis</on>
                 </join>
 
-                <join type='left' table='gcomfach'>
+                <!-- <join type='left' table='gcomfach'>
                     <on>gcomfach.cabid IN (SELECT gcomfacl.cabid FROM cinmcomp_orig, gcomfacl WHERE gcomfacl.linid = cinmcomp_orig.docid AND cinmcomp_orig.seqno = cinmcomp.seqno AND cinmcomp_orig.tabori = 'gcomfacl')</on>
-                </join>
+                </join> -->
 
-                <!-- <join type='left' table='cinmcomp_orig'>
+                <join type='left' table='cinmcomp_orig'>
                     <on>cinmcomp.seqno = cinmcomp_orig.seqno</on>
 
                     <join table='gcomfacl'>
@@ -93,7 +93,7 @@ Ax.db.execute(`
                             <on>gcomfacl.cabid = gcomfach.cabid</on>
                         </join>
                     </join>
-                </join> -->
+                </join>
 
             </join>
         </from>
