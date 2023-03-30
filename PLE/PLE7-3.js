@@ -1,17 +1,16 @@
 var pStrCondicion = Ax.context.variable.TIPO;
 var mIntYear = Ax.context.variable.YEAR;
 
-// Obtencion del tipo de cambio
-var mDecTipoCambio = Ax.db.executeGet(`
+var mNumTipCambio = Ax.db.executeGet(`
     <select first='1'>
         <columns>
             ccambios.camcom
         </columns>
         <from table='ccambios'/>
         <where>
-            tipcam = 'D' 
-            AND monori = 'PEN' 
-            AND moneda = 'USD' 
+            tipcam = 'D'
+            AND monori = 'PEN'
+            AND moneda = 'USD'
             AND fecha = '31-12-${mIntYear}'
         </where>
     </select>
@@ -44,20 +43,28 @@ Ax.db.execute(`
                     ELSE 0.00 
                 END ) <alias name='import' />,
 
-            SUM( CASE WHEN gcomfach.divisa != 'PEN'
-                    THEN gcomfach.impfac
+            SUM( CASE WHEN cinmcomp.divisa != 'PEN'
+                    THEN cinmcomp.impfac
                     ELSE 0.00 
                 END ) <alias name='imp_usd' />,
 
-            MAX( CASE WHEN gcomfach.divisa != 'PEN'
-                    THEN gcomfach.cambio
+            MAX( CASE WHEN cinmcomp.divisa != 'PEN'
+                    THEN cinmcomp.cambio
                     ELSE 0.00 
                 END ) <alias name='tip_cambio' />,
 
-            SUM( CASE WHEN gcomfach.divisa = 'PEN'
-                    THEN gcomfach.impfac
+            SUM( CASE WHEN cinmcomp.divisa = 'PEN'
+                    THEN cinmcomp.impfac
                     ELSE 0.00 
-                END ) <alias name='imp_pen' />
+                END ) <alias name='imp_pen' />,
+
+            SUM( (CASE WHEN cinmcomp.divisa = 'PEN'
+                    THEN cinmcomp.impfac
+                    ELSE 0.00 
+                END) - (CASE WHEN cinmcomp.divisa != 'PEN'
+                    THEN cinmcomp.impfac
+                    ELSE 0.00 
+                END) * NVL(${mNumTipCambio}, 0.00) ) <alias name='ajuste' />
 
         </columns>
         <from table='cinmelem'>
@@ -83,7 +90,7 @@ Ax.db.execute(`
                     <on>gcomfach.cabid IN (SELECT gcomfacl.cabid FROM cinmcomp_orig, gcomfacl WHERE gcomfacl.linid = cinmcomp_orig.docid AND cinmcomp_orig.seqno = cinmcomp.seqno AND cinmcomp_orig.tabori = 'gcomfacl')</on>
                 </join> -->
 
-                <join type='left' table='cinmcomp_orig'>
+                <!-- <join type='left' table='cinmcomp_orig'>
                     <on>cinmcomp.seqno = cinmcomp_orig.seqno</on>
 
                     <join table='gcomfacl'>
@@ -93,7 +100,7 @@ Ax.db.execute(`
                             <on>gcomfacl.cabid = gcomfach.cabid</on>
                         </join>
                     </join>
-                </join>
+                </join> -->
 
             </join>
         </from>
@@ -113,15 +120,15 @@ var mRsPle7_3 = Ax.db.executeQuery(`
             'MCUO0001'          <alias name='campo3' />,
             9                   <alias name='campo4' />,
             cinmelem.codele     <alias name='campo5' />,
-            TO_CHAR(${mTmpTableActivos}.fecha, '%d/%m/%Y')        <alias name='campo6' />,
-            CAST(ROUND(${mTmpTableActivos}.imp_usd, 2) AS VARCHAR(15))             <alias name='campo7' />,
-            CAST(ROUND(${mTmpTableActivos}.tip_cambio, 3) AS VARCHAR(5))              <alias name='campo8' />,
-            CAST(ROUND(${mTmpTableActivos}.imp_pen, 2) AS VARCHAR(15))                    <alias name='campo9' />,
-            NVL( CAST(ROUND(${mDecTipoCambio}, 3) AS VARCHAR(5)) , '0.000')         <alias name='campo10' />,
-            CAST(ROUND(0.00, 2) AS VARCHAR(15))     <alias name='campo11' />,
-            NVL( CAST(ROUND(${mTmpTableActivos}.import, 2) AS VARCHAR(15)) , '0.00')      <alias name='campo12' />,
-            NVL( CAST(ROUND(${mTmpTableActivos}.import_2, 2) AS VARCHAR(15)) , '0.00')    <alias name='campo13' />,
-            NVL( CAST(ROUND(${mTmpTableActivos}.import_3, 2) AS VARCHAR(15)) , '0.00')    <alias name='campo14' />,
+            TO_CHAR(${mTmpTableActivos}.fecha, '%d/%m/%Y')                                  <alias name='campo6' />,
+            CAST(ROUND(${mTmpTableActivos}.imp_usd, 2) AS VARCHAR(15))                      <alias name='campo7' />,
+            CAST(ROUND(${mTmpTableActivos}.tip_cambio, 3) AS VARCHAR(5))                    <alias name='campo8' />,
+            CAST(ROUND(${mTmpTableActivos}.imp_pen, 2) AS VARCHAR(15))                      <alias name='campo9' />,
+            NVL( CAST(ROUND(${mNumTipCambio}, 3) AS VARCHAR(5)) , '0.000')                 <alias name='campo10' />,
+            CAST(ROUND(${mTmpTableActivos}.ajuste, 2) AS VARCHAR(15))                       <alias name='campo11' />,
+            NVL( CAST(ROUND(${mTmpTableActivos}.import, 2) AS VARCHAR(15)) , '0.00')        <alias name='campo12' />,
+            NVL( CAST(ROUND(${mTmpTableActivos}.import_2, 2) AS VARCHAR(15)) , '0.00')      <alias name='campo13' />,
+            NVL( CAST(ROUND(${mTmpTableActivos}.import_3, 2) AS VARCHAR(15)) , '0.00')      <alias name='campo14' />,
             1   <alias name='campo15' />,
             <whitespace/>
         </columns>
@@ -142,6 +149,8 @@ var mRsPle7_3 = Ax.db.executeQuery(`
         </where>
     </select>
 `); 
+
+// return mRsPle7_3;
 
 // Variables del nombre del archivo
 var mStrRuc             = '20100121809';
