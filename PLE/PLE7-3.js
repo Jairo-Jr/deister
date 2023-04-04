@@ -1,22 +1,48 @@
 var pStrCondicion = Ax.context.variable.TIPO;
-var mIntYear = Ax.context.variable.YEAR;
+var mIntMonth = Ax.context.variable.MONTH;
+var mIntYear = Ax.context.variable.YEAR; 
 
-var mNumTipCambio = Ax.db.executeGet(`
-    <select first='1'>
+// ===============================================================
+// Construcción de las fechas de inicio y fin, correspondientes
+// al periodo.
+// ===============================================================
+var pDateFecini = new Ax.sql.Date(mIntYear, mIntMonth, 1);
+var pDateFecfin = new Ax.sql.Date(mIntYear, mIntMonth + 1, 0);
+
+var mCambioUSD = 0.00;
+var mCambioEUR = 0.00;
+
+// ===============================================================
+// Obtención de los tipo de cambio de las monedas extranjeras.
+// ===============================================================
+var mArrayTipCambio = Ax.db.executeQuery(`
+    <select>
         <columns>
-            ccambios.camcom
+            ccambios.moneda,
+            ccambios.cambio
         </columns>
         <from table='ccambios'/>
         <where>
             tipcam = 'D'
             AND monori = 'PEN'
-            AND moneda = 'USD'
-            AND fecha = '31-12-${mIntYear}'
+            AND fecha = '31-12-2021'
         </where>
     </select>
-`);
+`).toJSONArray();
 
-/* TABLA TEMPORAL PARA ACTIVOS FIJOS */
+mArrayTipCambio.forEach(mObjTipCambio => {
+    
+    if (mObjTipCambio.moneda == 'USD') {
+        mCambioUSD = mObjTipCambio.cambio;
+    }
+    if (mObjTipCambio.moneda == 'EUR') {
+        mCambioEUR = mObjTipCambio.cambio;
+    }
+});
+
+// ===============================================================
+// TABLA TEMPORAL PARA ACTIVOS FIJOS
+// ===============================================================
 let mTmpTableActivos = Ax.db.getTempTableName(`tmp_cinmelem_activos_fijos`);
 Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableActivos}`);
 
@@ -26,6 +52,7 @@ Ax.db.execute(`
             cinmelem.empcode, 
             cinmelem.codinm, 
             cinmelem.codele,
+            cinmcomp.divisa,
             MAX(cinmcomp.fecha) fecha,
 
             SUM( CASE WHEN cinmhead.estcom = 'A' AND cinmcomp.tipcom NOT IN ('I', 'A') 
@@ -43,28 +70,18 @@ Ax.db.execute(`
                     ELSE 0.00 
                 END ) <alias name='import' />,
 
-            SUM( CASE WHEN cinmcomp.divisa != 'PEN'
-                    THEN cinmcomp.impfac
-                    ELSE 0.00 
-                END ) <alias name='imp_usd' />,
+            SUM( NVL(cinmcomp.impfac, 0.00) ) <alias name='imp_usd' />,
 
-            MAX( CASE WHEN cinmcomp.divisa != 'PEN'
-                    THEN cinmcomp.cambio
-                    ELSE 0.00 
-                END ) <alias name='tip_cambio' />,
+            MAX( NVL(cinmcomp.cambio, 0.00) ) <alias name='tip_cambio' />,
 
-            SUM( CASE WHEN cinmcomp.divisa = 'PEN'
-                    THEN cinmcomp.impfac
-                    ELSE 0.00 
-                END ) <alias name='imp_pen' />,
+            SUM( NVL((cinmcomp.impfac * cinmcomp.cambio), 0.00) ) <alias name='imp_pen' />,
 
-            SUM( (CASE WHEN cinmcomp.divisa = 'PEN'
-                    THEN cinmcomp.impfac
-                    ELSE 0.00 
-                END) - (CASE WHEN cinmcomp.divisa != 'PEN'
-                    THEN cinmcomp.impfac
-                    ELSE 0.00 
-                END) * NVL(${mNumTipCambio}, 0.00) ) <alias name='ajuste' />
+            SUM( CASE WHEN cinmcomp.divisa = 'USD'
+                        THEN NVL((cinmcomp.impfac * cinmcomp.cambio - cinmcomp.impfac * ${mCambioUSD}), 0.00)
+                      WHEN cinmcomp.divisa = 'EUR'
+                        THEN NVL((cinmcomp.impfac * cinmcomp.cambio - cinmcomp.impfac * ${mCambioEUR}), 0.00)
+                    ELSE 0.00
+                END ) <alias name='ajuste' />
 
         </columns>
         <from table='cinmelem'>
@@ -105,13 +122,17 @@ Ax.db.execute(`
             </join>
         </from>
         <where>
-            cinmcomp.fecha BETWEEN '01-01-${mIntYear}' AND '31-12-${mIntYear}'
+            cinmcomp.fecha BETWEEN ? AND ?
             AND cinmamor.fecfin BETWEEN '01-01-${mIntYear}' AND '31-12-${mIntYear}'
+            AND cinmcomp.divisa != 'PEN'
         </where>
-        <group>1, 2, 3</group>
+        <group>1, 2, 3, 4</group>
     </select>
-`);
+`, pDateFecini, pDateFecfin);
 
+// ===============================================================
+// QUERY CON INFORMACIÓN DEL PLE
+// ===============================================================
 var mRsPle7_3 = Ax.db.executeQuery(` 
     <select>
         <columns>
@@ -124,7 +145,16 @@ var mRsPle7_3 = Ax.db.executeQuery(`
             CAST(ROUND(${mTmpTableActivos}.imp_usd, 2) AS VARCHAR(15))                      <alias name='campo7' />,
             CAST(ROUND(${mTmpTableActivos}.tip_cambio, 3) AS VARCHAR(5))                    <alias name='campo8' />,
             CAST(ROUND(${mTmpTableActivos}.imp_pen, 2) AS VARCHAR(15))                      <alias name='campo9' />,
-            NVL( CAST(ROUND(${mNumTipCambio}, 3) AS VARCHAR(5)) , '0.000')                 <alias name='campo10' />,
+
+            NVL( CAST(ROUND(
+                    CASE WHEN ${mTmpTableActivos}.divisa = 'USD'
+                            THEN NVL((${mCambioUSD}), 0.00)
+                        WHEN ${mTmpTableActivos}.divisa = 'EUR'
+                            THEN NVL((${mCambioEUR}), 0.00)
+                        ELSE 0.00
+                    END
+                , 3) AS VARCHAR(5)) , '0.000')                 <alias name='campo10' />,
+
             CAST(ROUND(${mTmpTableActivos}.ajuste, 2) AS VARCHAR(15))                       <alias name='campo11' />,
             NVL( CAST(ROUND(${mTmpTableActivos}.import, 2) AS VARCHAR(15)) , '0.00')        <alias name='campo12' />,
             NVL( CAST(ROUND(${mTmpTableActivos}.import_2, 2) AS VARCHAR(15)) , '0.00')      <alias name='campo13' />,
@@ -150,43 +180,58 @@ var mRsPle7_3 = Ax.db.executeQuery(`
     </select>
 `); 
 
-// return mRsPle7_3;
-
-// Variables del nombre del archivo
+// ===============================================================
+// Variables para el nombre del archivo
+// ===============================================================
 var mStrRuc             = '20100121809';
 var mStrYear            = mIntYear;
 var mIntIndOperacion    = 1;
 var mIntContLibro       = 1;
 var mIntMoneda          = 1;
 
-// Estructura de nombre del archivo txt de salida: LERRRRRRRRRRRAAAA000007030000OIM1.txt
+// ===============================================================
+// Estructura de nombre del archivo txt de salida: 
+// LERRRRRRRRRRRAAAA000007030000OIM1.txt
+// ===============================================================
 var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntIndOperacion + mIntContLibro + mIntMoneda + '1.txt';
 
+// ===============================================================
 // Si la condición del reporte es Fichero (F)
+// ===============================================================
 if (pStrCondicion == 'F') { 
 
+    // ===============================================================
     // Definición del blob
+    // ===============================================================
     var blob = new Ax.sql.Blob(mStrNameFile);
 
+    // ===============================================================
     // Definición del archivo txt
+    // ===============================================================
     new Ax.rs.Writer(mRsPle7_3).csv(options => {
         options.setHeader(false);
         options.setDelimiter("|");
         options.setResource(blob);
     }); 
 
+    // ===============================================================
     // Definición de file zip
+    // ===============================================================
     var ficherozip = new Ax.io.File("/tmp/ziptest.zip");
     var zip = new Ax.util.zip.Zip(ficherozip); 
 
     zip.zipFile(blob);
     zip.close(); 
 
+    // ===============================================================
     // Definición blob del archivo zip
+    // ===============================================================
     var dst = new Ax.io.File(ficherozip.getAbsolutePath()); 
     var fichero = new Ax.sql.Blob(dst);
 
+    // ===============================================================
     // Definición ResultSet temporal
+    // ===============================================================
     var mRsFile = new Ax.rs.Reader().memory(options => {
         options.setColumnNames(["nombre", "archivo"]);
         options.setColumnTypes([Ax.sql.Types.CHAR, Ax.sql.Types.BLOB]);
@@ -194,8 +239,9 @@ if (pStrCondicion == 'F') {
     mRsFile.rows().add([mStrNameFile, fichero.getBytes()]);
 
     return mRsFile;
-
-    // Si la condición del reporte es Informe (I)
+// ===============================================================
+// Si la condición del reporte es Informe (I)
+// =============================================================== 
 } else if (pStrCondicion == 'I') {
     return mRsPle7_3;
-}
+} 
