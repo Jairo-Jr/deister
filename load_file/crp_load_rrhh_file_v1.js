@@ -26,8 +26,8 @@
  *
  *  JS:  crp_load_rrhh_file
  *
- *  Version     : v1.12
- *  Date        : 2023-03-22
+ *  Version     : v1.13
+ *  Date        : 2023-03-31
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla);
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign)
  *                y las planillas en los Mov. Contables (capuntes).
@@ -115,22 +115,29 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         // ===============================================================
         // Obtención de los números máximos de asientos 
         // e identificador de lote.
-        // ===============================================================
+        // =============================================================== 
         _mObjMaximos = Ax.db.executeQuery(`
             <select>
                 <columns>
-                    MAX(asient) max_asient,
                     MAX(loteid) max_lote_id
                 </columns>
-                <from table='capuntes'/>
+                <from table='cenllote'/>
             </select>
-        `).toOne();
+        `).toOne(); 
 
         // ===============================================================
         // Generación del numero de asiento e identificador de lote.
         // ===============================================================
-        _mIntAsient = _mObjMaximos.max_asient + 1;
+        _mIntAsient = null;
         _mIntLoteId = _mObjMaximos.max_lote_id + 1; 
+
+        // ===============================================================
+        // Registro del Identificador de Lote
+        // ===============================================================
+        Ax.db.insert("cenllote", {
+            loteid  : _mIntLoteId,
+            tabname : 'planilla'
+        });
 
         // ===============================================================
         // Recorrido de la data del fichero de planilla.
@@ -710,7 +717,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                             clase = 'C' 
                             AND tercer = '00000021' 
                             AND estado = 'PE' 
-                            AND fecha &lt;= ?
+                            AND fecha &lt;= ?   
                             AND docser = ?
                             AND import = ?
                         </where>
