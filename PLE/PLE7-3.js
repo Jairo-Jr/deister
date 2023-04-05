@@ -154,9 +154,11 @@ var mRsPle7_3 = Ax.db.executeQuery(`
             NVL( CAST(ROUND(${mTmpTableActivos}.import_2, 2) AS VARCHAR(15)) , '0.00')      <alias name='campo13' />,
             NVL( CAST(ROUND(${mTmpTableActivos}.import_3, 2) AS VARCHAR(15)) , '0.00')      <alias name='campo14' />, 
 
-            CASE WHEN ${mIntYear} = ${mYearToday} THEN 1
-                WHEN ${mIntYear} < ${mYearToday} THEN 8
-                ELSE 9
+            CASE WHEN (${mIntYear} = ${mYearToday}) 
+                    THEN '1'
+                WHEN (${mIntYear} &lt; ${mYearToday}) 
+                    THEN '8'
+                ELSE '9'
             END <alias name='campo15' />,
 
             <whitespace/>
