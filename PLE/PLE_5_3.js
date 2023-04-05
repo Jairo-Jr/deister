@@ -3,26 +3,44 @@
 // ===============================================================
 var pStrCondicion = 'I';
 var mIntEjercio = 2022;
-var mIntPeriodo = 4;
+var mIntPeriodo = 10;
+var mStrFormatoPeriodo = mIntEjercio + (mIntPeriodo + '00');
 
-var mDateTimeInicioP = new Ax.util.Date(mIntEjercio, mIntPeriodo, 1);
-var mDateTimeFinP = new Ax.util.Date(mIntEjercio, mIntPeriodo + 1, 0, 23, 59, 59);
+var mDateTimeIniPeriodoInf = new Ax.util.Date(mIntEjercio, mIntPeriodo, 1);
+var mDateTimeFinPeriodoInf = new Ax.util.Date(mIntEjercio, mIntPeriodo + 1, 0, 23, 59, 59);
+
+// Concatenacion del periodo
+var mStrCodPeriodo = mIntEjercio.toString() + (mIntPeriodo < 10 ? '0'+mIntPeriodo : mIntPeriodo) + '00';
 
 // var pStrCondicion = Ax.context.variable.TIPO;
 // var mIntEjercio = Ax.context.variable.TIPO;
 // var mIntPeriodo = Ax.context.variable.TIPO;
 
-console.log(mDateTimeInicioP);
-console.log(mDateTimeFinP);
+console.log('NOM-PER:', mStrCodPeriodo);
+// console.log(mDateTimeInicioP);
+// console.log(mDateTimeFinP);
+
+// Definicion del periodo actual
+var mDateToday = new Ax.util.Date(); 
+var mYearToday = mDateToday.getYear();
+var mMonthToday = mDateToday.getMonth() + 1;
+
+var mDateTimeIniPeriodoAct = new Ax.util.Date(mYearToday, mMonthToday, 1);
+var mDateTimeFinPeriodoAct = new Ax.util.Date(mYearToday, mMonthToday + 1, 0, 23, 59, 59);
 
 var mRsPle5_3 = Ax.db.executeQuery(` 
     <select>
         <columns>
             ccuentas.date_created,
-            '20220405' <alias name='campo1'/>,
-            ccuentas.codigo <alias name='campo2'/>,
-            ccuentas.nombre <alias name='campo3'/>,
-            '04' <alias name='campo4'/>,
+
+            CAST('${mStrCodPeriodo}' AS VARCHAR(8)) <alias name='campo1'/>,
+
+            CAST(ccuentas.codigo AS VARCHAR(24)) <alias name='campo2'/>,
+
+            CAST(ccuentas.nombre AS VARCHAR(100)) <alias name='campo3'/>,
+
+            CAST('04' AS VARCHAR(2)) <alias name='campo4'/>,
+
             '' <alias name='campo5'/>,
             '' <alias name='campo6'/>,
             '' <alias name='campo7'/>,
@@ -31,7 +49,7 @@ var mRsPle5_3 = Ax.db.executeQuery(`
             CASE WHEN ccuentas.date_created &gt;= ? AND ccuentas.date_created &lt;= ?
                     THEN '1'
                     <!-- MENOR AL MES -->
-                WHEN ccuentas.date_created &lt;= ?
+                WHEN ccuentas.date_created &lt; ?
                     THEN '8'
                 ELSE '9'
             END <alias name='campo8'/>,
@@ -41,21 +59,22 @@ var mRsPle5_3 = Ax.db.executeQuery(`
         </from>
         <where>
             1=1
-            AND ccuentas.date_created &lt;= ?
+            AND ccuentas.date_created BETWEEN ? AND ?
         </where>
         <order>ccuentas.date_created DESC</order>
     </select>
-`, mDateTimeInicioP, mDateTimeFinP, mDateTimeInicioP, mDateTimeFinP);
+`, mDateTimeIniPeriodoAct, mDateTimeFinPeriodoAct, mDateTimeIniPeriodoAct, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf);
 
 // Variables del nombre del archivo
 var mStrRuc             = '20100121809';
-var mStrYear            = '2023';
-var mIntIndOperacion    = 1;
-var mIntContLibro       = 1;
-var mIntMoneda          = 1;
+var mStrYear            = mIntEjercio;
+var mStrMonth           = (mIntPeriodo < 10 ? '0'+mIntPeriodo : mIntPeriodo);
+var mIntIndOperacionO   = 1;
+var mIntContLibroI      = 1;
+var mIntMonedaM         = 1;
 
-// Estructura de nombre del archivo txt de salida: LERRRRRRRRRRRAAAA000007030000OIM1.txt
-var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntIndOperacion + mIntContLibro + mIntMoneda + '1.txt';
+// Estructura de nombre del archivo txt de salida: LE RRRRRRRRRRR AAAA MM 00 050300 00 O I M 1.TXT
+var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntIndOperacionO + mIntContLibroI + mIntMonedaM + '1.txt';
 
 // Si la condición del reporte es Fichero (F)
 if (pStrCondicion == 'F') { 
