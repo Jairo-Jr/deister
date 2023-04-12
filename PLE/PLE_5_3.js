@@ -5,32 +5,33 @@
 // ===============================================================
 // Tipo de reporte y año/mes del periodo informado
 // =============================================================== 
-var pStrCondicion = Ax.context.variable.TIPO;
-var mIntEjercio = Ax.context.variable.TIPO;
-var mIntPeriodo = Ax.context.variable.TIPO; 
+var mStrCondicion   = Ax.context.variable.TIPO;
+var mIntEjercicio   = Ax.context.variable.YEAR;
+var mIntPeriodo     = Ax.context.variable.MONTH;
 
 // ===============================================================
 // Construcción de la primera y ultima fecha del mes, 
 // correspondiente al periodo informado
 // ===============================================================
-var mDateTimeIniPeriodoInf = new Ax.util.Date(mIntEjercio, mIntPeriodo, 1);
-var mDateTimeFinPeriodoInf = new Ax.util.Date(mIntEjercio, mIntPeriodo + 1, 0, 23, 59, 59); 
+var mDateTimeIniPeriodoInf = new Ax.util.Date(mIntEjercicio, mIntPeriodo, 1);
+var mDateTimeFinPeriodoInf = new Ax.util.Date(mIntEjercicio, mIntPeriodo + 1, 0, 23, 59, 59);
 
 // ===============================================================
 // Concatenación del identificador del periodo para el 
 // reporte de SUNAT
 // ===============================================================
-var mStrCodPeriodo = mIntEjercio.toString() + (mIntPeriodo < 10 ? '0'+mIntPeriodo : mIntPeriodo) + '00'; 
+var mStrCodPeriodo = mIntEjercicio.toString() + (mIntPeriodo < 10 ? '0'+mIntPeriodo : mIntPeriodo) + '00'; 
 
 // ===============================================================
 // Definición del periodo actual
 // ===============================================================
-var mDateToday = new Ax.util.Date(); 
-var mYearToday = mDateToday.getYear();
+var mDateToday  = new Ax.util.Date(); 
+var mYearToday  = mDateToday.getYear();
 var mMonthToday = mDateToday.getMonth() + 1; 
 
 // ===============================================================
-// Construcción de la primera y ultima fecha del mes, correspondiente al periodo actual.
+// Construcción de la primera y ultima fecha del mes, 
+// correspondiente al periodo actual.
 // ===============================================================
 var mDateTimeIniPeriodoAct = new Ax.util.Date(mYearToday, mMonthToday, 1);
 var mDateTimeFinPeriodoAct = new Ax.util.Date(mYearToday, mMonthToday + 1, 0, 23, 59, 59); 
@@ -77,7 +78,7 @@ var mRsPle5_3 = Ax.db.executeQuery(`
 // Variables del nombre del archivo
 // ===============================================================
 var mStrRuc             = '20100121809';
-var mStrYear            = mIntEjercio;
+var mStrYear            = mIntEjercicio;
 var mStrMonth           = (mIntPeriodo < 10 ? '0'+mIntPeriodo : mIntPeriodo);
 var mIntIndOperacionO   = 1;
 var mIntContLibroI      = 1;
@@ -92,12 +93,12 @@ var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntIndOperacion
 // ===============================================================
 // Si la condición del reporte es Fichero (F)
 // ===============================================================
-if (pStrCondicion == 'F') { 
+if (mStrCondicion == 'F') { 
 
     // ===============================================================
     // Definición del blob
     // ===============================================================
-    var blob = new Ax.sql.Blob(mStrNameFile); 
+    var mBlob = new Ax.sql.Blob(mStrNameFile); 
 
     // ===============================================================
     // Definición del archivo txt
@@ -105,23 +106,23 @@ if (pStrCondicion == 'F') {
     new Ax.rs.Writer(mRsPle5_3).csv(options => {
         options.setHeader(false);
         options.setDelimiter("|");
-        options.setResource(blob);
+        options.setResource(mBlob);
     }); 
 
     // ===============================================================
     // Definición de file zip
     // ===============================================================
-    var ficherozip = new Ax.io.File("/tmp/ziptest.zip");
-    var zip = new Ax.util.zip.Zip(ficherozip); 
+    var mFicheroZip  = new Ax.io.File("/tmp/ziptest.zip");
+    var mZip         = new Ax.util.zip.Zip(mFicheroZip); 
 
-    zip.zipFile(blob);
-    zip.close(); 
+    mZip.zipFile(mBlob);
+    mZip.close(); 
 
     // ===============================================================
     // Definición blob del archivo zip
     // ===============================================================
-    var dst = new Ax.io.File(ficherozip.getAbsolutePath()); 
-    var fichero = new Ax.sql.Blob(dst); 
+    var mDestino    = new Ax.io.File(mFicheroZip.getAbsolutePath()); 
+    var mFichero    = new Ax.sql.Blob(mDestino); 
 
     // ===============================================================
     // Definición ResultSet temporal
@@ -130,13 +131,13 @@ if (pStrCondicion == 'F') {
         options.setColumnNames(["nombre", "archivo"]);
         options.setColumnTypes([Ax.sql.Types.CHAR, Ax.sql.Types.BLOB]);
     }); 
-    mRsFile.rows().add([mStrNameFile, fichero.getBytes()]);
+    mRsFile.rows().add([mStrNameFile, mFichero.getBytes()]);
 
     return mRsFile; 
     
     // ===============================================================
     // Si la condición del reporte es Informe (I)
     // ===============================================================
-} else if (pStrCondicion == 'I') {
+} else if (mStrCondicion == 'I') {
     return mRsPle5_3;
 }
