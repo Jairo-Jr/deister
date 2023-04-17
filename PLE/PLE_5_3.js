@@ -5,12 +5,12 @@
 // ===============================================================
 // Tipo de reporte y año/mes del periodo informado
 // =============================================================== 
-var mStrCondicion   = 'I';
-var mIntEjercicio   = 2023;
-var mIntPeriodo     = 2;
-// var mStrCondicion   = Ax.context.variable.TIPO;
-// var mIntEjercicio   = Ax.context.variable.YEAR;
-// var mIntPeriodo     = Ax.context.variable.MONTH;
+// var mStrCondicion   = 'I';
+// var mIntEjercicio   = 2022;
+// var mIntPeriodo     = 5;
+var mStrCondicion   = Ax.context.variable.TIPO;
+var mIntEjercicio   = Ax.context.variable.YEAR;
+var mIntPeriodo     = Ax.context.variable.MONTH;
 
 // ===============================================================
 // Construcción de la primera y ultima fecha del mes, 
@@ -19,26 +19,7 @@ var mIntPeriodo     = 2;
 var mDateTimeIniPeriodoInf = new Ax.util.Date(mIntEjercicio, mIntPeriodo, 1);
 var mDateTimeFinPeriodoInf = new Ax.util.Date(mIntEjercicio, mIntPeriodo + 1, 0, 23, 59, 59);
 
-// ===============================================================
-// Concatenación del identificador del periodo para el 
-// reporte de SUNAT
-// ===============================================================
-var mStrCodPeriodo = mIntEjercicio.toString() + (mIntPeriodo < 10 ? '0'+mIntPeriodo : mIntPeriodo) + '00'; 
-
-// ===============================================================
-// Definición del periodo actual
-// ===============================================================
-var mDateToday  = new Ax.util.Date(); 
-var mYearToday  = mDateToday.getYear();
-var mMonthToday = mDateToday.getMonth() + 1; 
-
-// ===============================================================
-// Construcción de la primera y ultima fecha del mes, 
-// correspondiente al periodo actual.
-// ===============================================================
-var mDateTimeIniPeriodoAct = new Ax.util.Date(mYearToday, mMonthToday, 1);
-var mDateTimeFinPeriodoAct = new Ax.util.Date(mYearToday, mMonthToday + 1, 0, 23, 59, 59); 
-
+var numerroer = 0;
 // ===============================================================
 // Generación del ResultSet para el PLE
 // ===============================================================
@@ -46,8 +27,11 @@ var mRsPle5_3 = Ax.db.executeQuery(`
     <select>
         <columns>
             CAST(TO_CHAR(ccuentas.date_created, '%Y%m%d') AS VARCHAR(8)) <alias name='campo1'/>,
-            ccuentas.codigo,
-            SUBSTR(ccuentas.codigo, 1, CHARINDEX('.', ccuentas.codigo)-1) || SUBSTR(ccuentas.codigo, CHARINDEX('.', ccuentas.codigo)+1) <alias name='campo2'/>,
+            
+            CASE WHEN CHARINDEX('.', ccuentas.codigo) &gt; 0
+                    THEN SUBSTR(ccuentas.codigo, 1, CHARINDEX('.', ccuentas.codigo)-1) || SUBSTR(ccuentas.codigo, CHARINDEX('.', ccuentas.codigo)+1)
+                ELSE ccuentas.codigo
+            END <alias name='campo2'/>,
 
             CAST(ccuentas.nombre AS VARCHAR(100)) <alias name='campo3'/>,
 
@@ -56,15 +40,7 @@ var mRsPle5_3 = Ax.db.executeQuery(`
             '' <alias name='campo5'/>,
             '' <alias name='campo6'/>,
             '' <alias name='campo7'/>,
-
-            <!-- COMPARAR DENTRO DEL MES -->
-            CASE WHEN ccuentas.date_created &gt;= ? AND ccuentas.date_created &lt;= ?
-                    THEN '1'
-                    <!-- MENOR AL MES -->
-                WHEN ccuentas.date_created &lt; ?
-                    THEN '8'
-                ELSE '9'
-            END <alias name='campo8'/>,
+            '1' <alias name='campo8'/>,
             <whitespace/>
         </columns>
         <from table='ccuentas'>
@@ -72,13 +48,25 @@ var mRsPle5_3 = Ax.db.executeQuery(`
         <where>
             1=1
             AND ccuentas.codigo IS NOT NULL
-            AND ccuentas.date_created &lt;= ?
-            <!-- AND ccuentas.date_created BETWEEN ? AND ? -->
+            AND ccuentas.date_created &gt;= ? AND ccuentas.date_created &lt;= ?
         </where>
         <order>ccuentas.date_created DESC</order>
     </select>
-`, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf); 
-// `, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mDateTimeIniPeriodoInf); 
+`, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf).toMemory();
+
+var mArrayCodCuentas = [];
+
+mRsPle5_3.forEach(item => {
+   if(item.campo2.length < 8){
+       mArrayCodCuentas.push(item.campo2);
+    }
+});
+
+if (mArrayCodCuentas) {
+    throw new Ax.ext.Exception(`El/los códigos de Cuentas Contables, deben tener entre 3 y 24 dígitos: [${mArrayCodCuentas}]`);
+} else {
+    console.log('Sin errores');
+}
 
 // ===============================================================
 // Variables del nombre del archivo
@@ -116,6 +104,8 @@ if (mStrCondicion == 'F') {
         options.setDelimiter("|");
         options.setResource(mBlob);
     }); 
+
+    mRsPle5_3.close();
 
     // ===============================================================
     // Definición de file zip
