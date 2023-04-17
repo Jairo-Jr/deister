@@ -5,9 +5,12 @@
 // ===============================================================
 // Tipo de reporte y año/mes del periodo informado
 // =============================================================== 
-var mStrCondicion   = Ax.context.variable.TIPO;
-var mIntEjercicio   = Ax.context.variable.YEAR;
-var mIntPeriodo     = Ax.context.variable.MONTH;
+var mStrCondicion   = 'I';
+var mIntEjercicio   = 2023;
+var mIntPeriodo     = 2;
+// var mStrCondicion   = Ax.context.variable.TIPO;
+// var mIntEjercicio   = Ax.context.variable.YEAR;
+// var mIntPeriodo     = Ax.context.variable.MONTH;
 
 // ===============================================================
 // Construcción de la primera y ultima fecha del mes, 
@@ -42,9 +45,9 @@ var mDateTimeFinPeriodoAct = new Ax.util.Date(mYearToday, mMonthToday + 1, 0, 23
 var mRsPle5_3 = Ax.db.executeQuery(` 
     <select>
         <columns>
-            CAST('${mStrCodPeriodo}' AS VARCHAR(8)) <alias name='campo1'/>,
-
-            CAST(ccuentas.codigo AS VARCHAR(24)) <alias name='campo2'/>,
+            CAST(TO_CHAR(ccuentas.date_created, '%Y%m%d') AS VARCHAR(8)) <alias name='campo1'/>,
+            ccuentas.codigo,
+            SUBSTR(ccuentas.codigo, 1, CHARINDEX('.', ccuentas.codigo)-1) || SUBSTR(ccuentas.codigo, CHARINDEX('.', ccuentas.codigo)+1) <alias name='campo2'/>,
 
             CAST(ccuentas.nombre AS VARCHAR(100)) <alias name='campo3'/>,
 
@@ -68,11 +71,14 @@ var mRsPle5_3 = Ax.db.executeQuery(`
         </from>
         <where>
             1=1
-            AND ccuentas.date_created BETWEEN ? AND ?
+            AND ccuentas.codigo IS NOT NULL
+            AND ccuentas.date_created &lt;= ?
+            <!-- AND ccuentas.date_created BETWEEN ? AND ? -->
         </where>
         <order>ccuentas.date_created DESC</order>
     </select>
-`, mDateTimeIniPeriodoAct, mDateTimeFinPeriodoAct, mDateTimeIniPeriodoAct, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf); 
+`, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf); 
+// `, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mDateTimeIniPeriodoInf); 
 
 // ===============================================================
 // Variables del nombre del archivo
@@ -88,7 +94,9 @@ var mIntMonedaM         = 1;
 // Estructura de nombre del archivo txt de salida: 
 // LERRRRRRRRRRRAAAAMM0005030000OIM1.TXT
 // ===============================================================
-var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntIndOperacionO + mIntContLibroI + mIntMonedaM + '1.txt'; 
+
+// LE                  RRRRRRRRRRR    AAAA         MM       0005030000           O                  I              M          1.txt
+var mStrNameFile = 'LE' + mStrRuc + mStrYear + mStrMonth + '0005030000' + mIntIndOperacionO + mIntContLibroI + mIntMonedaM + '1.txt'; 
 
 // ===============================================================
 // Si la condición del reporte es Fichero (F)
