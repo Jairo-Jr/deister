@@ -5,19 +5,25 @@
 // ===============================================================
 // Tipo de reporte y año/mes del periodo informado
 // =============================================================== 
-var mStrCondicion   = 'I';
-var mIntEjercicio   = 2023;
-var mIntPeriodo     = 4;
+var mStrCondicion   = 'F';
+var mIntYear   = 2022;
+var mIntMonth     = 4;
 // var mStrCondicion   = Ax.context.variable.TIPO;
-// var mIntEjercicio   = Ax.context.variable.YEAR;
-// var mIntPeriodo     = Ax.context.variable.MONTH;
+// var mIntYear   = Ax.context.variable.YEAR;
+// var mIntMonth     = Ax.context.variable.MONTH;
 
 // ===============================================================
 // Construcción de la primera y ultima fecha del mes, 
 // correspondiente al periodo informado
 // ===============================================================
-var mDateTimeIniPeriodoInf = new Ax.util.Date(mIntEjercicio, mIntPeriodo, 1);
-var mDateTimeFinPeriodoInf = new Ax.util.Date(mIntEjercicio, mIntPeriodo + 1, 0);
+var mDateTimeIniPeriodoInf = new Ax.util.Date(mIntYear, mIntMonth, 1);
+var mDateTimeFinPeriodoInf = new Ax.util.Date(mIntYear, mIntMonth + 1, 0);
+
+// ===============================================================
+// Concatenación del identificador del periodo para el 
+// reporte de SUNAT
+// ===============================================================
+var mStrCodPeriodo = mIntYear.toString() + (mIntMonth < 10 ? '0'+mIntMonth : mIntMonth) + '00';
 
 // ===============================================================
 // TABLA TEMPORAL PARA CARTERA DE EFECTOS
@@ -50,21 +56,72 @@ var numerroer = 0;
 var mRsPle5_3 = Ax.db.executeQuery(` 
     <select>
         <columns>
-            capuntes.apteid,
-            csaldos.cuenta,
-            csaldos.proyec,
-            csaldos.seccio,
-            csaldos.moneda,
-            ctax_move_head.taxh_cifter,
-            ctax_move_head.taxh_auxchr4,
-            ctax_move_head.taxh_refter,
-            ctax_move_head.taxh_refter,
-            capuntes.fecha,
-            tmp_cefectos.fecven,
-            ctax_move_head.taxh_fecdoc,
-            capuntes.concep,
-            capuntes.debe,
-            capuntes.haber,
+            CAST('${mStrCodPeriodo}' AS VARCHAR(8))                 <alias name='campo1' />,
+            CAST('CUO'||capuntes.apteid AS VARCHAR(40))             <alias name='campo2' />,
+            CAST('MCUO${mStrCodPeriodo}' AS VARCHAR(10))            <alias name='campo3' />,
+
+            CASE WHEN CHARINDEX('.', csaldos.cuenta) &gt; 0
+                 THEN SUBSTR(csaldos.cuenta, 1, CHARINDEX('.', csaldos.cuenta)-1) || SUBSTR(csaldos.cuenta, CHARINDEX('.', csaldos.cuenta)+1)
+                ELSE csaldos.cuenta
+            END                                                 <alias name='campo4'/>,
+                
+            csaldos.proyec                                      <alias name='campo5'/>,
+            csaldos.seccio                                      <alias name='campo6'/>,
+            csaldos.moneda                                      <alias name='campo7'/>,
+
+            CASE WHEN NVL(ctax_move_head.taxh_cifter, '0') = '0' THEN ''
+                ELSE '6'
+            END <alias name='campo8'/>,
+                
+            ctax_move_head.taxh_cifter <alias name='campo9'/>,
+
+            <!-- Test -->
+            NVL(ctax_move_head.taxh_auxchr4, '00')      <alias name='campo10'/>,
+
+            <!-- CAST(ctax_move_head.taxh_auxchr4 AS VARCHAR(2)) <alias name='campo10'/>, -->
+
+            SUBSTR(ctax_move_head.taxh_refter, 1, CHARINDEX('-', ctax_move_head.taxh_refter)-1)     <alias name='campo11' />,
+
+            <!-- Test -->
+            CASE WHEN NVL(ctax_move_head.taxh_refter, '0') = '0'  THEN 'NC00123'
+                ELSE SUBSTR(ctax_move_head.taxh_refter, CHARINDEX('-', ctax_move_head.taxh_refter)+1)
+            END <alias name='campo12' />,
+            <!-- CAST(
+                SUBSTR(ctax_move_head.taxh_refter, CHARINDEX('-', ctax_move_head.taxh_refter)+1)
+                AS VARCHAR(20)
+            )                                                       <alias name='campo12' />, -->
+            
+
+            TO_CHAR(capuntes.fecha, '%d/%m/%Y')        <alias name='campo13' />,
+
+            TO_CHAR(tmp_cefectos.fecven, '%d/%m/%Y')        <alias name='campo14' />,
+
+            <!-- Temporal -->
+            CASE WHEN NVL(ctax_move_head.taxh_fecdoc, 0) = 0 THEN '28/02/2022'
+                ELSE TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')
+            END <alias name='campo15' />,
+            <!-- CAST(TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y') AS VARCHAR(10) )        <alias name='campo15' />, -->
+
+            <!-- Temporal -->
+            CASE WHEN NVL(capuntes.concep, '0') = '0' THEN ('Glosa para autocompletar las faltantes')
+                WHEN CHARINDEX('|°', capuntes.concep) &gt; 0 THEN REPLACE(capuntes.concep, '|°', '1°')
+                WHEN CHARINDEX('|', capuntes.concep) &gt; 0 THEN REPLACE(capuntes.concep, '|', '')
+                ELSE (capuntes.concep)
+            END <alias name='campo16' />,
+
+            <!-- CAST(capuntes.concep AS VARCHAR(200))                   <alias name='campo16' />, -->
+
+            ''                                                      <alias name='campo17' />,
+
+            NVL(capuntes.debe, 0)                               <alias name='campo18' />,
+            <!-- CAST(ROUND(capuntes.debe, 2) AS VARCHAR(15))            <alias name='campo18' />, -->
+
+            NVL(capuntes.haber, 0) <alias name='campo19' />,
+            <!-- CAST(ROUND(capuntes.haber, 2) AS VARCHAR(15))           <alias name='campo19' />, -->
+
+            ''                                                      <alias name='campo20' />,
+            '1'                                                      <alias name='campo21' />,
+            
             <whitespace/>
         </columns>
         <from table='csaldos'>
@@ -95,7 +152,7 @@ var mRsPle5_3 = Ax.db.executeQuery(`
             AND csaldos.period = ?
         </where> 
     </select>
-    `, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mIntEjercicio, mIntPeriodo).toMemory();
+    `, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mIntYear, mIntMonth).toMemory();
 
 var mArrayCodCuentas = [];
 
@@ -111,8 +168,8 @@ var mArrayCodCuentas = [];
 // Variables del nombre del archivo
 // ===============================================================
 var mStrRuc             = '20100121809';
-var mStrYear            = mIntEjercicio;
-var mStrMonth           = (mIntPeriodo < 10 ? '0'+mIntPeriodo : mIntPeriodo);
+var mStrYear            = mIntYear;
+var mStrMonth           = (mIntMonth < 10 ? '0'+mIntMonth : mIntMonth);
 var mIntIndOperacionO   = 1;
 var mIntContLibroI      = 1;
 var mIntMonedaM         = 1; 
