@@ -5,9 +5,9 @@
 // ===============================================================
 // Tipo de reporte y año/mes del periodo informado
 // =============================================================== 
-var mStrCondicion = 'I';
-var mIntYear   = 2023;
-var mIntMonth     = 4;
+var mStrCondicion   = 'F';
+var mIntYear        = 2023;
+var mIntMonth       = 3;
 // var mStrCondicion   = Ax.context.variable.TIPO;
 // var mIntYear   = Ax.context.variable.YEAR;
 // var mIntMonth     = Ax.context.variable.MONTH;
@@ -26,13 +26,13 @@ var mDateTimeFinPeriodoInf = new Ax.util.Date(mIntYear, mIntMonth + 1, 0);
 var mStrCodPeriodo = mIntYear.toString() + (mIntMonth < 10 ? '0'+mIntMonth : mIntMonth) + '00';
 
 // ===============================================================
-// TABLA TEMPORAL PARA CARTERA DE EFECTOS
+// TABLA TEMPORAL PARA APUNTES CONTABLES
 // ===============================================================
-let mTmpTableCefectos = Ax.db.getTempTableName(`@tmp_tbl_cefectos`);
-Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCefectos}`);
+let mTmpTableCapuntes = Ax.db.getTempTableName(`@tmp_tbl_capuntes`);
+Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCapuntes}`);
 
 Ax.db.execute(`
-    <select intotemp='${mTmpTableCefectos}'>
+    <select intotemp='${mTmpTableCapuntes}'>
         <columns>
             capuntes.apteid, 
             MAX(cefectos.fecven) fecven 
@@ -49,16 +49,21 @@ Ax.db.execute(`
     </select>
 `, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf);
 
-var numerroer = 0;
+
 // ===============================================================
-// Generación del ResultSet para el PLE
+// Generación del ResultSet para el PLE 6
 // ===============================================================
-var mRsPle5_3 = Ax.db.executeQuery(` 
+var mRsPle6 = Ax.db.executeQuery(` 
     <select>
         <columns>
-            CAST('${mStrCodPeriodo}' AS VARCHAR(8))                 <alias name='campo1' />,
-            CAST('CUO'||capuntes.apteid AS VARCHAR(40))             <alias name='campo2' />,
-            CAST('MCUO${mStrCodPeriodo}' AS VARCHAR(10))            <alias name='campo3' />,
+            '${mStrCodPeriodo}'                     <alias name='campo1' />,
+
+            CASE WHEN NVL(capuntes.apteid, 0) = 0 
+                 THEN 'CUO'||SUBSTR(csaldos.cuenta, 1, CHARINDEX('.', csaldos.cuenta)-1)||csaldos.seccio||csaldos.proyec
+                 ELSE 'CUO'||capuntes.apteid
+            END                  <alias name='campo2' />,
+
+            CAST('MCUO${mStrCodPeriodo}' AS VARCHAR(10))                 <alias name='campo3' />,
 
             CASE WHEN CHARINDEX('.', csaldos.cuenta) &gt; 0
                  THEN SUBSTR(csaldos.cuenta, 1, CHARINDEX('.', csaldos.cuenta)-1) || SUBSTR(csaldos.cuenta, CHARINDEX('.', csaldos.cuenta)+1)
@@ -76,9 +81,7 @@ var mRsPle5_3 = Ax.db.executeQuery(`
             ctax_move_head.taxh_cifter <alias name='campo9'/>,
 
             <!-- Test -->
-            NVL(ctax_move_head.taxh_auxchr4, '00')      <alias name='campo10'/>,
-
-            <!-- CAST(ctax_move_head.taxh_auxchr4 AS VARCHAR(2)) <alias name='campo10'/>, -->
+            NVL(ctax_move_head.taxh_auxchr4, '00')      <alias name='campo10'/>, 
 
             SUBSTR(ctax_move_head.taxh_refter, 1, CHARINDEX('-', ctax_move_head.taxh_refter)-1)     <alias name='campo11' />,
 
@@ -150,7 +153,7 @@ var mRsPle5_3 = Ax.db.executeQuery(`
                 <on>csaldos.sistem  = capuntes.sistem</on>
                 <on>capuntes.fecha   BETWEEN ? AND ?</on>
 
-                <join table='@tmp_tbl_cefectos' alias='tmp_cefectos'>
+                <join table='${mTmpTableCapuntes}' alias='tmp_cefectos'>
                     <on> capuntes.apteid = tmp_cefectos.apteid</on>
                 </join>
 
@@ -165,11 +168,14 @@ var mRsPle5_3 = Ax.db.executeQuery(`
             AND csaldos.period = ?
         </where> 
     </select>
-    `, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mIntYear, mIntMonth).toMemory();
+    `, mDateTimeIniPeriodoInf, mDateTimeFinPeriodoInf, mIntYear, mIntMonth).toMemory(); 
 
+/**
+ * TODO: Validar la existencia de capuntes.apteid y los campos que se requieran
+ */
 var mArrayCodCuentas = [];
 
-// mRsPle5_3.forEach(item => {
+// mRsPle6.forEach(item => {
 //     if(item.campo2.length < 3){
 //         mArrayCodCuentas.push(item.campo2);
 //     }
@@ -211,13 +217,13 @@ if (mStrCondicion == 'F') {
     // ===============================================================
     // Definición del archivo txt
     // ===============================================================
-    new Ax.rs.Writer(mRsPle5_3).csv(options => {
+    new Ax.rs.Writer(mRsPle6).csv(options => {
         options.setHeader(false);
         options.setDelimiter("|");
         options.setResource(mBlob);
     }); 
 
-    mRsPle5_3.close();
+    mRsPle6.close();
 
     // ===============================================================
     // Definición de file zip
@@ -249,5 +255,5 @@ if (mStrCondicion == 'F') {
     // Si la condición del reporte es Informe (I)
     // ===============================================================
 } else if (mStrCondicion == 'I') {
-    return mRsPle5_3;
+    return mRsPle6;
 }
