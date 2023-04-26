@@ -5,8 +5,8 @@
 // ===============================================================
 // Tipo de reporte y año/mes del periodo informado
 // =============================================================== 
-var mStrCondicion   = 'F';
-var mIntYear   = 2022;
+var mStrCondicion = 'I';
+var mIntYear   = 2023;
 var mIntMonth     = 4;
 // var mStrCondicion   = Ax.context.variable.TIPO;
 // var mIntYear   = Ax.context.variable.YEAR;
@@ -84,8 +84,17 @@ var mRsPle5_3 = Ax.db.executeQuery(`
 
             <!-- Test -->
             CASE WHEN NVL(ctax_move_head.taxh_refter, '0') = '0'  THEN 'NC00123'
+                 WHEN LEN(SUBSTR(ctax_move_head.taxh_refter, CHARINDEX('-', ctax_move_head.taxh_refter)+1)) &gt; 8
+                    THEN ( 
+                        SUBSTR(
+                            SUBSTR(docser, CHARINDEX('-', docser)+1), 
+                            LEN(SUBSTR(docser, CHARINDEX('-', docser)+1))-7
+                        )
+                     )
+                    
                 ELSE SUBSTR(ctax_move_head.taxh_refter, CHARINDEX('-', ctax_move_head.taxh_refter)+1)
             END <alias name='campo12' />,
+
             <!-- CAST(
                 SUBSTR(ctax_move_head.taxh_refter, CHARINDEX('-', ctax_move_head.taxh_refter)+1)
                 AS VARCHAR(20)
@@ -103,11 +112,15 @@ var mRsPle5_3 = Ax.db.executeQuery(`
             <!-- CAST(TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y') AS VARCHAR(10) )        <alias name='campo15' />, -->
 
             <!-- Temporal -->
-            CASE WHEN NVL(capuntes.concep, '0') = '0' THEN ('Glosa para autocompletar las faltantes')
-                WHEN CHARINDEX('|°', capuntes.concep) &gt; 0 THEN REPLACE(capuntes.concep, '|°', '1°')
-                WHEN CHARINDEX('|', capuntes.concep) &gt; 0 THEN REPLACE(capuntes.concep, '|', '')
-                ELSE (capuntes.concep)
-            END <alias name='campo16' />,
+            CAST(
+                CASE WHEN NVL(capuntes.concep, '0') = '0' THEN ('Glosa para autocompletar las faltantes')
+                    WHEN CHARINDEX('|°', capuntes.concep) &gt; 0 THEN REPLACE(capuntes.concep, '|°', '1°')
+                    WHEN CHARINDEX('|', capuntes.concep) &gt; 0 THEN REPLACE(capuntes.concep, '|', '')
+                    WHEN CHARINDEX(CHR(10), capuntes.concep) &gt; 0 THEN REPLACE(capuntes.concep, CHR(10), '')
+                    ELSE capuntes.concep
+                END 
+                AS VARCHAR(200)
+            )                                                               <alias name='campo16' />,
 
             <!-- CAST(capuntes.concep AS VARCHAR(200))                   <alias name='campo16' />, -->
 
