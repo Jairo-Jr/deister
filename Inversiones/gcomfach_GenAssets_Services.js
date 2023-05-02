@@ -53,7 +53,7 @@ var pIntCabid = 14602;
  * 
  **/
 
-function gen_structure_header_lines(pIntCabid) { 
+function gcomfach_GenAssets_Services (pIntCabid) { 
     
     /*
     * DECLARACION DE FUNCIONES LOCALES
@@ -274,7 +274,8 @@ function gen_structure_header_lines(pIntCabid) {
             /**
              * Genera elementos y componentes de activos fijos.
             **/
-            // Ax.db.call("gdoc_GenAssets", "gcomfach", "gcomfacl", pIntCabid, mArrAssetSrc);
+            
+            Ax.db.call("gdoc_GenAssets_Services", pIntCabid, mArrAssetSrc);
             generateElemCompActFijo(pIntCabid, mArrAssetSrc);
 
         }

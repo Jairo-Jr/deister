@@ -5,7 +5,59 @@
  *      pIntCabid       Id de la cabecera
  *      mArrAssetSrc    Arreglo de objeto cabecera+linea
  */
-function generateElemCompActFijo(pIntCabid, mArrAssetSrc) {
+
+
+/**
+ *  Copyright (c) 1988-PRESENT deister software, All Rights Reserved.
+ *
+ *  All information contained herein is, and remains the property of deister software.
+ *  The intellectual and technical concepts contained herein are proprietary to
+ *  deister software and may be covered by trade secret or copyright law.
+ *  Dissemination of this information or reproduction of this material is strictly
+ *  forbidden unless prior written permission is obtained from deister software.
+ *  Access to the source code contained herein is hereby forbidden to anyone except
+ *  current deister software employees, managers or contractors who have executed
+ *  Confidentiality and Non-disclosure' agreements explicitly covering such access.
+ *  The notice above does not evidence any actual or intended publication
+ *  for disclosure of this source code, which includes information that is confidential
+ *  and/or proprietary, and is a trade secret, of deister software
+ *
+ *  ANY REPRODUCTION, MODIFICATION, DISTRIBUTION, PUBLIC  PERFORMANCE,
+ *  OR PUBLIC DISPLAY OF OR THROUGH USE  OF THIS  SOURCE CODE  WITHOUT THE
+ *  EXPRESS WRITTEN CONSENT OF COMPANY IS STRICTLY PROHIBITED, AND IN VIOLATION
+ *  OF APPLICABLE LAWS AND INTERNATIONAL TREATIES.THE RECEIPT OR POSSESSION OF
+ *  THIS SOURCE CODE AND/OR RELATED INFORMATION DOES NOT CONVEY OR IMPLY ANY
+ *  RIGHTS TO REPRODUCE, DISCLOSE OR DISTRIBUTE ITS CONTENTS, OR TO MANUFACTURE,
+ *  USE, OR SELL ANYTHING THAT IT MAY DESCRIBE, IN WHOLE OR IN PART. 
+ *
+ * -----------------------------------------------------------------------------
+ * 
+ * 
+ *  JS:  iterate_and_generate_comp
+ * 
+ *  Version     : 1.0
+ *  Date        : 28-04-2023
+ *  Description : Construcción de arreglo de objetos con la estructura 
+ *                de cabecera y lineas de factura de compras FMAN/FSER
+ * 
+ * 
+ *  LOCAL FUNCTIONS:
+ *  ==================
+ *          __getDataHeader
+ *          __getDataLines
+ * 
+ * 
+ *  CALLED FROM:
+ *  ==================
+ * 
+ * 
+ *  PARAMETERS:
+ *  ==================
+ *          pIntCabids
+ * 
+ * 
+ **/
+function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
     var pStrTabname = 'gcomfach';
     var pStrTabline = 'gcomfacl';
     var mIntPorcen = 0;

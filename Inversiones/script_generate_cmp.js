@@ -7,7 +7,7 @@
  *      pIntCabid       Id de la cabecera
  *      mArrAssetSrc    Arreglo de objeto cabecera+linea
  */
-function generateElemCompActFijo(pIntCabid, mArrAssetSrc) {
+function iterate_and_generate_comp (pIntCabid, mArrAssetSrc) {
     var pStrTabname = 'gcomfach';
     var pStrTabline = 'gcomfacl';
     var mIntPorcen = 0;
