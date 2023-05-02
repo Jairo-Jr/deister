@@ -257,3 +257,31 @@ if (mStrCondicion == 'F') {
 } else if (mStrCondicion == 'I') {
     return mRsPle6;
 }
+
+
+/*
+
+-- SELECT REPLACE(concep, CHR(10), ''), concep, * FROM capuntes WHERE apteid = 3065184;
+-- CHARINDEX(CHR(10), concep)
+
+-- SELECT SUBSTR(docser, CHARINDEX('-', docser)+1), docser, * FROM capuntes WHERE apteid = 461457;
+
+-- SELECT 
+--     SUBSTR(
+--         SUBSTR(docser, CHARINDEX('-', docser)+1), 
+--         LEN(SUBSTR(docser, CHARINDEX('-', docser)+1))-7
+--     ), 
+--     LEN(docser), 
+--     SUBSTR(docser, CHARINDEX('-', docser)+1), * 
+-- FROM capuntes WHERE apteid = 461457;
+
+-- SELECT RIGHT('000123456789', 8), SUBSTR(docser, CHARINDEX('-', docser)+1) AS nomb, * FROM capuntes WHERE apteid = 461457;
+
+SELECT RIGHT(docser, 15), LEN(docser), SUBSTR(docser, CHARINDEX('-', docser)+1) AS nomb, * FROM capuntes WHERE apteid = 8292;
+
+SELECT SUBSTR('1234567890', -5, LEN('1234567890')), SUBSTR(docser, CHARINDEX('-', docser)+1), * FROM capuntes WHERE apteid = 461457;
+
+-- 23456789
+-- capuntes
+
+*/
