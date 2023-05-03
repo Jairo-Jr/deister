@@ -26,8 +26,8 @@
  * 
  *  JS:  gdoc_GenAssets_Services
  * 
- *  Version     : 1.1
- *  Date        : 02-05-2023
+ *  Version     : 1.2
+ *  Date        : 03-05-2023
  *  Description : Construcción de objeto en base a datos de cabecera, linea 
  *                y registro de componentes asignados a la linea.
  * 
@@ -52,6 +52,7 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
     // ===============================================================
     // DECLARACIÓN DE FUNCIONES LOCALES
     // ===============================================================
+
     /**
      * LOCAL FUNCTION: __getAreaDestino
      * 
@@ -118,12 +119,22 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
     // DECLARACIÓN DE VARIABLES GLOBALES
     // =============================================================== 
     var mObjDataComp;
-    var mStrTabline      = 'gcomfacl';
-    var mIntPorcen       = 0;
-    var mArrDataCompAsig = '';
-    var mStrAreaDestino  = '';
-    var resCall          = 0;
-    var mObjAddonsData   = {
+
+    var mIntId_dist_cinmcomp    = 0;
+    var mStrTipcom              = '';
+    var mIntSeqno               = 0;
+    var mIntPorcen              = 0;
+
+    var mBoolCasoAgrupado       = false;
+    var mIntNumUnidades         = 0;
+    var mmBcValinv              = 0;
+    var mIntCantComp            = 0;
+    var mStrTabline             = 'gcomfacl';
+
+    var mArrDataCompAsig        = '';
+    var mStrAreaDestino         = '';
+    var resCall                 = 0;
+    var mObjAddonsData          = {
         accion       : 'BUT_CINMCOMP/ACTION_CINMCOMP',
         tipo_proceso : 'SER',
         cparpreLinid : ''
@@ -134,54 +145,53 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
     // de componentes.
     // ===============================================================
     var mObjCinmdata = {
-        empcode : null,                                         // Company
-        codinm  : null,                                         // Property
-        serele  : null,                                         // Element/series code
-        nomele  : null,                                         // Element/component name.
+        empcode : null,     // Company
+        codinm  : null,     // Property
+        serele  : null,     // Element/series code
+        nomele  : null,     // Element/component name.
                                                                                                  
-        codcta  : null,                                         // Accounting group
-        proyec  : null,                                         // Project
-        seccio  : null,                                         // Section
-        ctaexp  : null,                                         // Operating account
-        centro  : null,                                         // Center  
+        codcta  : null,     // Accounting group
+        proyec  : null,     // Project
+        seccio  : null,     // Section
+        ctaexp  : null,     // Operating account
+        centro  : null,     // Center  
 
-        codgru  : null,                                         // Fiscal group
-        codfis  : null,                                         // Fiscal Code
+        codgru  : null,     // Fiscal group
+        codfis  : null,     // Fiscal Code
 
-        tipcom  : null,                                         // Tipo de componente
+        tipcom  : null,     // Tipo de componente
         
-        sisamo  : null,                                         // Amortization system
-        codpre  : null,                                         // Budget
-        codpar  : null,                                         // Partida
+        sisamo  : null,     // Amortization system
+        codpre  : null,     // Budget
+        codpar  : null,     // Partida
 
-        fecha   : null,                                         // Registration date
-        fecdoc  : null,                                         // Delivery note or invoice date
-        fecini  : null,                                         // Amortization start date
-        jusser  : null,                                         // Voucher
-        docser  : null,                                         // Document
-        refter  : null,                                         // Reference
-        tercer  : null,                                         // Third company
-        unidad  : null,                                         // Unit
-        valinv  : null,                                         // Inventory value
+        fecha   : null,     // Registration date
+        fecdoc  : null,     // Delivery note or invoice date
+        fecini  : null,     // Amortization start date
+        jusser  : null,     // Voucher
+        docser  : null,     // Document
+        refter  : null,     // Reference
+        tercer  : null,     // Third company
+        unidad  : null,     // Unit
+        valinv  : null,     // Inventory value
 
-        tabname : null,
-        docid   : null,
-        divisa  : null,                                         // Currency invoice
-        cambio  : null,                                         // Money exchange
-        impfac  : null                                          // Invoice amount
+        tabname : null,     // line table name
+        docid   : null,     // document identifier
+        divisa  : null,     // Currency invoice
+        cambio  : null,     // Money exchange
+        impfac  : null      // Invoice amount
     }
 
     // ===============================================================
     // Se obtiene el area de destino
     // ===============================================================
-    mStrAreaDestino = __getAreaDestino(pIntCabid); 
+    mStrAreaDestino = __getAreaDestino(pIntCabid);
 
-    // Procesar rs con datos de origen necesarios para generar los activos fijos.
     // ===============================================================
     // Recorrido del arreglo que contiene información de cabecera 
     // y lineas de la factura de compras.
     // ===============================================================
-    pArrAssetSrc.forEach(mObjAssetSrc => { 
+    pArrAssetSrc.forEach(mObjAssetSrc => {
         
         // ===============================================================
         // Se obtiene el registro de los componentes asignados a la linea
@@ -201,11 +211,64 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
             </select>
         `, mObjAssetSrc.docid).toJSONArray(); 
 
+        mIntCantComp = mArrDataCompAsig.length;
+
+        /**
+         * LÓGICA PARA MAESTRO DE ARTÍCULOS AGRUPADOS: 
+         * Si es solo un registro por 100%
+         * - Si es agrupado (agrele = 1) crear un componente por el total de unidades
+         * - Si no es agrupado (agrele = 0 / null) crear el maximo de componentes posible por una unidad
+         */
+        if (mArrDataCompAsig.length == 1 && mArrDataCompAsig[0].porcen == 100) {
+            
+            // ===============================================================
+            // Identificado de caso especial para agrupados
+            // ===============================================================
+            mBoolCasoAgrupado = true;
+
+            mIntId_dist_cinmcomp    = mArrDataCompAsig[0].id_dist_cinmcomp;
+            mStrTipcom              = mArrDataCompAsig[0].tipcom;
+            mIntSeqno               = mArrDataCompAsig[0].seqno;
+            mIntPorcen              = mArrDataCompAsig[0].porcen;
+
+            // ===============================================================
+            // Si se encuentra agrupado
+            // ===============================================================
+            if (mObjAssetSrc.gartfami_agrele == 1) {
+                
+                mIntCantComp = 1;
+                mIntNumUnidades = mObjAssetSrc.canmov;
+                mmBcValinv = mObjAssetSrc.impfac;
+            } else {
+                
+                // ===============================================================
+                // Si no se encuentra agrupado
+                // ===============================================================
+                mIntCantComp = mObjAssetSrc.canmov;
+                mIntNumUnidades = 1;
+                mmBcValinv = mObjAssetSrc.impfac / mObjAssetSrc.canmov;
+            }
+            
+        }
+
         // ===============================================================
-        // Recorrido del registro de los componentes asignados a la linea
+        // Iteración del número de componentes a generarse
         // ===============================================================
-        mArrDataCompAsig.forEach(mStrTipComp => {
-            mIntPorcen = mStrTipComp.porcen; 
+        for (let i=0; i < mIntCantComp; i++) {
+
+            // ===============================================================
+            // Si no es del caso especial de agrupados
+            // ===============================================================
+            if (!mBoolCasoAgrupado) {
+
+                mIntId_dist_cinmcomp    = mArrDataCompAsig[i].id_dist_cinmcomp;
+                mStrTipcom              = mArrDataCompAsig[i].tipcom;
+                mIntSeqno               = mArrDataCompAsig[i].seqno;
+                mIntPorcen              = mArrDataCompAsig[i].porcen;
+
+                mIntNumUnidades         = mIntPorcen * mObjAssetSrc.canmov / 100;
+                mmBcValinv              = mIntPorcen * mObjAssetSrc.impfac / 100;
+            }
 
             // ===============================================================
             // Obtención de información del componente según su identificador
@@ -221,47 +284,47 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
                         seqno = ?
                     </where>
                 </select>
-            `, mStrTipComp.seqno).toOne(); 
-            
+            `, mIntSeqno).toOne();
+
             // ===============================================================
             // Asignacion de información al objeto
             // ===============================================================
-            mObjCinmdata.empcode = mObjAssetSrc.empcode;        // empcode
-            mObjCinmdata.codinm  = mObjDataComp.codinm          // codinm
-            mObjCinmdata.serele  = mObjDataComp.codele;         // codele
-            mObjCinmdata.nomele  = mObjAssetSrc.desvar;         // nomele
+            mObjCinmdata.empcode = mObjAssetSrc.empcode;                                // empcode
+            mObjCinmdata.codinm  = mObjDataComp.codinm                                  // codinm
+            mObjCinmdata.serele  = mObjDataComp.codele;                                 // codele
+            mObjCinmdata.nomele  = mObjAssetSrc.desvar;                                 // nomele
     
-            mObjCinmdata.codcta  = mObjAssetSrc.gartfami_codcta;// codcta
-            mObjCinmdata.proyec  = mObjAssetSrc.gdeparta_proyec;// proyec *
-            mObjCinmdata.seccio  = mStrAreaDestino || mObjAssetSrc.gdeparta_seccio;// seccio
-            mObjCinmdata.ctaexp  = mObjAssetSrc.gdeparta_ctaexp;// ctaexp *
-            mObjCinmdata.centro  = mObjAssetSrc.gdeparta_Centro;// centro *
+            mObjCinmdata.codcta  = mObjAssetSrc.gartfami_codcta;                        // codcta
+            mObjCinmdata.proyec  = mObjAssetSrc.gdeparta_proyec;                        // proyec
+            mObjCinmdata.seccio  = mStrAreaDestino || mObjAssetSrc.gdeparta_seccio;     // seccio
+            mObjCinmdata.ctaexp  = mObjAssetSrc.gdeparta_ctaexp;                        // ctaexp
+            mObjCinmdata.centro  = mObjAssetSrc.gdeparta_Centro;                        // centro
     
-            mObjCinmdata.codgru  = mObjAssetSrc.gartfami_codgru;// codgru
-            mObjCinmdata.codfis  = mObjAssetSrc.gartfami_codfis;// codfis
+            mObjCinmdata.codgru  = mObjAssetSrc.gartfami_codgru;                        // codgru
+            mObjCinmdata.codfis  = mObjAssetSrc.gartfami_codfis;                        // codfis
 
-            mObjCinmdata.tipcom = mStrTipComp.tipcom;           // tipcom
+            mObjCinmdata.tipcom  = mStrTipcom;                                          // tipcom
                 
-            mObjCinmdata.sisamo  = mObjAssetSrc.gartfami_sisamo;// sisamo
-            mObjCinmdata.codpre  = mObjAssetSrc.codpre;         // codpre *
-            mObjCinmdata.codpar  = mObjAssetSrc.codpar;         // codpar *
+            mObjCinmdata.sisamo  = mObjAssetSrc.gartfami_sisamo;                        // sisamo
+            mObjCinmdata.codpre  = mObjAssetSrc.codpre;                                 // codpre
+            mObjCinmdata.codpar  = mObjAssetSrc.codpar;                                 // codpar
     
-            mObjCinmdata.fecha   = mObjAssetSrc.fecha;          // fecha
-            mObjCinmdata.fecdoc  = mObjAssetSrc.fecha;          // fecdoc
-            mObjCinmdata.fecini  = mObjAssetSrc.fecha;          // fecini * primer dia del sgt mes
-            mObjCinmdata.jusser  = mObjAssetSrc.docser;         // jusser
-            mObjCinmdata.docser  = mObjAssetSrc.docser;         // docser
-            mObjCinmdata.refter  = mObjAssetSrc.refter;         // refter
-            mObjCinmdata.tercer  = mObjAssetSrc.tercer;         // tercer
-            mObjCinmdata.unidad  = mIntPorcen * mObjAssetSrc.canfac / 100;                           // unidad *
-            mObjCinmdata.valinv  = mIntPorcen * mObjAssetSrc.impfac / 100;                           // valinv *
+            mObjCinmdata.fecha   = mObjAssetSrc.fecha;                                  // fecha
+            mObjCinmdata.fecdoc  = mObjAssetSrc.fecha;                                  // fecdoc
+            mObjCinmdata.fecini  = mObjAssetSrc.fecha;                                  // fecini
+            mObjCinmdata.jusser  = mObjAssetSrc.docser;                                 // jusser
+            mObjCinmdata.docser  = mObjAssetSrc.docser;                                 // docser
+            mObjCinmdata.refter  = mObjAssetSrc.refter;                                 // refter
+            mObjCinmdata.tercer  = mObjAssetSrc.tercer;                                 // tercer
+            mObjCinmdata.unidad  = mIntNumUnidades;                                     // unidad
+            mObjCinmdata.valinv  = mmBcValinv;                                          // valinv
+            mObjCinmdata.impfac  = mmBcValinv;                                          // impfac 
     
-            mObjCinmdata.tabname = mStrTabline;                 // tabname
-            mObjCinmdata.docid   = mObjAssetSrc.docid;          // docid
+            mObjCinmdata.tabname = mStrTabline;                                         // tabname
+            mObjCinmdata.docid   = mObjAssetSrc.docid;                                  // docid
 
-            mObjCinmdata.divisa   = mObjAssetSrc.divisa;        // divisa
-            mObjCinmdata.cambio   = mObjAssetSrc.cambio;        // cambio
-            mObjCinmdata.impfac   = mObjAssetSrc.impfac;        // impfac 
+            mObjCinmdata.divisa  = mObjAssetSrc.divisa;                                 // divisa
+            mObjCinmdata.cambio  = mObjAssetSrc.cambio;                                 // cambio
 
             // ===============================================================
             // Se llama a la funcion que genera el componente
@@ -295,11 +358,10 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
                         import : mIntPorcen * mObjAssetSrc.impfac / 100
                     },
                     {
-                        id_dist_cinmcomp : mStrTipComp.id_dist_cinmcomp
+                        id_dist_cinmcomp : mIntId_dist_cinmcomp
                     }
                 );
-
             }
-        });
+        }
     });
 }
