@@ -26,7 +26,7 @@
  * 
  *  JS:  gcomfach_GenAssets_Services
  * 
- *  Version     : 1.1
+ *  Version     : 1.2
  *  Date        : 02-05-2023
  *  Description : Script para construir un arreglo de objetos con información 
  *                de cabecera y lineas de factura de compras FMAN/FSER
