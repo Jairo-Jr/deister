@@ -1,12 +1,3 @@
-/*
- * FUNCIONES
- * 
- * PARAM
- *      pIntCabid       Id de la cabecera
- *      mArrAssetSrc    Arreglo de objeto cabecera+linea
- */
-
-
 /**
  *  Copyright (c) 1988-PRESENT deister software, All Rights Reserved.
  *
@@ -33,35 +24,34 @@
  * -----------------------------------------------------------------------------
  * 
  * 
- *  JS:  iterate_and_generate_comp
+ *  JS:  gdoc_GenAssets_Services
  * 
- *  Version     : 1.0
- *  Date        : 28-04-2023
- *  Description : Construcción de arreglo de objetos con la estructura 
- *                de cabecera y lineas de factura de compras FMAN/FSER
+ *  Version     : 1.1
+ *  Date        : 02-05-2023
+ *  Description : Construcción de objeto en base a datos de cabecera, linea 
+ *                y registro de componentes asignados a la linea.
  * 
  * 
  *  LOCAL FUNCTIONS:
  *  ==================
- *          __getDataHeader
- *          __getDataLines
+ *          __getAreaDestino
  * 
  * 
  *  CALLED FROM:
  *  ==================
- * 
+ *          JS Function:    gcomfach_GenAssets_Services
  * 
  *  PARAMETERS:
  *  ==================
- *          pIntCabids
- * 
+ *          @param      {integer}       pIntCabid         Identificador de la factura de compras
+ *          @param      {Array}         pArrAssetSrc      Arreglo de objetos que contiene información de factura de compras
  * 
  **/
-function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
-    var pStrTabname = 'gcomfach';
-    var pStrTabline = 'gcomfacl';
-    var mIntPorcen = 0;
+function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
 
+    // ===============================================================
+    // DECLARACIÓN DE FUNCIONES LOCALES
+    // ===============================================================
     /**
      * LOCAL FUNCTION: __getAreaDestino
      * 
@@ -71,7 +61,7 @@ function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
      */ 
     function __getAreaDestino(pIntCabid) {
         
-        var mStrDepartSol = Ax.db.executeGet (`
+        var _mStrDepartSol = Ax.db.executeGet (`
             <select>
                 <columns>
                     FIRST 1
@@ -115,24 +105,34 @@ function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
             </select>
         `, pIntCabid);
 
-        var mStrSeccion = Ax.db.executeGet(`
+        var _mStrSeccion = Ax.db.executeGet(`
             SELECT gdeparta.seccio
               FROM gdeparta
              WHERE gdeparta.depart = ?
-        `, mStrDepartSol);     
+        `, _mStrDepartSol);     
         
-        return mStrSeccion;
+        return _mStrSeccion;
     }
 
-    /*
-     * DEFINICION DE VARIABLES LOCALES
-     */
-    var mStrTabdatc     = pStrTabline + "_datc";
-    var mObjAddonsData  = {};
-    var mStrAreaDestino = '';
-    /**
-     * Estructura con la información requerida para generar los activos fijos.
-     **/
+    // ===============================================================
+    // DECLARACIÓN DE VARIABLES GLOBALES
+    // =============================================================== 
+    var mObjDataComp;
+    var mStrTabline      = 'gcomfacl';
+    var mIntPorcen       = 0;
+    var mArrDataCompAsig = '';
+    var mStrAreaDestino  = '';
+    var resCall          = 0;
+    var mObjAddonsData   = {
+        accion       : 'BUT_CINMCOMP/ACTION_CINMCOMP',
+        tipo_proceso : 'SER',
+        cparpreLinid : ''
+    };
+
+    // ===============================================================
+    // Estructura de objeto requerida para la generación 
+    // de componentes.
+    // ===============================================================
     var mObjCinmdata = {
         empcode : null,                                         // Company
         codinm  : null,                                         // Property
@@ -147,6 +147,8 @@ function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
 
         codgru  : null,                                         // Fiscal group
         codfis  : null,                                         // Fiscal Code
+
+        tipcom  : null,                                         // Tipo de componente
         
         sisamo  : null,                                         // Amortization system
         codpre  : null,                                         // Budget
@@ -169,31 +171,25 @@ function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
         impfac  : null                                          // Invoice amount
     }
 
-    // Objeto con datos adicionales de la cabecera
-    mObjAddonsData = Ax.db.executeQuery(`
-        SELECT  gcomfach.divisa,
-                gcomfach.cambio,
-                gcomfach.impfac
-          FROM  gcomfach
-         WHERE  gcomfach.cabid = ?
-    `, pIntCabid).toOne();
-
-    // console.log(mObjAddonsData);
-
-    /* AREA DESTINO - PENDIENTE */
-    mStrAreaDestino = __getAreaDestino(pIntCabid);
-    // console.log(mStrAreaDestino);
+    // ===============================================================
+    // Se obtiene el area de destino
+    // ===============================================================
+    mStrAreaDestino = __getAreaDestino(pIntCabid); 
 
     // Procesar rs con datos de origen necesarios para generar los activos fijos.
-    mArrAssetSrc.forEach(mObjAssetSrc => {
-        console.log('Objeto H-L', mObjAssetSrc);
-
-        /**
-         * Tipo del componente
-        */
-        var mArrTipComp =  Ax.db.executeQuery(`
+    // ===============================================================
+    // Recorrido del arreglo que contiene información de cabecera 
+    // y lineas de la factura de compras.
+    // ===============================================================
+    pArrAssetSrc.forEach(mObjAssetSrc => { 
+        
+        // ===============================================================
+        // Se obtiene el registro de los componentes asignados a la linea
+        // ===============================================================
+        mArrDataCompAsig =  Ax.db.executeQuery(`
             <select>
                 <columns>
+                    id_dist_cinmcomp,
                     tipcom, 
                     id_cinmcomp seqno, 
                     porcen
@@ -203,31 +199,33 @@ function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
                     linid = ?
                 </where>
             </select>
-        `, mObjAssetSrc.docid).toJSONArray();
-        // console.log('Tip. Componente', mArrTipComp);
+        `, mObjAssetSrc.docid).toJSONArray(); 
 
-        
-        
+        // ===============================================================
+        // Recorrido del registro de los componentes asignados a la linea
+        // ===============================================================
+        mArrDataCompAsig.forEach(mStrTipComp => {
+            mIntPorcen = mStrTipComp.porcen; 
 
-        mArrTipComp.forEach(mStrTipComp => {
-            mIntPorcen = mStrTipComp.porcen;
-
-            var mObjDataComp =  Ax.db.executeQuery(`
+            // ===============================================================
+            // Obtención de información del componente según su identificador
+            // ===============================================================
+            mObjDataComp =  Ax.db.executeQuery(`
                 <select first='1'>
                     <columns>
-                        codinm,codele
+                        codinm,
+                        codele
                     </columns>
                     <from table='cinmcomp'/>
                     <where>
                         seqno = ?
                     </where>
                 </select>
-            `, mStrTipComp.seqno).toOne();
-
-            // console.log(mObjDataComp);
-            mObjAddonsData.tipcom       = mStrTipComp.tipcom;
-            // console.log(mObjAddonsData);
+            `, mStrTipComp.seqno).toOne(); 
             
+            // ===============================================================
+            // Asignacion de información al objeto
+            // ===============================================================
             mObjCinmdata.empcode = mObjAssetSrc.empcode;        // empcode
             mObjCinmdata.codinm  = mObjDataComp.codinm          // codinm
             mObjCinmdata.serele  = mObjDataComp.codele;         // codele
@@ -241,6 +239,8 @@ function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
     
             mObjCinmdata.codgru  = mObjAssetSrc.gartfami_codgru;// codgru
             mObjCinmdata.codfis  = mObjAssetSrc.gartfami_codfis;// codfis
+
+            mObjCinmdata.tipcom = mStrTipComp.tipcom;           // tipcom
                 
             mObjCinmdata.sisamo  = mObjAssetSrc.gartfami_sisamo;// sisamo
             mObjCinmdata.codpre  = mObjAssetSrc.codpre;         // codpre *
@@ -256,14 +256,50 @@ function gdoc_GenAssets_Services (pIntCabid, mArrAssetSrc) {
             mObjCinmdata.unidad  = mIntPorcen * mObjAssetSrc.canfac / 100;                           // unidad *
             mObjCinmdata.valinv  = mIntPorcen * mObjAssetSrc.impfac / 100;                           // valinv *
     
-            mObjCinmdata.tabname = pStrTabline;                 // tabname
+            mObjCinmdata.tabname = mStrTabline;                 // tabname
             mObjCinmdata.docid   = mObjAssetSrc.docid;          // docid
 
-            console.log('Param-1:', mObjCinmdata);
-            console.log('Param-2', mObjAddonsData);
-            Ax.db.call('crp_cinmelemGenera', mObjCinmdata, mObjAddonsData);
+            mObjCinmdata.divisa   = mObjAssetSrc.divisa;        // divisa
+            mObjCinmdata.cambio   = mObjAssetSrc.cambio;        // cambio
+            mObjCinmdata.impfac   = mObjAssetSrc.impfac;        // impfac 
+
+            // ===============================================================
+            // Se llama a la funcion que genera el componente
+            // ===============================================================
+            resCall = Ax.db.call('crp_cinmelemGenera', mObjCinmdata, mObjAddonsData);
+
+            // ===============================================================
+            // Si la respuesta de la función es el identificador del 
+            // componente generado, se actualiza el auxiliar de la línea y 
+            // el importe del registro del componente asignado
+            // ===============================================================
+            if (resCall > 0) {
+                
+                // ===============================================================
+                // Actualiza el auxiliar de la linea
+                // ===============================================================
+                Ax.db.update('gcomfacl', 
+                    {
+                        auxnum1 : 1
+                    },
+                    {
+                        linid   : mObjAssetSrc.docid
+                    }
+                );
+
+                // ===============================================================
+                // Actualiza el importe de componente asigando a la linea
+                // ===============================================================
+                Ax.db.update('gcomfacl_dist_cinmcomp', 
+                    {
+                        import : mIntPorcen * mObjAssetSrc.impfac / 100
+                    },
+                    {
+                        id_dist_cinmcomp : mStrTipComp.id_dist_cinmcomp
+                    }
+                );
+
+            }
         });
-
     });
-
 }
