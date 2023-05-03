@@ -195,20 +195,23 @@ function gcomfach_GenAssets_Services(pIntCabid) {
                 // ===============================================================
                 if (_mArrCompAsignados.length > 0) {
                     _mIntPorcent = 0;
-
+                    
+                    // ===============================================================
                     // Recorrido de componentes asignados a la linea
+                    // ===============================================================
                     _mArrCompAsignados.forEach(_mObjCompAsig => {
-                        _mIntPorcent += _mObjCompAsig.porcen
+                        _mIntPorcent += _mObjCompAsig.porcen;
+                    }) 
 
-                        // ===============================================================
-                        // Si el porcentaje total supera el 100%, se almacena 
-                        // el identificador de la linea
-                        // ===============================================================
-                        if (_mIntPorcent > 100) {
-                            _mArrErrorLines.push(_mObjGcomfacl.linid)
-                        }
-                    })
-
+                    // ===============================================================
+                    // Si la suma de los porcentajes de los componentes asignados 
+                    // supera o es inferior al 100%, se almacena el identificador 
+                    // de la línea para informar su error.
+                    // ===============================================================
+                    if (_mIntPorcent != 100) {
+                        _mArrErrorLines.push(_mObjGcomfacl.linid)
+                    }
+                    
                     // ===============================================================
                     // Registro del objeto con datos de la linea en el arreglo
                     // ===============================================================
@@ -223,7 +226,7 @@ function gcomfach_GenAssets_Services(pIntCabid) {
         // que sean corregidos.
         // ===============================================================
         if (_mArrErrorLines.length > 0) {
-            throw `Las líneas superan el 100% para sus componentes asignados: [${_mArrErrorLines}].`;
+            throw `Las líneas no conforman el 100% para sus componentes asignados: [${_mArrErrorLines}].`;
         }
 
         return _mArrLines;
