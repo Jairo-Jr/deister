@@ -40,7 +40,7 @@
  * 
  *  CALLED FROM:
  *  ==================
- * 
+ *          Action-BTN: 	(gcomfacl) BUT_CINMCOMP/ACTION_CINMCOMP
  * 
  *  PARAMETERS:
  *  ================== 
@@ -336,7 +336,7 @@ function gcomfach_GenAssets_Services(pIntCabid) {
         // para generar generar componentes.
         // ===============================================================
         if (mArrAssetSrc.length > 0) { 
-            
+
             Ax.db.call("gdoc_GenAssets_Services", pIntCabid, mArrAssetSrc); 
         }
     } 
