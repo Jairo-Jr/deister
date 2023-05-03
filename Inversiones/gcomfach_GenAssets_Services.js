@@ -26,8 +26,8 @@
  * 
  *  JS:  gcomfach_GenAssets_Services
  * 
- *  Version     : 1.2
- *  Date        : 02-05-2023
+ *  Version     : 1.3
+ *  Date        : 03-05-2023
  *  Description : Script para construir un arreglo de objetos con información 
  *                de cabecera y lineas de factura de compras FMAN/FSER
  * 
@@ -143,7 +143,6 @@ function gcomfach_GenAssets_Services(pIntCabid) {
                     gcomfacl.impnet,
                     gcomfacl.desvar,
                     gcomfacl.orden,
-                    gcomfacl.canfac,
                     gcomfacl.auxnum1,
                     garticul.nomart garticul_nomart,
                     gartfami.agrele gartfami_agrele,
@@ -249,7 +248,6 @@ function gcomfach_GenAssets_Services(pIntCabid) {
     // ===============================================================
     mObjGcomfach = __getDataHeader(pIntCabid);
 
-    // Obtiene datos de la linea con componentes asignados
     // ===============================================================
     // Se obtienen datos de las lineas asociadas al identificador 
     // de la factura de compras.
@@ -321,7 +319,6 @@ function gcomfach_GenAssets_Services(pIntCabid) {
                 varlog          :   mRowGcomfacl.varlog,
                 canmov          :   mRowGcomfacl.canfac,
                 impnet          :   mRowGcomfacl.impnet,
-                canfac          :   mRowGcomfacl.canfac,
                 desvar          :   mRowGcomfacl.desvar || mRowGcomfacl.garticul_nomart,
                 exist_datc      :   mIntExistDatCont != 0 ? mIntExistDatCont : mRowGcomfacl.exist_datc,
                 gartfami_codinm :   mRowGcomfacl.gartfami_codinm,
@@ -338,11 +335,9 @@ function gcomfach_GenAssets_Services(pIntCabid) {
         // Si se registraron objetos en el arreglo, se realiza call 
         // para generar generar componentes.
         // ===============================================================
-        if (mArrAssetSrc.length > 0) {
-
-            Ax.db.call("gdoc_GenAssets_Services", pIntCabid, mArrAssetSrc);
-            // gdoc_GenAssets_Services(pIntCabid, mArrAssetSrc);
-
+        if (mArrAssetSrc.length > 0) { 
+            
+            Ax.db.call("gdoc_GenAssets_Services", pIntCabid, mArrAssetSrc); 
         }
     } 
 }
