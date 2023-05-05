@@ -1,0 +1,182 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<sqltransaction>
+ <atomic>
+<!-- EXPORTING cworkflow_val_item cond=[cworkflow_val_item.prog_num = 26246] -->
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>FLOG</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='15' SS='10'>2023-05-05 10:15:10</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='15' SS='10'>2023-05-05 10:15:10</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>FACT</val_code>
+  <item_phase>26</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='16' SS='28'>2023-05-05 10:16:28</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='16' SS='28'>2023-05-05 10:16:28</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>BLOG</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='18' SS='16'>2023-05-05 10:18:16</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='18' SS='16'>2023-05-05 10:18:16</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>FREL</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='20' SS='45'>2023-05-05 10:20:45</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='20' SS='45'>2023-05-05 10:20:45</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>RFAL</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='23' SS='17'>2023-05-05 10:23:17</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='23' SS='17'>2023-05-05 10:23:17</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>RFAS</val_code>
+  <item_phase>69</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='24' SS='22'>2023-05-05 10:24:22</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='24' SS='22'>2023-05-05 10:24:22</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>RPHA</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='24' SS='58'>2023-05-05 10:24:58</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='24' SS='58'>2023-05-05 10:24:58</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>RPHL</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='25' SS='31'>2023-05-05 10:25:31</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='25' SS='31'>2023-05-05 10:25:31</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>RPHS</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='26' SS='6'>2023-05-05 10:26:06</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='26' SS='6'>2023-05-05 10:26:06</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>SFAL</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='26' SS='35'>2023-05-05 10:26:35</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='26' SS='35'>2023-05-05 10:26:35</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+<insert table='cworkflow_val_item'>
+ <row>
+  <item_id/>
+  <val_code>SFAS</val_code>
+  <item_phase>68</item_phase>
+  <prog_num>26246</prog_num>
+  <item_lock>V</item_lock>
+  <item_manual>0</item_manual>
+  <flow_code></flow_code>
+  <user_created><![CDATA[deister_jha]]></user_created>
+  <date_created dd='5' mm='5' yy='2023' HH='10' MM='27' SS='15'>2023-05-05 10:27:15</date_created>
+  <user_updated><![CDATA[deister_jha]]></user_updated>
+  <date_updated dd='5' mm='5' yy='2023' HH='10' MM='27' SS='15'>2023-05-05 10:27:15</date_updated>
+ </row>
+<!-- GETTING exportedKeys of cworkflow_val_item -->
+</insert>
+ </atomic>
+</sqltransaction>
