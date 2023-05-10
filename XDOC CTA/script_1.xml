@@ -1,26 +1,4 @@
-<!-- PARA REMPLAZAR SUB-SELECT -->
-
-<select intotemp='@tmp_tbl_gcomfach'>
-    <columns>
-        gcomfach.cabid,
-        gcomfacl.cabori
-    </columns>
-    <from table='gcomfach'>
-        <join table='gcomfacl'>
-            <on>gcomfach.cabid = gcomfacl.cabid</on>
-        </join>
-    </from>
-    <where>
-        1=1
-        AND gcomfacl.tabori = 'gcommovh'
-    </where>
-</select>
-
-
-
-<!-- TODO: SQL pre sin el campo dvalor -->
-
-<select >
+<select intotemp='@tmp_tbl_xdoccta'>
     <columns>
         gcomfach.cabid,
         gcomalbh.loteid,
@@ -29,7 +7,7 @@
 
         MAX( CASE WHEN capuntes.cuenta LIKE '60%' THEN crp_chv_mapcta.ctaori
             ELSE ''
-        END ) <alias name='dctacos' />,
+        END ) <alias name='dctagas' />,
         
         MAX( CASE WHEN capuntes.cuenta LIKE '61%' THEN crp_chv_mapcta.ctaori
             ELSE ''
@@ -73,13 +51,21 @@
     </from>
     <where>
         <!-- AND gcomfach.cabid IN (6984, 14789, 1211) -->
-        gcomfach.auxchr5 = 20220169
+        gcomfach.auxchr5 = 20230157
         <!-- gcomfach.cabid = 14770 -->
     </where>
     <group>1, 2</group>
     <order>1, 2</order>
 </select>
 
-
-
-
+<select>
+    <columns>
+        xdoccta.dnrorec,
+        xdoccta.dctagas,
+        xdoccta.dctacos,
+        xdoccta.dexistencia,
+        xdoccta.dvalor,
+        xdoccta.dglosa
+    </columns>
+    <from table='@tmp_tbl_xdoccta' alias = 'xdoccta'/>
+</select>
