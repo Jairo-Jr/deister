@@ -1,0 +1,85 @@
+<!-- PARA REMPLAZAR SUB-SELECT -->
+
+<select intotemp='@tmp_tbl_gcomfach'>
+    <columns>
+        gcomfach.cabid,
+        gcomfacl.cabori
+    </columns>
+    <from table='gcomfach'>
+        <join table='gcomfacl'>
+            <on>gcomfach.cabid = gcomfacl.cabid</on>
+        </join>
+    </from>
+    <where>
+        1=1
+        AND gcomfacl.tabori = 'gcommovh'
+    </where>
+</select>
+
+
+
+<!-- TODO: SQL pre sin el campo dvalor -->
+
+<select >
+    <columns>
+        gcomfach.cabid,
+        gcomalbh.loteid,
+
+        MAX( gcomfach.auxchr5 || gcomfach.auxnum1 ) <alias name='dnrorec' />,
+
+        MAX( CASE WHEN capuntes.cuenta LIKE '60%' THEN crp_chv_mapcta.ctaori
+            ELSE ''
+        END ) <alias name='dctacos' />,
+        
+        MAX( CASE WHEN capuntes.cuenta LIKE '61%' THEN crp_chv_mapcta.ctaori
+            ELSE ''
+        END ) <alias name='dctacos' />,
+
+        MAX (CASE WHEN capuntes.cuenta LIKE '25%' THEN crp_chv_mapcta.ctaori
+            ELSE ''
+        END ) <alias name='dexistencia' />,
+
+        '' <alias name='dvalor' />,
+
+        MAX (capuntes.concep ) <alias name='dglosa' />
+    </columns>
+    <from table='gcomfach'>
+        <join table='gcomalbh'>
+            <on>gcomalbh.cabid IN (SELECT gcomfacl.cabori FROM gcomfacl WHERE gcomfacl.cabid  = gcomfach.cabid AND gcomfacl.tabori = 'gcommovh')</on>
+
+            <join table='capuntes'>
+                <on>gcomalbh.loteid = capuntes.loteid</on>
+
+                <join type='left' table='crp_chv_mapcta'>
+                    <on>capuntes.cuenta = crp_chv_mapcta.cuenta</on>
+                </join>
+
+            </join>
+
+            <!-- <join table='gcomalbl'>
+                <on>gcomalbh.cabid = gcomalbl.cabid</on>
+
+                <join table='garticul'>
+                    <on>gcomalbl.codart = garticul.codigo </on>
+
+                    <join type='left' table='gcontipo'>
+                        <on>garticul.tipcon = gcontipo.codigo </on>
+                    </join>
+
+                </join>
+            </join> -->
+
+        </join>
+    </from>
+    <where>
+        <!-- AND gcomfach.cabid IN (6984, 14789, 1211) -->
+        gcomfach.auxchr5 = 20220169
+        <!-- gcomfach.cabid = 14770 -->
+    </where>
+    <group>1, 2</group>
+    <order>1, 2</order>
+</select>
+
+
+
+
