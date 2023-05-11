@@ -17,7 +17,11 @@
             ELSE ''
         END ) <alias name='dexistencia' />,
 
-        '' <alias name='dvalor' />,
+        SUM(
+            CASE WHEN (capuntes.cuenta LIKE '60%' OR capuntes.cuenta LIKE '61%' OR capuntes.cuenta LIKE '25%') THEN capuntes.debe + capuntes.haber
+                ELSE 0
+            END
+        ) <alias name='dvalor' />,
 
         MAX (capuntes.concep ) <alias name='dglosa' />
     </columns>
@@ -60,6 +64,8 @@
 
 <select>
     <columns>
+        <!-- xdoccta.cabid,
+        xdoccta.loteid, -->
         xdoccta.dnrorec,
         xdoccta.dctagas,
         xdoccta.dctacos,
