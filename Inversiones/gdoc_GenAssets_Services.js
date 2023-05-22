@@ -62,7 +62,7 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
      */ 
     function __getAreaDestino(pIntCabid) {
         
-        var _mStrDepartSol = Ax.db.executeGet (`
+        var mStrDepartSol = Ax.db.executeGet (`
             <select>
                 <columns>
                     FIRST 1
@@ -106,13 +106,13 @@ function gdoc_GenAssets_Services (pIntCabid, pArrAssetSrc) {
             </select>
         `, pIntCabid);
 
-        var _mStrSeccion = Ax.db.executeGet(`
+        var mStrSeccion = Ax.db.executeGet(`
             SELECT gdeparta.seccio
               FROM gdeparta
              WHERE gdeparta.depart = ?
-        `, _mStrDepartSol);     
+        `, mStrDepartSol);     
         
-        return _mStrSeccion;
+        return mStrSeccion;
     }
 
     // ===============================================================
