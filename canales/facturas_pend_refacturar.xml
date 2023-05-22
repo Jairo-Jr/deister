@@ -1,4 +1,8 @@
-<select intotemp='@tmp_head_refactura'>
+<!-- ************************************ -->
+<!-- CANAL NAME: facturas_pend_refacturar -->
+<!-- ************************************ -->
+
+<select intotemp='@tmp_fact_refactura'>
     <columns>
         crp_refactura_head.refh_cabori
     </columns>
@@ -14,15 +18,18 @@
 
 <select>
     <columns>
-        gcomfach.docser,
+        gcomfach.depart,
+        gcomfach.tipdoc,
         gcomfach.fecha,
-        gcomfach.tercer,
+        <!-- gcomfach.tercer,
         gcomfach.estcab,
-        gcomfach.imptot
+        gcomfach.imptot,
+        gcomfach.docser -->
+        COUNT(*) numero
     </columns>
     <from table='gcomfach'>
-        <join table='@tmp_head_refactura' alias='head_refactura'>
-            <on>gcomfach.cabid = head_refactura.refh_cabori</on>
+        <join table='@tmp_fact_refactura' alias='fact_refactura'>
+            <on>gcomfach.cabid = fact_refactura.refh_cabori</on>
 
             <join type='left' table='gvenalbh'>
                 <on>gvenalbh.cabid IN (SELECT gvenalbl.cabid 
@@ -37,5 +44,78 @@
                      FROM gvenalbl 
                     WHERE gvenalbl.cabori = gcomfach.cabid 
                       AND gvenalbl.tabori = 'gcomfach')
+    </where>
+    <group>
+        1, 2, 3
+    </group>
+</select>
+
+
+<!-- ************************************** -->
+<!-- REPORTE NAME: gcomfach_pend_refacturar -->
+<!-- ************************************** -->
+<select intotemp='@tmp_fact_refactura'>
+    <columns>
+        crp_refactura_head.refh_cabori
+    </columns>
+    <from table='crp_refactura_head'/>
+    <where>
+        refh_tabori IS NOT NULL 
+        AND refh_cabori IS NOT NULL 
+        AND refh_linori IS NOT NULL
+        AND refh_tabori = 'gcomfach'
+    </where>
+    <group>1</group>
+</select>
+
+<select>
+    <columns>
+        gcomfach.depart,
+        gcomfach.tipdoc,
+        gcomfacd.nomdoc,
+        gcomfach.docser,
+        gcomfach.fecha,
+        gcomfach.refter,
+        gcomfach.tercer,
+        ctercero.nombre,
+        gcomfach.divisa,
+        gcomfach.imptot,
+        gcomfacl.codart,
+        garticul.nomart,
+        gcomfacl.canfac,
+        gcomfacl.udmcom, 
+        gcomfacl.precio +  <nvl>gcomfacl.dtoli1,0</nvl> + <nvl>gcomfacl.dtoli2,0</nvl> + <nvl>gcomfacl.dtoli3,0</nvl> + <nvl>gcomfacl.dtoimp,0</nvl> <alias name='precio_incldto' />,
+        gcomfacl.impnet
+    </columns>
+    <from table='gcomfach'>
+        <join table='@tmp_fact_refactura' alias='fact_refactura'>
+            <on>gcomfach.cabid = fact_refactura.refh_cabori</on>
+
+            <join type='left' table='gvenalbh'>
+                <on>gvenalbh.cabid IN (SELECT gvenalbl.cabid 
+                     FROM gvenalbl 
+                    WHERE gvenalbl.cabori = gcomfach.cabid 
+                      AND gvenalbl.tabori = 'gcomfach')</on>
+            </join>
+        </join>
+        <join table='gcomfacd'>
+            <on>gcomfach.tipdoc = gcomfacd.codigo</on>
+        </join>
+        <join type='left' table='ctercero'>
+            <on>gcomfach.tercer = ctercero.codigo</on>
+        </join>
+        <join table='gcomfacl'>
+            <on>gcomfach.cabid  = gcomfacl.cabid</on>
+            <join type='left' table='garticul'>
+                <on>gcomfacl.codart = garticul.codigo</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        NOT exists (SELECT gvenalbl.cabid 
+                     FROM gvenalbl 
+                    WHERE gvenalbl.cabori = gcomfach.cabid 
+                      AND gvenalbl.tabori = 'gcomfach')
+        AND $0
     </where>
 </select>

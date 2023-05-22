@@ -1,3 +1,7 @@
+<!-- ************************************ -->
+<!-- CANAL NAME: albaranes_pend_refacturar -->
+<!-- ************************************ -->
+
 <select intotemp='@tmp_albh_refactura'>
     <columns>
         crp_refactura_line.refl_cabdst
@@ -23,6 +27,74 @@
     <from table='gvenalbh'>
         <join table='@tmp_albh_refactura' alias='albh_refactura'>
             <on>gvenalbh.cabid = albh_refactura.refl_cabdst</on>
+        </join>
+    </from>
+    <where>
+        1=1
+        AND gvenalbh.estado NOT IN ('F', 'P')
+        AND NOT EXISTS (SELECT gvenfacl.cabid
+                        FROM gvenfacl
+                        WHERE gvenfacl.cabori = gvenalbh.cabid
+                        AND gvenfacl.tabori = 'gvenmovh')
+    </where>
+    <order>
+        gvenalbh.cabid
+    </order>
+</select>
+
+
+
+<!-- ************************************** -->
+<!-- REPORTE NAME: gvenalbh_pend_refacturar -->
+<!-- ************************************** -->
+<select intotemp='@tmp_albh_refactura'>
+    <columns>
+        crp_refactura_line.refl_cabdst
+    </columns>
+    <from table='crp_refactura_line'/>
+    <where>
+        refl_tabdst IS NOT NULL 
+        AND refl_cabdst IS NOT NULL 
+        AND refl_lindst IS NOT NULL
+        AND refl_tabdst = 'gvenalbh'
+    </where>
+    <group>1</group>
+</select>
+
+<select>
+    <columns>
+        gvenalbh.cabid,
+        gvenalbh.depart,
+        gvenalbh.tipdoc,
+        gvenmovd.nomdoc,
+        gvenalbh.docser,
+        gvenalbh.fecmov,
+        gvenalbh.tercer,
+        ctercero.nombre,
+        gvenalbh.divisa,
+        gvenalbh.imptot,
+        gvenalbl.codart,
+        garticul.nomart,
+        gvenalbl.canmov,
+        gvenalbl.udmven,
+        gvenalbl.precio,
+        gvenalbl.impnet
+    </columns>
+    <from table='gvenalbh'>
+        <join table='@tmp_albh_refactura' alias='albh_refactura'>
+            <on>gvenalbh.cabid = albh_refactura.refl_cabdst</on>
+        </join>
+        <join type='left' table='gvenmovd'>
+            <on>gvenalbh.tipdoc  = gvenmovd.codigo</on>
+        </join>
+        <join type='left' table='ctercero'>
+            <on>gvenalbh.tercer = ctercero.codigo</on>
+        </join>
+        <join table='gvenalbl'>
+            <on>gvenalbh.cabid = gvenalbl.cabid</on>
+            <join table='garticul'>
+                <on>gvenalbl.codart = garticul.codigo</on>
+            </join>
         </join>
     </from>
     <where>
