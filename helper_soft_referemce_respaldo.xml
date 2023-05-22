@@ -1,0 +1,106 @@
+<!-- 
+
+    Name_tabla: gvenpedd 
+    metodo: codigo_estado 
+-->
+
+<!-- SENTENCIA AUTOCOMPLETAR -->
+<select>
+    <columns>
+        gvenpedd.codigo, '[' || <trim>gvenpedd.codigo</trim> || '] ' || <nvl>gvenpedd.nomdoc, <whitespace/></nvl>
+    </columns>
+    <from table='gvenpedd' />
+    <where>
+        (UPPER (gvenpedd.codigo) LIKE UPPER ('%${q}%') OR 
+         UPPER (gvenpedd.nomdoc) LIKE UPPER ('%${q}%')) AND 
+        gvenpedd.estado NOT IN ('B','S')
+    </where>
+</select>
+<!-- SENTENCIA VERIFICACION -->
+<select>
+    <columns>
+        gvenpedd.codigo, gvenpedd.nomdoc, gvenpedd.codser, 
+        gvenpedd.tabori, gvenpedd.valdoc,
+        gvenpedd.adjcon, gvenpedd.adjord,
+        <nvl>gvenpedd.consel, '1=1'</nvl> consel,
+        <cast type='char'>NULL</cast> docori,
+        gvenpedd.dockey
+    </columns>
+    <from table='gvenpedd' />
+    <where>
+        gvenpedd.codigo = ${q} AND 
+        gvenpedd.estado NOT IN ('B','S')
+    </where>
+</select> 
+
+
+<!-- 
+
+    Name_tabla: gvenmovd 
+    metodo: codigo_estado_ven_alb 
+-->
+<!-- SENTENCIA AUTOCOMPLETAR -->
+<select>
+    <columns>
+         gvenmovd.codigo,'['|| gvenmovd.codigo ||'] '|| gvenmovd.nomdoc
+    </columns> 
+    <from table='gvenmovd' />
+    <where>
+        (UPPER (gvenmovd.codigo) LIKE UPPER ('%${q}%') OR 
+         UPPER (gvenmovd.nomdoc) LIKE UPPER ('%${q}%')) 
+        AND gvenmovd.estado IN ('A', 'P')
+    </where>
+</select>
+
+<!-- SENTENCIA VERIFICACION -->
+<select>
+    <columns>
+        gvenmovd.codigo, gvenmovd.nomdoc, gvenmovd.codser,
+        gvenmovd.tabori, gvenmovd.tabaux, gvenmovd.tipmov,
+        gvenmovd.movalb, gvenmovd.ctaori, 
+        <nvl>gvenmovd.selaux,'1=1'</nvl> selaux,
+        <nvl>gvenmovd.consel,'1=1'</nvl> consel,
+        <cast type='char'>NULL</cast>    docori,
+        gvenmovd.dockey
+    </columns> 
+    <from table='gvenmovd' />
+    <where>
+        gvenmovd.codigo = ${q} 
+        AND gvenmovd.estado IN ('A', 'P')
+    </where>
+</select>
+
+
+
+<!-- 
+
+    Name_tabla: gvenfacd 
+    metodo: codigo_estado 
+-->
+<!-- SENTENCIA AUTOCOMPLETAR -->
+<select>
+    <columns>
+        gvenfacd.codigo, '[' || <trim>gvenfacd.codigo</trim> || '] ' || <nvl>gvenfacd.nomdoc, <whitespace/></nvl>
+    </columns>
+    <from table='gvenfacd' />
+    <where> 
+        (UPPER (gvenfacd.codigo) LIKE UPPER ('%${q}%') OR
+         UPPER (gvenfacd.nomdoc) LIKE UPPER ('%${q}%')) 
+        AND gvenfacd.estado IN ('A', 'P') 
+    </where>
+</select>
+
+<!-- SENTENCIA VERIFICACION -->
+<select>
+    <columns>
+        gvenfacd.codigo, gvenfacd.nomdoc, gvenfacd.codser,
+        gvenfacd.tabori, gvenfacd.valdoc, gvenfacd.dockey,
+        <nvl>gvenfacd.consel,'1=1'</nvl> consel,
+        <cast type='char'>NULL</cast> docori
+    </columns>
+    <from table='gvenfacd' />
+    <where>
+        gvenfacd.codigo = ${q} 
+        AND gvenfacd.estado IN ('A', 'P') 
+    </where>
+</select>

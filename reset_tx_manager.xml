@@ -1,0 +1,46 @@
+<call>
+    <args>
+        <arg>${tipdoc}</arg>
+    </args>
+<![CDATA[
+<xsql-script>
+    <args>
+        <arg name='p_tipdoc' type='string' />
+    </args>
+   <body>
+        <!-- =================================================================== -->
+        <!-- Gets current values in form.                                        --> 
+        <!-- =================================================================== -->
+        <http.request.setVariablesFromParameters prefix='m_field_' />
+
+        <!-- =================================================================== -->
+        <!-- Gets values of entities (delega / depart / empcode) according with  -->
+        <!-- default parameters of user.                                         -->
+        <!-- =================================================================== -->
+        <call name='iges_sales_def_entity' into='m_empcode, m_codalm, m_delega, m_depart'>
+            <string>gvenpedh</string>
+            <m_field_tipdoc />
+            <m_field_codalm />
+            <m_field_delega />
+            <m_field_depart />
+        </call>
+
+        <map name='v_query_map'>
+            <item>tipdoc<p_tipdoc /></item>
+            <item>empcode<m_empcode /></item>
+            <item>codalm<m_codalm /></item>
+            <item>delega<m_delega /></item>
+            <item>depart<m_depart /></item>
+        </map>
+
+        <return><v_query_map /></return>
+    </body>
+</xsql-script>
+]]>
+</call>
+
+<!-- 
+    cominv != 'N' && (SELECT COUNT(*) FROM gcomfach WHERE cabid = ${cabid} AND date_contab IS NULL)
+ -->
+
+ <!-- 926757832 - plin -->

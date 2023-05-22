@@ -1,0 +1,41 @@
+<select intotemp='@tmp_head_refactura'>
+    <columns>
+        crp_refactura_head.refh_cabori
+    </columns>
+    <from table='crp_refactura_head'/>
+    <where>
+        refh_tabori IS NOT NULL 
+        AND refh_cabori IS NOT NULL 
+        AND refh_linori IS NOT NULL
+        AND refh_tabori = 'gcomfach'
+    </where>
+    <group>1</group>
+</select>
+
+<select>
+    <columns>
+        gcomfach.docser,
+        gcomfach.fecha,
+        gcomfach.tercer,
+        gcomfach.estcab,
+        gcomfach.imptot
+    </columns>
+    <from table='gcomfach'>
+        <join table='@tmp_head_refactura' alias='head_refactura'>
+            <on>gcomfach.cabid = head_refactura.refh_cabori</on>
+
+            <join type='left' table='gvenalbh'>
+                <on>gvenalbh.cabid IN (SELECT gvenalbl.cabid 
+                     FROM gvenalbl 
+                    WHERE gvenalbl.cabori = gcomfach.cabid 
+                      AND gvenalbl.tabori = 'gcomfach')</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        NOT exists (SELECT gvenalbl.cabid 
+                     FROM gvenalbl 
+                    WHERE gvenalbl.cabori = gcomfach.cabid 
+                      AND gvenalbl.tabori = 'gcomfach')
+    </where>
+</select>
