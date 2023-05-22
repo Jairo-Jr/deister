@@ -1,110 +1,39 @@
-<select intotemp='@tmp_head_refactura'>
-    <columns>
-        crp_refactura_head.refh_cabori
-    </columns>
-    <from table='crp_refactura_head'/>
-    <where>
-        refh_tabori IS NOT NULL 
-        AND refh_cabori IS NOT NULL 
-        AND refh_linori IS NOT NULL
-        AND refh_tabori = 'gcomfach'
-    </where>
-    <group>1</group>
-</select>
-
-<select>
-    <columns>
-        gcomfach.cabid,
-        gvenalbh.cabid,
-        gvenalbh.docser,
-        gvenalbh.fecmov,
-        <!-- gvenalbh.cabid, -->
-        *
-    </columns>
-    <from table='gcomfach'>
-        <join table='@tmp_head_refactura' alias='head_refactura'>
-            <on>gcomfach.cabid = head_refactura.refh_cabori</on>
-
-            <join table='gvenalbh'>
-                <on>gvenalbh.cabid IN (SELECT gvenalbl.cabid 
-                     FROM gvenalbl 
-                    WHERE gvenalbl.cabori = gcomfach.cabid 
-                      AND gvenalbl.tabori = 'gcomfach')</on>
-            </join>
-        </join>
-    </from>
-    <where>
-        1=1
-        AND gvenalbh.estado NOT IN ('F', 'P')
-        <!-- AND crp_refactura_head.refh_cabid = 25 -->
-    </where>
-    <!-- <order>
-        1, 2
-    </order> -->
-</select>
-
-
-
-<!-- <select intotemp='@tmp_head_refactura'>
-    <columns>
-        crp_refactura_head.refh_cabori
-    </columns>
-    <from table='crp_refactura_head'/>
-    <where>
-        refh_tabori IS NOT NULL 
-        AND refh_cabori IS NOT NULL 
-        AND refh_linori IS NOT NULL
-        AND refh_tabori = 'gcomfach'
-    </where>
-    <group>1</group>
-</select> -->
-
-<select intotemp='@tmp_head_refactura'>
+<select intotemp='@tmp_albh_refactura'>
     <columns>
         crp_refactura_line.refl_cabdst
     </columns>
-    <from table='crp_refactura_head'>
-        <join table='crp_refactura_line'>
-            <on>crp_refactura_head.refh_cabid = crp_refactura_line.refh_cabid</on>
-        </join>
-    </from>
+    <from table='crp_refactura_line'/>
     <where>
-        crp_refactura_head.refh_tabori IS NOT NULL 
-        AND crp_refactura_head.refh_cabori IS NOT NULL 
-        AND crp_refactura_head.refh_linori IS NOT NULL
-        AND crp_refactura_head.refh_tabori = 'gcomfach'
-        AND crp_refactura_line.refl_cabdst IS NOT NULL
+        refl_tabdst IS NOT NULL 
+        AND refl_cabdst IS NOT NULL 
+        AND refl_lindst IS NOT NULL
+        AND refl_tabdst = 'gvenalbh'
     </where>
+    <group>1</group>
 </select>
 
 <select>
     <columns>
-        gcomfach.cabid,
-        gvenalbh.cabid,
         gvenalbh.docser,
         gvenalbh.fecmov,
-        <!-- gvenalbh.cabid, -->
-        *
+        gvenalbh.tercer,
+        gvenalbh.estcab,
+        gvenalbh.estado
     </columns>
-    <from table='gcomfach'>
-        <join table='@tmp_head_refactura' alias='head_refactura'>
-            <on>gcomfach.cabid = head_refactura.refl_cabdst</on>
-
-            
-        </join>
-        <join table='gvenalbh'>
-            <on>gvenalbh.cabid IN (SELECT gvenalbl.cabid 
-                    FROM gvenalbl 
-                WHERE gvenalbl.cabori = gcomfach.cabid 
-                    AND gvenalbl.tabori = 'gcomfach')</on>
+    <from table='gvenalbh'>
+        <join table='@tmp_albh_refactura' alias='albh_refactura'>
+            <on>gvenalbh.cabid = albh_refactura.refl_cabdst</on>
         </join>
     </from>
     <where>
         1=1
         AND gvenalbh.estado NOT IN ('F', 'P')
-        <!-- AND crp_refactura_head.refh_cabid = 25 -->
+        AND NOT EXISTS (SELECT gvenfacl.cabid
+                        FROM gvenfacl
+                        WHERE gvenfacl.cabori = gvenalbh.cabid
+                        AND gvenfacl.tabori = 'gvenmovh')
     </where>
-    <!-- <order>
-        1, 2
-    </order> -->
+    <order>
+        gvenalbh.cabid
+    </order>
 </select>
