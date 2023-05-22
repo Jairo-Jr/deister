@@ -26,8 +26,8 @@
  *
  *  JS:  crp_load_rrhh_file
  *
- *  Version     : v1.15
- *  Date        : 2023-05-10
+ *  Version     : v1.13
+ *  Date        : 2023-05-15
  *  Description : Procesa ficheros .xls según el tipo de proceso (Costo/Planilla);
  *                registra los Costos en la tabla de respaldo (crp_rrhh_asign)
  *                y las planillas en los Mov. Contables (capuntes).
@@ -50,24 +50,30 @@
  */
  
 function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFileRefno) { 
-
-    // ===============================================================
-    //                        FUNCIONES LOCALES
-    // ===============================================================
+    
+    function __getTempTable (pStrTmpTable, pBoolDropTable) {
+        
+        let mTmpTable = Ax.db.getTempTableName(`${pStrTmpTable}`);
+        
+        if (pBoolDropTable) {
+            Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTable}`);
+        }
+        
+        return mTmpTable;
+    }   
 
     /**
      * LOCAL FUNCTION: __insTmpCosto
      *
-     * Description: Función local que registra los costos en Centro de Costos(t: crp_rrhh_asign), una tabla temporal de respaldo.
+     * Función local que registra los costos en Centro de Costos(t: crp_rrhh_asign), una tabla temporal de respaldo.
      *
-     * PARAMETERS:
      *      @param  {integer}       pIntFileId      Identificador de fichero
      *      @param  {ResultSet}     pRsSheet        ResultSet con la data del fichero
      *      @param  {string}        pStrTipProc     Nombre del tipo de proceso (EMP: Empleados, PRAC: Practicantes, PROV: Provisión)
-     *      @param  {string}        pStrUserName    Usuario que realiza el registro
      */
-    function __insTmpCosto(pIntFileId, pRsSheet, pStrTipProc, pStrUserName) {
-
+    function __insTmpCosto(pIntFileId, pRsSheet, pStrTipProc) {
+        
+        var mStrUserCode = Ax.db.getUser();
         // ===============================================================
         // Recorrido de la data del fichero de centro de costos.
         // ===============================================================
@@ -84,8 +90,8 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                     dctacos         : mRowSheet.C,      // DCTACOS
                     dvalcom         : mRowSheet.D,      // DVALCOM
                     tip_proc        : pStrTipProc,
-                    user_created    : pStrUserName,
-                    user_updated    : pStrUserName
+                    user_created    : mStrUserCode,
+                    user_updated    : mStrUserCode
                 });
             }
         });
@@ -94,46 +100,106 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     /**
      * LOCAL FUNCTION: __insPlanilla
      *
-     * Description: Función local que registra las planillas en Movimientos contables (capuntes)
+     * Función local que registra las planillas en Movimientos contables (capuntes)
      *
-     * PARAMETERS:
      *      @param  {ResultSet}     pRsSheet            ResultSet con la data del fichero de planilla.
-     *      @param  {string}        pStrUserName        Usuario que realiza el registro.
-     *
      */
-    function __insPlanilla(pRsSheet, pStrUserName) { 
+    function __insPlanilla(pRsSheet) { 
+
+        var mIntLoteId        = 0;
+        var mIntNumOrden      = 1; 
+        var mStrDocSer        = '';
+        var mBoolExistCefecto = false;
+        var mObjCodCon        = {F: 'FV', B: 'BV'};       // Códigos de conceptos contables
+        var mStrUserCode      = Ax.db.getUser();
+        var mArrObjPlanilla   = [];
+        var mTmpPlanilla      = __getTempTable('tmp_planilla', true);
+
+        Ax.db.execute(`
+                CREATE TEMP TABLE ${mTmpPlanilla} (
+                    indicador     CHAR (8),
+                    ref           CHAR (5),
+                    fecha         DATE,
+                    cheque        VARCHAR (20),
+                    cuenta        VARCHAR (20),
+                    empleado      VARCHAR (20),
+                    glosa         VARCHAR (250),
+                    tip_doc       CHAR (10),
+                    serie         CHAR (10),
+                    comprobante   VARCHAR (20),
+                    fechadocu     DATE,
+                    fechavenc     DATE,
+                    debe          DECIMAL (16,7),
+                    haber         DECIMAL (16,7)
+                )
+                WITH NO LOG;
+            `);
 
         // ===============================================================
-        // Variables locales.
-        // =============================================================== 
-        var mObjMaximos        = null;
-        var mIntAsient         = 0;
-        var mIntLoteId         = 0;
-        var mIntNumOrden       = 1; 
-        var mStrDocSer         = '';
-        var mBoolExistCefecto  = false;
-        var mStrFecFactura;
-        var mStrDocumento;
-        var mDoubleImporte;
-
+        // Recorrido de la data del fichero de planilla.
         // ===============================================================
-        // Obtención de los números máximos de asientos 
-        // e identificador de lote.
-        // =============================================================== 
-        mObjMaximos = Ax.db.executeQuery(`
+        pRsSheet.forEach(mRowSheetPln => { 
+            
+            if(mRowSheetPln.A != null){
+
+                mArrObjPlanilla.push(
+                    {
+                        indicador   : mRowSheetPln.A,
+                        ref         : mRowSheetPln.B,
+                        fecha       : mRowSheetPln.C,                                                 
+                        cheque      : mRowSheetPln.D,
+                        cuenta      : mRowSheetPln.E,
+                        empleado    : mRowSheetPln.F,
+                        glosa       : mRowSheetPln.G,
+                        tip_doc     : mRowSheetPln.H,
+                        serie       : mRowSheetPln.I,
+                        comprobante : mRowSheetPln.J,
+                        fechadocu   : mRowSheetPln.K,
+                        fechavenc   : mRowSheetPln.L,
+                        debe        : mRowSheetPln.M,
+                        haber       : mRowSheetPln.N
+        			}
+                );
+            }
+        });
+        
+        Ax.db.insert(`${mTmpPlanilla}`, mArrObjPlanilla);
+        
+        var mObjCuadrado =  Ax.db.executeQuery(`
             <select>
                 <columns>
-                    MAX(loteid) max_lote_id
+                      fecha,
+                      SUM(haber) sum_haber,
+                      SUM(debe)  sum_debe
+                </columns>
+                <from table='${mTmpPlanilla}' />
+                <group>
+                    1
+                </group>
+            </select>
+        `).toOne();
+        
+        if(Ax.math.bc.compareTo(mObjCuadrado.sum_haber, mObjCuadrado.sum_debe) != 0){
+            
+            throw `Planilla descuadrada. Verificar, corregir y volver a cargar`;
+        }
+
+        // ===============================================================
+        // Registro de los códigos de empleados.
+        // ===============================================================
+        __insCodEmpleado(mTmpPlanilla);
+        
+        // ===============================================================
+        // Generación del numero de identificador de lote.
+        // =============================================================== 
+        var mIntLoteId = Ax.db.executeGet(`
+            <select>
+                <columns>
+                    MAX(loteid) +1
                 </columns>
                 <from table='cenllote'/>
             </select>
-        `).toOne(); 
-
-        // ===============================================================
-        // Generación del numero de asiento e identificador de lote.
-        // ===============================================================
-        mIntAsient = null;
-        mIntLoteId = mObjMaximos.max_lote_id + 1; 
+        `); 
 
         // ===============================================================
         // Registro del Identificador de Lote
@@ -142,77 +208,88 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
             loteid  : mIntLoteId,
             tabname : 'planilla'
         });
-
-        // ===============================================================
-        // Recorrido de la data del fichero de planilla.
-        // ===============================================================
-        pRsSheet.forEach(mRowSheetPln => { 
-
-            // ===============================================================
-            // Se procesa la planilla solo si las columnas del fichero 
-            // correspondientes a TIPO_DOC, SERIE y COMPROBANTE, 
-            // respectivamente, son diferentes de null.
-            // ===============================================================
-            if(mRowSheetPln.H != null && mRowSheetPln.I != null && mRowSheetPln.J != null) { 
-
+        
+        var mRsPlanillaAgrupada = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    DISTINCT(glosa),
+                    fecha,
+                    cuenta,
+                    tip_doc,
+                    serie,
+                    comprobante,
+                    empleado,
+                    indicador,
+                    SUM(haber) sum_haber,
+                    SUM(debe) sum_debe
+                </columns>
+                <from table='${mTmpPlanilla}' />
+                <group>
+                    1,2,3,4,5,6,7,8
+                </group>
+            </select>
+        `);
+        
+        var i = 0;
+        for(var mRowPlanilla of mRsPlanillaAgrupada){
+            
+            if(mRowPlanilla.tip_doc != null && mRowPlanilla.serie != null && mRowPlanilla.comprobante != null) { 
                 /* VALIDAR SI POSEE UN REGISTRO EN CEFECTOS */
-                mStrFecFactura = mRowSheetPln.C;
-                mStrDocumento  = mRowSheetPln.I + '-' + mRowSheetPln.J;
-                mDoubleImporte = mRowSheetPln.N - mRowSheetPln.M;
-
-                mBoolExistCefecto = __getExisteCefecto(mStrFecFactura, mStrDocumento, mDoubleImporte);
-
-                // ===============================================================
-                // Componer el número de documento con la SERIE (column I) y el COMPROBANTE (column J).
-                // ===============================================================
-                mStrDocSer = mRowSheetPln.I + '-' + mRowSheetPln.J; 
+                var mStrFecFactura = mRowPlanilla.fecha;
+                var mStrDocumento  = mRowPlanilla.serie + '-' + mRowPlanilla.comprobante;
+                var mBcImporte     = Ax.math.bc.sub(mRowPlanilla.sum_haber, mRowPlanilla.sum_debe);
                 
-                // ===============================================================
-                // registro del Movimiento contable (capuntes)
-                // ===============================================================
-                Ax.db.insert("capuntes", {
-                    empcode         :   '001',                          // Código de Empresa
-                    proyec          :   'CRP0',                         // Línea de negocio
-                    sistem          :   'A',                            // Sistema
-                    seccio          :   '0',                            // Sección
-                    fecha           :   mRowSheetPln.C,                // Fecha
-                    asient          :   mIntAsient,                    // Número de asiento
-                    diario          :   '40',                           // Código de diario
-                    orden           :   mIntNumOrden++,                // Número de Orden
-                    jusser          :   'GL',                           // Justificante
-                    origen          :   'F',                            // Origen de apunte
-                    docser          :   mStrDocSer,                    // Documento o número de factura
-                    punteo          :   'N',                            // Apunte auditado
-                    placon          :   'CH',                           // Plan contable
-                    cuenta          :   mRowSheetPln.E,                // Cuenta contable
-                    codaux          :   'RRHH',                         // Grupo auxiliar
-                    ctaaux          :   mRowSheetPln.F,                // Código auxiliar
-                    contra          :   null,                           // Contrapartida
-                    codcon          :   mObjCodCon[mRowSheetPln.H],    // Conceptos contables
-                    concep          :   mRowSheetPln.G,                // Descripción del apunte
-                    fecval          :   mRowSheetPln.K,                // Fecha de valor
-                    moneda          :   'PEN',                          // Moneda de transacción
-                    divdeb          :   mRowSheetPln.M,                // Debe divisa
-                    divhab          :   mRowSheetPln.N,                // Haber divisa
-                    cambio          :   '1.000000',                     // Cambio
-                    divemp          :   'PEN',                          // Moneda de la empresa
-                    debe            :   mRowSheetPln.M,                // Debe
-                    haber           :   mRowSheetPln.N,                // Haber
-                    loteid          :   mIntLoteId,                    // Identificador de lote
-                    dimcode2        :   mBoolExistCefecto ? 0 : 14,    // Auxiliar 
-                    user_created    :   pStrUserName,
-                    user_updated    :   pStrUserName
-                });
-            } 
-        });
-
+                mBoolExistCefecto = __getExisteCefecto(mStrFecFactura, mStrDocumento, mBcImporte);
+                
+            }
+            
+            // ===============================================================
+            // registro del Movimiento contable (capuntes)
+            // ===============================================================
+            Ax.db.insert("capuntes", {
+                empcode         :   '001',                          // Código de Empresa
+                proyec          :   'CRP0',                         // Línea de negocio
+                sistem          :   'A',                            // Sistema
+                seccio          :   '0',                            // Sección
+                fecha           :   mRowPlanilla.fecha,             // Fecha
+                asient          :   null,                           // Número de asiento
+                diario          :   '40',                           // Código de diario
+                orden           :   mIntNumOrden++,                 // Número de Orden
+                jusser          :   'GL',                           // Justificante
+                origen          :   'F',                            // Origen de apunte
+                docser          :   mStrDocumento != null ? mStrDocumento : null,                  // Documento o número de factura
+                punteo          :   'N',                            // Apunte auditado
+                placon          :   'CH',                           // Plan contable
+                cuenta          :   mRowPlanilla.cuenta,            // Cuenta contable
+                codaux          :   'RRHH',                         // Grupo auxiliar
+                ctaaux          :   mRowPlanilla.empleado,          // Código auxiliar
+                contra          :   null,                           // Contrapartida
+                codcon          :   mObjCodCon[mRowPlanilla.tip_doc] != null ? mObjCodCon[mRowPlanilla.tip_doc] : null,    // Conceptos contables
+                concep          :   mRowPlanilla.glosa,             // Descripción del apunte
+                fecval          :   mRowPlanilla.fecha,             // Fecha de valor
+                moneda          :   'PEN',                          // Moneda de transacción
+                divdeb          :   mRowPlanilla.sum_debe,              // Debe divisa
+                divhab          :   mRowPlanilla.sum_haber,             // Haber divisa
+                cambio          :   1.000000,                       // Cambio
+                divemp          :   'PEN',                          // Moneda de la empresa
+                debe            :   mRowPlanilla.sum_debe,              // Debe
+                haber           :   mRowPlanilla.sum_haber,             // Haber
+                loteid          :   mIntLoteId,                     // Identificador de lote
+                dimcode2        :   mBoolExistCefecto ? 0 : 14,     // Auxiliar 
+                user_created    :   mStrUserCode,
+                user_updated    :   mStrUserCode
+            });
+            
+            //throw `mRowPlanilla: ${mRowPlanilla.cuenta} || mIntSerial ${mIntSerial}`;
+        }
+        
         return mIntLoteId;
     }
 
     /**
      * LOCAL FUNCTION: __validateGroupAux
      *
-     * Description: Función local que valida la existencia del grupo auxiliar RRHH.
+     * Función local que valida la existencia del grupo auxiliar RRHH.
      *
      */
     function __validateGroupAux() {
@@ -245,120 +322,59 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     }
 
     /**
-     * LOCAL FUNCTION: __insCodEmp
-     *
-     * Description: Función local que agrega los códigos de empleados al
-     *              auxiliar asociado a cuentas(t: cctaauxl)
-     *
-     * PARAMETERS:
-     *      @param  {integer}   pIntLoteId      Identificador de lote
-     */
-    function __insCodEmp(pIntLoteId) {
-
-        // ===============================================================
-        // Variables locales.
-        // =============================================================== 
-        var mRsCtaAux          = null;
-        var mIntExistCtaAux    = null;
-
-        // ===============================================================
-        // Se agrupan los códigos de empleados recién ingresados, 
-        // según el código de lote.
-        // ===============================================================
-        mRsCtaAux = Ax.db.executeQuery(` 
-            <select>
-                <columns>
-                    DISTINCT capuntes.ctaaux
-                </columns>
-                <from table='capuntes'/>
-                <where>
-                capuntes.loteid = ?;
-                </where>
-            </select>
-        `, pIntLoteId);
-
-        // ===============================================================
-        // Iteración de los códigos de empleado.
-        // ===============================================================
-        mRsCtaAux.forEach(mIntCtaAux => {
-
-            // ===============================================================
-            // Si el código no es null
-            // ===============================================================
-            if (mIntCtaAux.ctaaux !== null) {
-
-                // ===============================================================
-                // Búsqueda del código de empleado en Códigos auxiliares (cctaauxl)
-                // ===============================================================
-                mIntExistCtaAux = Ax.db.executeGet(` 
-                    <select>
-                        <columns>
-                            COUNT(*)
-                        </columns>
-                        <from table='cctaauxl'/>
-                        <where>
-                            cctaauxl.ctaaux = ?;
-                        </where>
-                    </select>
-                `, mIntCtaAux.ctaaux);
-
-                // ===============================================================
-                // Si no se encuentra registrado.
-                // ===============================================================
-                if (mIntExistCtaAux == 0) {
-
-                    // ===============================================================
-                    // Se registra el código de empleado en Códigos auxiliares (cctaauxl).
-                    // ===============================================================
-                    Ax.db.insert("cctaauxl", {
-                        codaux: 'RRHH',
-                        ctaaux: mIntCtaAux.ctaaux,
-                        desval: mIntCtaAux.ctaaux,
-                        estado: 'A'
-                    });
-                }
-            }
-        });
-    }
-
-    /**
      * LOCAL FUNCTION: __updFileStatus
      *
-     * Description: Función local que actualiza el estado del fichero.
+     * Función local que actualiza el estado del fichero.
      *
-     * PARAMETERS:
-     *      @param {string}     pStrStatus      Estado del fichero (P: Pendiente, C: Cargado, E: Error)
+     *      @param {string}     pStrStatus      Estado del fichero (0: Pendiente, 1: Cargado, 3: Error)
      *      @param {integer}    pIntLoteId      Identificador de lote
      *      @param {integer}    pIntGestCartera Identificador de la gestión de cartera
      *      @param {string}     pStrUserName    Usuario que realiza el proceso
      *      @param {integer}    pIntFileId      Identificador del fichero
+     *      @param {string}     pStrMsgError    Mensaje de error
      */
-    function __updFileStatus(pStrStatus, pIntLoteId, pIntGestCartera, pStrUserName, pIntFileId) {
+    function __updFileStatus(pStrStatus, pIntLoteId, pIntGestCartera, pStrUserName, pIntFileId, pStrMsgError) {
 
-        // ===============================================================
-        // Update de estado de fichero.
-        // ===============================================================
-        Ax.db.update("crp_rrhh_file",
-            {
-                file_status  : pStrStatus,
-                loteid       : pIntLoteId, 
-                pcs_seqno    : pIntGestCartera,
-                user_updated : pStrUserName,
-                date_updated : mTodayDate
-            },
-            {
-                file_seqno : pIntFileId
-            }
-        );
+        switch(pStrStatus){
+            case 3:
+                Ax.db.update("crp_rrhh_file",
+                    {
+                        file_status  : pStrStatus,
+                        loteid       : pIntLoteId, 
+                        pcs_seqno    : pIntGestCartera,
+                        file_memo    : pStrMsgError,
+                        user_updated : pStrUserName,
+                        date_updated : new Ax.util.Date()      
+                    },
+                    {
+                        file_seqno : pIntFileId
+                    }
+                );
+               break;
+               
+            default:
+                Ax.db.update("crp_rrhh_file",
+                    {
+                        file_status  : pStrStatus,
+                        loteid       : pIntLoteId, 
+                        pcs_seqno    : pIntGestCartera,
+                        user_updated : pStrUserName,
+                        date_updated : new Ax.util.Date()      
+                    },
+                    {
+                        file_seqno : pIntFileId
+                    }
+                );
+                break;
+        }
     }
 
     /**
      * LOCAL FUNCTION: __insMovCostes
      *
-     * Description: Función local que registra en Movimientos de costes (ccoscont) la data 
-     *              del fichero de costos según la planilla a la que corresponda.
+     * Función local que registra en Movimientos de costes (ccoscont) la data 
+     * del fichero de costos según la planilla a la que corresponda.
      *
-     * PARAMETERS:
      *      @param {integer}        pIntFileRefno   Identificador de fichero del tipo planilla.
      *      @param {ResultSet}      pRsSheet        ResultSet con la data del fichero.
      *      @param {string}         pStrUserName    Usuario que realiza el proceso.
@@ -366,17 +382,10 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     function __insMovCostes(pIntFileRefno, pRsSheet, pStrUserName) { 
 
         // ===============================================================
-        // Variables locales.
-        // =============================================================== 
-        var mIntPlanillaLoteId = null;
-        var mStrCodAx = null;
-        var mObjApunte = null;
-
-        // ===============================================================
         // Búsqueda del identificador de lote del fichero de planilla 
         // al que hace referencia.
         // ===============================================================
-        mIntPlanillaLoteId = Ax.db.executeGet(`
+        var mIntPlanillaLoteId = Ax.db.executeGet(`
             <select>
                 <columns>
                     loteid
@@ -392,20 +401,21 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         // Valida la existencia si el fichero de planilla posee 
         // un identificador de lote (Si se encuentra contabilizada).
         // ===============================================================
-        if (mIntPlanillaLoteId === null) {
+        if (mIntPlanillaLoteId == null) {
             throw new Ax.ext.Exception("La planilla con Id. [${fileId}] a la que hace referencia no posee un lote contable.",{fileId : pIntFileRefno});
         } 
 
         // ===============================================================
         // Recorrido de las filas del fichero de costos.
         // ===============================================================
-        pRsSheet.forEach(mPlRowSheet => {
-            if(mPlRowSheet.A !== null){
+        pRsSheet.forEach(_mPlRowSheet => {
+            
+            if(_mPlRowSheet.A !== null){
 
                 // ===============================================================
                 // Obtención del código equivalente de coste chavin
                 // ===============================================================
-                mStrCodAx = Ax.db.executeGet(`
+                var mStrCodAx = Ax.db.executeGet(`
                     <select>
                         <columns>
                             seccio
@@ -415,13 +425,13 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                             crp_chv_mapcen.cencos = ?
                         </where>
                     </select> 
-                `, mPlRowSheet.C);    // DCTACOS 
+                `, _mPlRowSheet.C);    // DCTACOS 
 
                 // ===============================================================
                 // Valida la existencia de un código equivalente de coste chavin
                 // ===============================================================
                 if (mStrCodAx === null) {
-                    throw new Ax.ext.Exception("El centro de coste Chavin [${codAx}] no posee una sección contable de destino.",{codAx : mPlRowSheet.C});
+                    throw new Ax.ext.Exception("El centro de coste Chavin [${codAx}] no posee una sección contable de destino.",{codAx : _mPlRowSheet.C});
                 }
 
                 // ===============================================================
@@ -429,7 +439,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // el lote contable (mIntPlanillaLoteId) y el número de cuenta 
                 // de gasto (DCTAGAS).
                 // ===============================================================
-                mObjApunte = Ax.db.executeQuery(`
+                var mObjApunte = Ax.db.executeQuery(`
                     <select first='1'>
                         <columns>
                             empcode,  proyec,  fecha,    apteid,
@@ -439,11 +449,11 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                         </columns>
                         <from table='capuntes'/>
                         <where>
-                            loteid = ? 
+                                loteid = ? 
                             AND cuenta = ?
                         </where>
                     </select> 
-                `, mIntPlanillaLoteId, mPlRowSheet.B).toOne(); 
+                `, mIntPlanillaLoteId, _mPlRowSheet.B).toOne(); 
 
                 if (mObjApunte.apteid != null) { 
                     
@@ -471,7 +481,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                         codcon          : mObjApunte.codcon,       // Concepto
                         concep          : mObjApunte.concep,       // Descripción
                         porcen          : '100',                    /* DATO POR DEFINIR - TEMPORAL */
-                        debe            : mPlRowSheet.D,           // Debe
+                        debe            : _mPlRowSheet.D,           // Debe
                         haber           : '0',                      // Haber
                         user_created    : pStrUserName,
                         user_updated    : pStrUserName
@@ -486,15 +496,16 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     /**
      * LOCAL FUNCTION: __validateFile
      *
-     * Description: Función local que valida el CODIGO CRC y estado del fichero. 
-     *
+     * Función local que valida el CODIGO CRC y estado del fichero. 
+     * 
+     *      @param   {integer}   pIntFileId       Id. del fichero    
+     *      @param   {string}    pStrCRC          Número CRC de control del fichero   
      */
-    function __validateFile() { 
+    function __validateFile(pIntFileId, pStrCRC) { 
 
-        // ===============================================================
-        // Variables locales.
-        // ===============================================================
-        var mIntExistFileLoad = 0;     // Número de archivos cargados con igual CRC. 
+        var mIntExistFileLoad = 0;     
+        var mIntFileId = pIntFileId;
+        var mStrCRC    = pStrCRC;
 
         // ===============================================================
         // Obtener la cantidad de archivos con el mismo número CRC 
@@ -507,62 +518,56 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 </columns>
                 <from table='crp_rrhh_file'/>
                 <where>
-                    crp_rrhh_file.file_md5 = ?
-                    AND file_status = '1'
+                        crp_rrhh_file.file_md5 = ?
+                    AND crp_rrhh_file.file_status = 1
                 </where>
             </select> 
-        `, pStrCRC); 
+        `, mStrCRC); 
 
         // ===============================================================
         // Validación de la existencia de más de un fichero 
         // en estado (1) y el mismo número CRC.
         // ===============================================================
         if (mIntExistFileLoad >= 1){
-            throw new Ax.ext.Exception("El fichero con Id. [${fileId}] se encuentra duplicado y en estado 'En contabilidad'",{fileId : pIntFileId});
+            throw new Ax.ext.Exception("El fichero con Id. [${fileId}] se encuentra duplicado y en estado 'En contabilidad'",{fileId : mIntFileId});
         }
 
         // ===============================================================
         // Obtener la data del fichero que se encuentre 
         // en estado '0' (Pendiente)
         // ===============================================================
-        mObjRRHHFile = Ax.db.executeGet(` 
+        var mBlobFileRRHH = Ax.db.executeGet(` 
             <select>
                 <columns>
                     crp_rrhh_file.file_data
                 </columns>
                 <from table='crp_rrhh_file'/>
                 <where>
-                    crp_rrhh_file.file_seqno  = ?
-                    AND crp_rrhh_file.file_status = '0'
+                        crp_rrhh_file.file_seqno  = ?
+                    AND crp_rrhh_file.file_status = 0
                 </where>
             </select>
-        `, pIntFileId); 
+        `, mIntFileId); 
 
         // ===============================================================
         // Validación del fichero que se encuentre en estado '0' (Pendiente).
         // ===============================================================
-        if (!mObjRRHHFile) {
-            throw new Ax.ext.Exception("El fichero con Id. [${fileId}] se encuentra en un estado distinto de Pendiente.",{fileId : pIntFileId});
+        if (!mBlobFileRRHH) {
+            throw new Ax.ext.Exception("El fichero con Id. [${fileId}] se encuentra en un estado distinto de Pendiente.",{fileId : mIntFileId});
         } 
-     
+        
+        return mBlobFileRRHH;
     }
 
     /**
      * LOCAL FUNCTION: __fileTransformation
      *
-     * Description: Función local que transforma el fichero de Biff5 a Biff8.
-     *
+     * Función local que transforma el fichero de Biff5 a Biff8.
+     * 
+     *      @param   {integer}   pIntFileId       Id. del fichero    
+     *      @param   {blob}      pBlobFile        File a leer    
      */
-    function __fileTransformation() { 
-
-        // ===============================================================
-        // Variables locales
-        // ===============================================================
-        var mStrPath           = null;     // Ruta del fichero Biff5
-        let mStrPathNewFile    = null;     // Ruta del fichero Biff8
-        var mPB                = null;     // Procesador Biff5
-        var mIntConverStatus   = null;     // Estado de conversión
-        var mObjWorkbook       = null;     // Fichero de planilla
+    function __fileTransformation(pIntFileId, pBlobFile) { 
 
         try{
             
@@ -570,16 +575,17 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
             // Creación de archivo .xls y se agrega la data (blob).
             // ===============================================================
             mFileBiff5 = new Ax.io.File("tmp/excel_biff5.xls");
-            mFileBiff5.write(mObjRRHHFile);
-            mStrPath = mFileBiff5.getAbsolutePath();
+            mFileBiff5.write(pBlobFile);
+            
+            var mStrPath = mFileBiff5.getAbsolutePath();
     
             // ===============================================================
             // Creación de archivo .xls transformado a una nueva 
             // versión actualizada.
             // ===============================================================
-            mStrPathNewFile    = new Ax.io.File("tmp").getAbsolutePath() + `/excel_convert_${pIntFileId}.xls`;
-            mPB                = new Ax.lang.ProcessBuilder();
-            mIntConverStatus   = mPB.directory('/home/axional').command('/bin/bash', '-c', `./xlsx-cli.sh ${mStrPath} ${mStrPathNewFile}`);
+            var mStrPathNewFile    = new Ax.io.File("tmp").getAbsolutePath() + `/excel_convert_${pIntFileId}.xls`;
+            var mPB                = new Ax.lang.ProcessBuilder();
+            var mIntConverStatus   = mPB.directory('/home/axional').command('/bin/bash', '-c', `./xlsx-cli.sh ${mStrPath} ${mStrPathNewFile}`);
     
             // ===============================================================
             // Validación de la correcta transformación del archivo.
@@ -594,100 +600,86 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Carga del nuevo archivo.
                 // ===============================================================
-                mObjWorkbook = Ax.ms.Excel.load(mFileBiff8.toBlob()); 
+                var mWbWorkbook = Ax.ms.Excel.load(mFileBiff8.toBlob()); 
             }
             else {
 
                 throw new Ax.ext.Exception("Error workbook: [${eWB}]",{eWB: mPB.getStdErr()});
             }
         } catch(e){
+            
             throw new Ax.ext.Exception("El documento NO presenta el formato de excel. [${e}]",{e});
         }
 
-        return mObjWorkbook;
-     
+        return mWbWorkbook;
     }
 
     /**
      * LOCAL FUNCTION: __insCarteraEfectos
      *
-     * Description: Función local que registra la cabecera para la Cartera de Efectos. 
-     *
+     * Función local que registra la cabecera para la Cartera de Efectos. 
      */
-    function __insCarteraEfectos(pTodayDate) { 
-
-        // ===============================================================
-        // Se genera la cabecera para la Cartera de Efectos solo para 
-        // los procesos de Empleados (EMP) y Practicantes (PRAC). 
-        // Para el caso de Provisión (PROV) se lanza una excepción.
-        // ===============================================================
-        /*if (pStrTipProc == 'PROV') { 
-            throw new Ax.ext.Exception('No es posible generar Cartera de Efectos para el proceso de Provisión');
-            
-        } */
-
-        var _mIntSerial = Ax.db.insert("cefecges_pcs",
+    function __insCarteraEfectos() { 
+        
+        var mIntSerial = Ax.db.insert("cefecges_pcs",
             { 
-                pcs_empcode : '001',         // Código de empresa.
-                pcs_proyec  : 'CRP0',        // Código de proyecto.
-                pcs_seccio  : '0',           // Sección contable
-                pcs_clase   : 'C',           // Clase de cartera
-                pcs_accion  : 'CPLN',        // Código de acción asociada al proceso
-                pcs_ctafin  : 'PR00CRPCH',   // Cuenta financiera
-                pcs_moneda  : 'PEN',         // Moneda
-                pcs_cambio  : '1',           // Cambio de divisa
-                pcs_fecpro  : pTodayDate,    // Fecha del proceso
-                pcs_estado  : 'A',           // Estado del proceso
-                pcs_tipgen  : 1            // Tipo de gestion
+                pcs_empcode : '001',              // Código de empresa.
+                pcs_proyec  : 'CRP0',             // Código de proyecto.
+                pcs_seccio  : '0',                // Sección contable
+                pcs_clase   : 'C',                // Clase de cartera
+                pcs_accion  : 'CPLN',             // Código de acción asociada al proceso
+                pcs_ctafin  : 'PR00CRPCH',        // Cuenta financiera
+                pcs_moneda  : 'PEN',              // Moneda
+                pcs_cambio  : '1',                // Cambio de divisa
+                pcs_fecpro  : new Ax.util.Date(), // Fecha del proceso
+                pcs_estado  : 'A',                // Estado del proceso
+                pcs_tipgen  : 1                   // Tipo de gestion
             }
         ).getSerial(); 
         
-        return _mIntSerial;
+        return mIntSerial;
     }
 
     /**
      * LOCAL FUNCTION: __insDetallesCarteraEfectos
      *
-     * Description: Función local que asigna detalles a la Cartera de Efectos
+     * Función local que asigna detalles a la Cartera de Efectos
      *
      *      @param   {Integer}      pIntIdCarteraEfectos            Identificador de la Cartera de Efectos.
+     *      @param   {Integer}      pIntLoteId                      Identificador de lote.
      *      @param   {ResultSet}    pRsSheetPln                     Resultset con la data de la planilla.
-     *
      */
-    function __insDetallesCarteraEfectos(pIntIdCarteraEfectos, pRsSheetPln) { 
-        // var mIntIdCartera = __insCarteraEfectos();
+    function __insDetallesCarteraEfectos(pIntIdCarteraEfectos, pIntLoteId, pRsSheetPln) { 
+   
         // ===============================================================
         // Variables locales
         // =============================================================== 
-        var mObjEfectos        = null;     // Cartera de Efectos
-        var mStrFecFactura     = null;     // Fecha de factura
-        var mStrDocumento      = null;     // Documento o número de factura 
-        var mDoubleImporte     = null;     // Importe local 
-        var cefecges_pcsImpdiv = 0;        // Importe de divisas
-        var cefecges_pcsTotimp = 0;        // Importe total
-        var mIntNumOrden       = 1;        // Número de orden del Efecto 
-
-        // ===============================================================
-        // Recorrido de las filas del fichero de planilla.
-        // ===============================================================
-        for(var mRowFilePln of pRsSheetPln) { 
+        var _mObjEfectos        = null;     // Cartera de Efectos
+        var _mStrFecFactura     = null;     // Fecha de factura
+        var _mStrDocumento      = null;     // Documento o número de factura 
+        var _mDoubleImporte     = null;     // Importe local 
+        var _cefecges_pcsImpdiv = 0;        // Importe de divisas
+        var _cefecges_pcsTotimp = 0;        // Importe total
+        var _mIntNumOrden       = 1;        // Número de orden del Efecto 
+        var mBcPcsImpdiv        = 0;        // Importe de divisas
+        var mBcPcsTotimp        = 0;        // Importe total
+        var mIntNumOrden        = 1;        // Número de orden del Efecto 
+        var mObjCefecto         = {};
+        
+        var mRsCapuntes = Ax.db.executeQuery(`
+            SELECT capuntes.docser,
+                   capuntes.fecha,
+                   capuntes.debe,
+                   capuntes.haber
+              FROM capuntes
+             WHERE capuntes.loteid = ?
+        `, pIntLoteId);
+        
+        for(var mRowCapuntes of mRsCapuntes){
             
-            // ===============================================================
-            // Se procesa la planilla solo si las columnas del fichero 
-            // correspondientes a TIPO_DOC, SERIE y COMPROBANTE, 
-            // respectivamente, son diferentes de null.
-            // ===============================================================
-            if(mRowFilePln.H != null && mRowFilePln.I != null && mRowFilePln.J) { 
-
-                mStrFecFactura = mRowFilePln.C;
-                mStrDocumento  = mRowFilePln.I + '-' + mRowFilePln.J;
-                mDoubleImporte = mRowFilePln.N - mRowFilePln.M;
-
-                // ===============================================================
-                // Busqueda de la cartera de efectos correspondiente 
-                // a la fila del fichero de planilla.
-                // ===============================================================
-                mObjEfectos = Ax.db.executeQuery(`
+            var mBcImport = Ax.math.bc.sub(mRowCapuntes.haber, mRowCapuntes.debe);
+            
+            mObjCefecto = Ax.db.executeQuery(`
                     <select first='1'>
                         <columns> 
                             cefectos.numero, cefectos.clase,
@@ -705,7 +697,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                             cefectos.empcode,cefectos.cuenta,
 
 
-                            (SELECT COUNT(*)
+                            <cast type='integer'>(SELECT COUNT(*)
                                 FROM cefecges_pcs g, cefecges_det d
                                 WHERE g.pcs_empcode = '001'
                                     AND g.pcs_fecpro >= (SELECT MIN(s.fecini) 
@@ -714,7 +706,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                                                             AND s.estado  = 'A')
                                     AND g.pcs_seqno   = d.pcs_seqno
                                     AND g.pcs_estado  = 'A'
-                                    AND d.det_numero  = cefectos.numero) cefectos_in_gestion, 
+                                    AND d.det_numero  = cefectos.numero) </cast> <alias name='cefectos_in_gestion' />, 
 
                             CASE WHEN cefectos.clase = 'C' 
                                  THEN +cefectos.impdiv 
@@ -732,80 +724,71 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                             AND import = ?
                         </where>
                     </select>
-                `, mStrFecFactura, mStrDocumento, mDoubleImporte).toOne(); 
+                `, mRowCapuntes.fecha, mRowCapuntes.docser, mBcImport).toOne(); 
                 
-                // throw new Ax.ext.Exception("ID: [${id}]", {id: mObjEfectos.cefectos_in_gestion});
-                // ===============================================================
-                // Validar que el efecto no se encuentre registrado 
-                // como gestion de otra Cartera.
-                // ===============================================================
-                // if (mObjEfectos.cefectos_in_gestion == 0) {
+            if(mObjCefecto.cefectos_in_gestion == null) {
+                continue;
+            }
+            
+            if( mObjCefecto.cefectos_in_gestion == 0 ) {
                 
-                if(mObjEfectos.cefectos_in_gestion == null) {
-                    continue;
+                // ===============================================================
+                // El valor de cefectos_impdiv viene devuelto según la transformación
+                // realizada desde el objeto cefectos_sel , la cual permite procesar
+                // grupos de efectos de ambos tipos de carteras, esto es :
+                // 
+                //       case clase = 'C' then +impdiv else -impdiv end
+                // 
+                // En este punto los importes deben adquirir de nuevo su signo según se
+                // expresa en el registro de la tabla cefectos, que a dia de hoy, es decir
+                // la versión actual , en ambas carteras se registran en signo positivo las
+                // facturas y en signo negativo los abonos. 
+                // ===============================================================
+                if (mObjCefecto.clase == 'P') {
+                    mObjCefecto.impdiv     = - mObjCefecto.impdiv;
+                    mObjCefecto.import     = - mObjCefecto.import;
+                    mObjCefecto.pcs_totimp = - mObjCefecto.pcs_totimp;            
                 }
                 
-                if( Ax.math.bc.compareTo(mObjEfectos.cefectos_in_gestion, 0) == 0 ) {
-                    
-                    
-                   // ===============================================================
-                   // El valor de cefectos_impdiv viene devuelto según la transformación
-                   // realizada desde el objeto cefectos_sel , la cual permite procesar
-                   // grupos de efectos de ambos tipos de carteras, esto es :
-                   // 
-                   //       case clase = 'C' then +impdiv else -impdiv end
-                   // 
-                   // En este punto los importes deben adquirir de nuevo su signo según se
-                   // expresa en el registro de la tabla cefectos, que a dia de hoy, es decir
-                   // la versión actual , en ambas carteras se registran en signo positivo las
-                   // facturas y en signo negativo los abonos. 
-                   // ===============================================================
-                    if (mObjEfectos.clase == 'P') {
-                        mObjEfectos.impdiv     = - mObjEfectos.impdiv;
-                        mObjEfectos.import     = - mObjEfectos.import;
-                        mObjEfectos.pcs_totimp = - mObjEfectos.pcs_totimp;            
-                    }
-
-                    mObjEfectos.pcs_seqno  = pIntIdCarteraEfectos;
-                    mObjEfectos.det_numero = mObjEfectos.numero;
-                    mObjEfectos.det_impdiv = mObjEfectos.impdiv;
-                    mObjEfectos.det_import = mObjEfectos.import;
-                    mObjEfectos.ori_numero = mObjEfectos.numero;
-                    mObjEfectos.cabid      = mObjEfectos.cabid;
-                    mObjEfectos.apteid     = 0;
-                    mObjEfectos.rowenl     = pIntIdCarteraEfectos;
-                    mObjEfectos.estcon     = 'N';
-                    mObjEfectos.det_agrupa = mIntNumOrden++; 
-                    
-                    Ax.db.insert("cefecges_det", mObjEfectos); 
-
-                    cefecges_pcsImpdiv = Ax.math.bc.add(cefecges_pcsImpdiv, mObjEfectos.det_impdiv);
-                    cefecges_pcsTotimp = Ax.math.bc.add(cefecges_pcsTotimp, mObjEfectos.pcs_totimp); 
-
-                    Ax.db.execute(`
-                        UPDATE cefecges_pcs
-                        SET pcs_impdiv = ${cefecges_pcsImpdiv},
-                            pcs_totimp = ${cefecges_pcsTotimp}
-                        WHERE pcs_seqno = ?
-                    `, pIntIdCarteraEfectos);
-                    
-                } 
+                mObjCefecto.pcs_seqno  = pIntIdCarteraEfectos;
+                mObjCefecto.det_numero = mObjCefecto.numero;
+                mObjCefecto.det_impdiv = mObjCefecto.impdiv;
+                mObjCefecto.det_import = mObjCefecto.import;
+                mObjCefecto.ori_numero = mObjCefecto.numero;
+                mObjCefecto.cabid      = mObjCefecto.cabid;
+                mObjCefecto.apteid     = 0;
+                mObjCefecto.rowenl     = pIntIdCarteraEfectos;
+                mObjCefecto.estcon     = 'N';
+                mObjCefecto.det_agrupa = mIntNumOrden++;
                 
+                Ax.db.insert("cefecges_det", mObjCefecto); 
+                
+               
+                mBcPcsImpdiv = Ax.math.bc.add(mBcPcsImpdiv, mObjCefecto.det_impdiv);
+                mBcPcsTotimp = Ax.math.bc.add(mBcPcsTotimp, mObjCefecto.pcs_totimp); 
+
+                Ax.db.execute(`
+                    UPDATE cefecges_pcs
+                    SET pcs_impdiv = ${mBcPcsImpdiv},
+                        pcs_totimp = ${mBcPcsTotimp}
+                    WHERE pcs_seqno = ?
+                `, pIntIdCarteraEfectos);  
             }
-        };
+
+        }
+        
+        mRsCapuntes.close();
     }
 
     /**
      * LOCAL FUNCTION: __delFile
      *
-     * Description: Función local que elimina los archivos temporales usados como apoyo en el procesado de ficheros.
+     * Función local que elimina los archivos temporales usados como apoyo en 
+     * el procesado de ficheros.
      *
      */
     function __delFile() {
 
-        // ===============================================================
-        // Eliminación de ficheros de apoyo temporales.
-        // ===============================================================
         mFileBiff5.delete();
         mFileBiff8.delete();
     }
@@ -813,16 +796,19 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
     /**
      * LOCAL FUNCTION: __getExisteCefecto
      *
-     * Description: ----
-     *
+     * Función local que busca de la cartera de efectos correspondiente 
+     * a la fila del fichero de planilla.
+     * 
+     *      @param   {string}       pStrFecFactura           Fecha de documento.
+     *      @param   {string}       pStrDocumento            Docser de documento.
+     *      @param   {decimal}      pBcImporte               Importe de documento.     
      */
-    function __getExisteCefecto(pStrFecFactura, pStrDocumento, pDoubleImporte) {
+    function __getExisteCefecto(pStrFecFactura, pStrDocumento, pBcImporte) {
+        
         var mBoolExist = false;
-        // ===============================================================
-        // Busqueda de la cartera de efectos correspondiente 
-        // a la fila del fichero de planilla.
-        // ===============================================================
-        var mObjEfectos = Ax.db.executeQuery(`
+        
+
+        var mIntCefectosInGestion = Ax.db.executeGet(`
             <select first='1'>
                 <columns>
                     (SELECT COUNT(*)
@@ -847,59 +833,115 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                     AND import = ?
                 </where>
             </select>
-        `, pStrFecFactura, pStrDocumento, pDoubleImporte).toOne(); 
-
-        if (mObjEfectos.cefectos_in_gestion == 0) {
-            mBoolExist = true;
+        `, pStrFecFactura, pStrDocumento, pBcImporte);
+        
+        switch(mIntCefectosInGestion){
+            
+            case 0: 
+                mBoolExist = true;
+                break;
+                
+            default:
+                mBoolExist = false;
+                break;
         }
+        
         return mBoolExist;
     }
 
+    function __insCodEmpleado(pTmpPlanilla) {
+
+        var mRsCodEmpleados = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    empleado
+                </columns>
+                <from table='${pTmpPlanilla}' />
+                <where>
+                    empleado = '1411108'
+                </where>
+                <!-- <group>
+                    1
+                </group> -->
+            </select>
+        `);
+
+        mRsCodEmpleados.forEach(mRowEmp => {
+            if (mRowEmp.empleado !== null) {
+                // ===============================================================
+                // Búsqueda del código de empleado en Códigos auxiliares (cctaauxl)
+                // ===============================================================
+                var mIntExistCodEmp = Ax.db.executeGet(` 
+                    <select>
+                        <columns>
+                            COUNT(*)
+                        </columns>
+                        <from table='cctaauxl'/>
+                        <where>
+                            cctaauxl.ctaaux = ?
+                        </where>
+                    </select>
+                `, mRowEmp.empleado);
+
+                // ===============================================================
+                // Si no se encuentra registrado.
+                // ===============================================================
+                if (mIntExistCodEmp == 0) {
+
+                    // ===============================================================
+                    // Se registra el código de empleado en Códigos auxiliares (cctaauxl).
+                    // ===============================================================
+                    Ax.db.insert("cctaauxl", 
+                        {
+                            codaux: 'RRHH',
+                            ctaaux: mRowEmp.empleado,
+                            desval: mRowEmp.empleado,
+                            estado: 'A'
+                        }
+                    );
+                }
+            }
+        });
+    }
+    
     // ===============================================================
-    //                  INICIO DE LA TRANSACCION
+    //                  FIN DE FUNCIONES LOCALES
+    // ===============================================================
+
+    // ===============================================================
+    //                  INICIO DE LA TRANSACCIÓN
     // =============================================================== 
 
     // ===============================================================
     // Definición de variables globales
     // =============================================================== 
-    var mFileBiff5              = null;                     // Fichero de apoyo temporal con version Biff5
-    var mFileBiff8              = null;                     // Fichero de apoyo temporal con version Biff8
-    // var mIntLoteId              = null;                     // Identificador de lote
-    var mStrUserName            = Ax.db.getUser();          // Nombre de usuario 
-    var mObjRRHHFile            = null;                     // Objeto con data del fichero cargado
-    var mTodayDate              = new Ax.util.Date();       // Fecha actual
-    var wb                      = null;                     // Excel workbook
-    var mXlsSheet               = null;                     // Excel sheet
-    var mIntLastRow             = null;                     // Número de la ultima fila del fichero.
-    var mObjCodCon              = {F: 'FV', B: 'BV'};       // Códigos de conceptos contables
-    var mIntIdCarteraEfectos    = null;                     // Identificador de la Cartera de Efectos. 
-
+    var mFileBiff5   = null;                     // Fichero de apoyo temporal con version Biff5
+    var mFileBiff8   = null;                     // Fichero de apoyo temporal con version Biff8
+    var mStrUserName = Ax.db.getUser();          // Nombre de usuario 
+    
     // ===============================================================
-    // Se valida el estado y el número CRC del fichero.
-    // ===============================================================
-    __validateFile(); 
-
-    // ===============================================================
-    // Transformación del fichero a Biff8
+    // 1. Se valida el estado y el número CRC del fichero.
+    // 2. Transformación del fichero a Biff8
     // =============================================================== 
-    wb = __fileTransformation(); 
-    
-    mXlsSheet = wb.getSheet(0);                 // Se obtiene la primera hoja de datos.
-    mXlsSheet.removeRow(0);                     // Se elimina la primera fila, correspondiente a nombre de columnas.
-    
-    mIntLastRow = mXlsSheet.getLastRowNum();    // Número de la última fila del fichero
-    mRsSheet    = mXlsSheet.toResultSet();      // ResulSet con data del fichero 
+    var mBlobFileData = __validateFile(pIntFileId, pStrCRC); 
+    var wb           = __fileTransformation(pIntFileId, mBlobFileData); 
+    var mXlsSheet    = wb.getSheet(0);                      // Se obtiene la primera hoja de datos.
+        mXlsSheet.removeRow(0);                             // Se elimina la primera fila, correspondiente a nombre de columnas.
+    var mIntLastRow = mXlsSheet.getLastRowNum();            // Número de la última fila del fichero
+        mRsSheet    = mXlsSheet.toResultSet();              // ResulSet con data del fichero 
 
     // ===============================================================
     // Se valida la existencia de registros a cargar.
     // ===============================================================
     if (mIntLastRow < 1){
         __delFile();
-        throw new Ax.ext.Exception("No existen registros a cargar en la hoja de Excel");
+        
+        throw `No existen registros a cargar en la hoja de Excel`;
     } 
 
     try {
         Ax.db.beginWork();
+        
         switch (pStrProc) { 
             // ===============================================================
             // Proceso Centro de Costos
@@ -909,17 +951,17 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Registro de costos
                 // ===============================================================
-                __insTmpCosto(pIntFileId, mRsSheet, pStrTipProc, mStrUserName); 
+                __insTmpCosto(pIntFileId, mRsSheet, pStrTipProc); 
 
                 // ===============================================================
                 // Registro de costos en Movimientos de costes (ccoscont)
                 // ===============================================================
-                var mIntLoteIdC = __insMovCostes(pIntFileRefno, mRsSheet, mStrUserName); 
+                var mIntLoteId = __insMovCostes(pIntFileRefno, mRsSheet, mStrUserName); 
 
                 // ===============================================================
-                // Actualizado del estado del fichero a En contabilidad (1)
+                // Actualiza el estado del fichero a 1 [Cargado] 
                 // ===============================================================
-                __updFileStatus('1', mIntLoteIdC, null, mStrUserName, pIntFileId);
+                __updFileStatus(1, mIntLoteId, null, mStrUserName, pIntFileId);
                 
                 break;
 
@@ -936,69 +978,85 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 // ===============================================================
                 // Registro de planillas
                 // ===============================================================
-                var mIntLoteId = __insPlanilla(mRsSheet, mStrUserName); 
+                var mIntLoteId = __insPlanilla(mRsSheet); 
                 
-                var mIntContCapuntes = Ax.db.executeGet(`
+                switch (pStrTipProc) { 
+                    case 'EMP':
+                    case 'PRAC':
+                        
+                        var mIntContCapuntes = Ax.db.executeGet(`
                             SELECT COUNT(*) 
                               FROM capuntes 
                               WHERE loteid = ?
                         `, mIntLoteId);
-                
-                if (mIntContCapuntes > 0) {
-                    // ===============================================================
-                    // Registro de los códigos de empleados.
-                    // ===============================================================
-                    __insCodEmp(mIntLoteId);
-    
-                    // ===============================================================
-                    // Se registra la Gestion de Cartera de Efectos (cefecges_pcs).
-                    // ===============================================================
-                    var mIntIdCarteraEfectos = __insCarteraEfectos(mTodayDate); 
-    
-                    if(mIntIdCarteraEfectos) {
                         
-                        // ===============================================================
-                        // Se registra los detalles (lineas) de la Cartera
-                        // de Efectos (cefecges_det).
-                        // ===============================================================
-                        __insDetallesCarteraEfectos(mIntIdCarteraEfectos, mRsSheet);
-                        
-                        var mIntLineasExist = Ax.db.executeGet(`
-                            SELECT COUNT(*) 
-                              FROM cefecges_det 
-                              WHERE pcs_seqno = ?
-                        `, mIntIdCarteraEfectos); 
-                        
-                        if(mIntLineasExist == 0 ) {
-                            Ax.db.execute(`
-                                DELETE FROM cefecges_pcs WHERE pcs_seqno = ?
-                            `, mIntIdCarteraEfectos);
-                            
-                            __updFileStatus('1', mIntLoteId, null, mStrUserName, pIntFileId);
-                        }
-                        
-                        if(mIntLineasExist > 0 ) {
-                            // ===============================================================
-                            // Se cierra la gestión de cartera
-                            // ===============================================================
-                            
-                            // Ax.db.call("cefecges_estado_ava", mIntIdCarteraEfectos, 0);
+                        if (mIntContCapuntes > 0) {
             
                             // ===============================================================
-                            // Update del estado del fichero a En contabilidad (1)
+                            // Se registra la Gestion de Cartera de Efectos (cefecges_pcs).
                             // ===============================================================
-                            __updFileStatus('1', mIntLoteId, mIntIdCarteraEfectos, mStrUserName, pIntFileId);
-                        }
-                    }
-                } else {
-                    throw new Ax.ext.Exception('Revisar que las columnas TIP_DOC, SERIE y COMPROBANTE esten informadas en el fichero a cargar ');
-                } 
+                            var mIntIdCarteraEfectos = __insCarteraEfectos();
+                            
 
+                            if(mIntIdCarteraEfectos) {
+                                
+                                // ===============================================================
+                                // Se registra los detalles (lineas) de la Cartera
+                                // de Efectos (cefecges_det).
+                                // ===============================================================
+                                __insDetallesCarteraEfectos(mIntIdCarteraEfectos, mIntLoteId, mRsSheet);
+                                
+                                var mIntLineasExist = Ax.db.executeGet(`
+                                    SELECT COUNT(*) 
+                                      FROM cefecges_det 
+                                      WHERE pcs_seqno = ?
+                                `, mIntIdCarteraEfectos);
+                                // throw new Ax.ext.Exception("NUM-LINEAS: [${mIntLineasExist}]", {mIntLineasExist});
+                                
+                                if(mIntLineasExist == 0 ) {
+                                    Ax.db.execute(`
+                                        DELETE FROM cefecges_pcs WHERE pcs_seqno = ?
+                                    `, mIntIdCarteraEfectos);
+                                    
+                                    __updFileStatus(1, mIntLoteId, null, mStrUserName, pIntFileId);
+                                }
+                                
+                                if(mIntLineasExist > 0 ) {
+                                    // ===============================================================
+                                    // Se cierra la gestión de cartera
+                                    // ===============================================================
+                                    
+                                    Ax.db.call("cefecges_estado_ava", mIntIdCarteraEfectos, 0);
+                    
+                                    // ===============================================================
+                                    // Actualiza el estado del fichero del fichero a 1 [Cargado] 
+                                    // ===============================================================
+                                    __updFileStatus(1, mIntLoteId, mIntIdCarteraEfectos, mStrUserName, pIntFileId);
+                                }
+                            } else {
+                                __updFileStatus(1, mIntLoteId, null, mStrUserName, pIntFileId);
+                            }
+                            
+                        } else {
+                            throw new Ax.ext.Exception('Revisar que las columnas TIP_DOC, SERIE y COMPROBANTE esten informadas en el fichero a cargar ');
+                        }
+                        
+                        break;
+                    case 'PROV':
+                        __updFileStatus(1, mIntLoteId, null, mStrUserName, pIntFileId);
+                        break;
+                        
+                    default:
+                        __delFile();
+                        throw new Ax.ext.Exception('El tipo de proceso es no soportado.');
+                        break;
+                }
                 break;
 
             default:
                 __delFile();
-                throw new Ax.ext.Exception('El tipo de proceso es no soportado.');
+                throw new Ax.ext.Exception('El proceso de registro es no soportado.');
+                break;
         }
 
         // ===============================================================
@@ -1007,21 +1065,24 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         __delFile();
 
         Ax.db.commitWork();
-    } catch(error) { 
+        
+    } catch(error) {
 
         Ax.db.rollbackWork();
+        
+        var mStrMessageError = `${error.message || error}`;
 
         // ===============================================================
         // Update del estado del fichero a Error (3)
         // ===============================================================
-        __updFileStatus('3', null, null, mStrUserName, pIntFileId);
+        __updFileStatus(3, null, null, mStrUserName, pIntFileId, mStrMessageError);
 
         // ===============================================================
         // Se elimina los archivos temporales usados como apoyo 
         // en el procesado de lectura de ficheros.
         // ===============================================================
         __delFile();
-
-        throw new Ax.ext.Exception("ERROR: [${error}]", {error});
+        
+        throw `[ERROR]: ${mStrMessageError}`;
     }
 }
