@@ -1,0 +1,2165 @@
+<!-- ============================================================================== -->
+<!--                                                                                -->
+<!--    XSQL: iges_con_contab (Antes se llamaba iges_con_contabi)                   -->
+<!--                                                                                -->
+<!--    Realiza la generacion de los apuntes, impuestos, efectos, etc... (según     -->
+<!--    proceda) en la contabilizacion de un documento.                             -->
+<!--                                                                                -->
+<!-- ============================================================================== -->
+<xsql-script name='iges_con_contab'>
+    <args>
+        <arg name='p_sistem'        type='string'  />           <!-- [B Diferido    -->
+                                                                <!-- [A] Real       -->
+        <arg name='p_feccon'        type='date'    />
+        <arg name='p_tabname'       type='string'  />
+        <arg name='p_loteid_fld'    type='string'  />
+    </args>
+
+    <body>
+    
+        <!-- ====================================================================== -->
+        <!--                                                                        -->
+        <!--    FUNC: local_set_contra_account                                      -->
+        <!--                                                                        -->
+        <!--    Fills the contra account field of temp table @tmp_capuntes.         -->
+        <!--                                                                        -->
+        <!-- ====================================================================== -->
+        <function name='local_set_contra_account'>
+            <body>
+                <foreach>
+                    <select prefix='m_'>     
+                        <columns>
+                            apteid, cabid, linid, orden, contra_account
+                        </columns>
+                        <from table='@tmp_capuntes' />
+                        <where>
+                            contra_account IS NOT NULL AND
+                            contra IS NULL  AND
+                            (debe != 0 OR haber != 0)
+                        </where>
+                    </select>
+                    <do>
+                        <select prefix='m_'>
+                            <columns>MAX(cuenta) contra</columns>
+                            <from table='@tmp_capuntes' />
+                            <where>
+                                cabid = <m_cabid /> AND
+                               (linid = <m_linid /> OR linid = 0) AND
+                                orden = <m_contra_account />
+                            </where>
+                        </select>
+
+                        <if>
+                            <expr><isnull><m_contra /></isnull></expr>
+                            <then>
+                                <exception code='CUENTA' message='Cuenta de contrapartida no encontrada: cabid: [{0}] linid: [{1}] orden [{2}]'>
+                                    <arg><m_cabid /></arg>
+                                    <arg><m_linid /></arg>
+                                    <arg><m_orden /></arg>
+                                </exception>
+                            </then>
+                        </if>
+
+                        <update table='@tmp_capuntes'>
+                            <column name='contra'><m_contra /></column>
+                            <where>
+                                apteid = <m_apteid />
+                            </where>
+                        </update>
+                    </do>
+                </foreach>
+            </body>
+        </function>
+
+
+        <!-- ====================================================================== -->
+        <!--                                                                        -->
+        <!--    FUNC: local_iges_con_cuadre                                         -->
+        <!--                                                                        -->
+        <!--    Realiza el cuadre del asiento generado si procede                   -->
+        <!--                                                                        -->
+        <!-- ====================================================================== -->
+        <function name='local_iges_con_cuadre'>
+
+            <args>
+                <arg name='p_tabname' type='string'  /> <!-- gcommmovh/gcomfach/... -->
+                <arg name='p_cabid'   type='integer' /> <!-- Id. documento          -->
+                <arg name='p_sistem'  type='string' />  <!-- [D] Diferido           -->
+                                                        <!-- [R] Real               -->
+                <arg name='p_apteid'  type='integer' />
+                <arg name='p_first_apteid'  type='integer' />
+                <arg name='p_empcode' type='string'  />
+                <arg name='p_totdeb'  type='decimal' />
+                <arg name='p_tothab'  type='decimal' />
+                <arg name='p_divdeb'  type='decimal' /> <!-- Total divisas debe     -->
+                <arg name='p_divhab'  type='decimal' /> <!-- Total divisas haber    -->
+                <arg name='p_asient'  type='integer' />
+                <arg name='p_fecha'   type='date' />
+            </args>
+
+            <body>
+
+                <!-- ============================================================== -->
+                <!-- El cuadre se realiza sobre el ultimo apunte del asiento. Tanto -->
+                <!-- para en moneda local como en divisas.                          -->
+                <!-- ============================================================== -->
+                <if>
+                    <expr><eq><p_totdeb /><p_tothab /></eq></expr>
+                    <then>
+                        <return />
+                    </then>
+                </if>
+
+                <set name='m_apteid'><p_apteid /></set>
+
+                <!-- ============================================================== -->
+                <!-- POR DEFECTO SE REALIZA EL SIGUIENTE CONTROL DE DESCUADRE:      -->
+                <!-- Si hay una diferencia mayor a 10 veces el valor de la unidad   -->
+                <!-- mas pequeña en la moneda local. Ej: En euros la unidad menor   -->
+                <!-- son .01 ya que tiene 2 decimales de redondeo. Por tanto        -->
+                <!-- 10 * .01 = .1                                                  -->
+                <!--                                                                -->
+                <!-- Generalizando el redondeo en funcion del numero de decimales   -->
+                <!-- permitidos para la moneda local: 10 / (10 ** num_red)          -->
+                <!-- ============================================================== -->
+                <set name='m_divred' type='integer'>
+                    <execute-function name='icon_get_divred' type='integer'>
+                        <execute-function name='icon_get_moneda'>
+                            <p_empcode />
+                        </execute-function>
+                    </execute-function>
+                </set>
+
+                <set name='m_max_descuadre'>
+                    <div>
+                        10
+                        <exp>10<m_divred /></exp>
+                    </div>
+                </set>
+
+                <!-- ============================================================== -->
+                <!-- Include para customizar el importe máximo permitido de         -->
+                <!-- descuadre.                                                     -->
+                <!-- ============================================================== -->
+                <set name='m_con_cuadre'><true /></set>
+
+                <include code='iges_con_contab' name='cuadre' />
+
+                <if>
+                    <expr>
+                        <m_con_cuadre />
+                        <and />
+                        <gt>
+                            <math.abs>
+                                <sub>
+                                    <p_totdeb />
+                                    <p_tothab />
+                                </sub>
+                            </math.abs>
+                            <m_max_descuadre />
+                        </gt>
+                    </expr>
+                    <then>
+                        <exception code='DESCUADRE' message='local_iges_con_cuadre: Asiento descuadrado. Debe:[{0}]-Haber:[{1}]. Revisar [gconasih].'>
+                            <arg><p_totdeb /></arg>
+                            <arg><p_tothab /></arg>
+                        </exception>
+                    </then>
+                </if>
+
+                <!-- ============================================================== -->
+                <!-- Si el apunte tiene un registro de impuestos o de efectos       -->
+                <!-- generados, no se redondea nunca.                               -->
+                <!-- ============================================================== -->
+                <if>
+                    <expr>
+                        <select>
+                            <columns>COUNT(*)</columns>
+                            <from table='ctax_move_head' />
+                            <where>
+                                taxh_apteid = <m_apteid />
+                            </where>
+                        </select>
+                    <or />
+                        <select>
+                            <columns>COUNT(*)</columns>
+                            <from table='cefectos' />
+                            <where>
+                                apteid = <m_apteid />
+                            </where>
+                        </select>
+                    </expr>
+                    <then>
+                        <set name='m_apteid'><p_first_apteid /></set>
+
+                        <if>
+                            <expr>
+                                <select>
+                                    <columns>COUNT(*)</columns>
+                                    <from table='ctax_move_head' />
+                                    <where>
+                                        taxh_apteid = <m_apteid />
+                                    </where>
+                                </select>
+                            <or />
+                                <select>
+                                    <columns>COUNT(*)</columns>
+                                    <from table='cefectos' />
+                                    <where>
+                                        apteid = <m_apteid />
+                                    </where>
+                                </select>
+                            </expr>
+                            <then>
+                                <return />
+                            </then>
+                        </if>
+                    </then>
+                </if>
+
+                <if>
+                    <expr>
+                        <ne>
+                            <select>
+                                <columns>debe</columns>
+                                <from table='capuntes' />
+                                <where>
+                                    apteid = <m_apteid />
+                                </where>
+                            </select>
+                            0
+                        </ne>
+                    </expr>
+                    <then>
+                        <set name='m_totdeb'><sub><p_tothab /><p_totdeb /></sub></set>
+                        <set name='m_divdeb'><sub><p_divhab /><p_divdeb /></sub></set>
+                        <set name='m_tothab' type='decimal'>0</set>
+                        <set name='m_divhab' type='decimal'>0</set>
+                    </then>
+                    <else>
+                        <set name='m_tothab'><sub><p_totdeb /><p_tothab /></sub></set>
+                        <set name='m_divhab'><sub><p_divdeb /><p_divhab /></sub></set>
+                        <set name='m_totdeb' type='decimal'>0</set>
+                        <set name='m_divdeb' type='decimal'>0</set>
+                    </else>
+                </if>
+
+                <if>
+                    <expr>
+                        <gt>
+                            <math.abs>
+                                <m_totdeb />
+                            </math.abs>
+                            <m_max_descuadre />
+                        </gt>
+                    <or />
+                        <gt>
+                            <math.abs>
+                                <m_tothab />
+                            </math.abs>
+                            <m_max_descuadre />
+                        </gt>
+                    </expr>
+                    <then>
+                        <return />
+                    </then>
+                </if>
+
+                <!-- ============================================================== -->
+                <!-- El cuadre se realiza siempre para la moneda local; y para la   -->
+                <!-- divisa sólo se realiza cuando el asiento esta expresado en una -->
+                <!-- sola divisa.                                                   -->
+                <!-- ============================================================== -->
+                <if>
+                    <expr>
+                        <gt>
+                            <select>
+                                <columns>
+                                    COUNT(DISTINCT moneda)
+                                </columns>
+                                <from table='capuntes' />
+                                <where>
+                                    empcode = <p_empcode /> AND
+                                    asient  = <p_asient />  AND
+                                    fecha   = <p_fecha />
+                                </where>
+                            </select>
+                            1
+                        </gt>
+                    </expr>
+                    <then>
+                        <update table='capuntes'>
+                            <column name='debe' text='true'>debe + <m_totdeb /></column>
+                            <column name='haber' text='true'>haber + <m_tothab /></column>
+                            <where>
+                                apteid = ?
+                            </where>
+                            <values>
+                                <m_apteid />
+                            </values>
+                        </update>
+                    </then>
+                    <else>
+                        <update table='capuntes'>
+                            <column name='debe' text='true'>debe + <m_totdeb /></column>
+                            <column name='haber' text='true'>haber + <m_tothab /></column>
+                            <column name='divdeb' text='true'>divdeb + <m_divdeb /></column>
+                            <column name='divhab' text='true'>divhab + <m_divhab /></column>
+                            <where>
+                                apteid = ?
+                            </where>
+                            <values>
+                                <m_apteid />
+                            </values>
+                        </update>
+                    </else>
+                </if>
+
+                <select prefix='m_'>
+                    <columns>
+                        MAX(orden) orden
+                    </columns>
+                    <from table='ccoscont' />
+                    <where>
+                        apteid = <m_apteid />
+                    </where>
+                </select>
+
+                <if>
+                    <expr><isnotnull><m_orden /></isnotnull></expr>
+                    <then>
+                        <update table='ccoscont'>
+                            <column name='debe' text='true'>debe + <m_totdeb /></column>
+                            <column name='haber' text='true'>haber + <m_tothab /></column>
+                            <where>
+                                orden = ?
+                            </where>
+                            <values>
+                                <m_orden />
+                            </values>
+                        </update>
+                    </then>
+                </if>
+
+                <delete table='capuntes'>
+                    <where>
+                        debe  =  0 AND
+                        haber  = 0 AND
+                        divdeb = 0 AND
+                        divhab = 0 AND
+                        apteid = <m_apteid />
+                    </where>
+                </delete>
+            </body>
+        </function>
+
+        <if-exists type='table' name='cons_medicio'>
+            <then>
+                <set name='m_is_construction'><true /></set>
+            </then>
+            <else>
+                <set name='m_is_construction'><false /></set>
+            </else>
+        </if-exists>
+
+        <!-- ====================================================================== -->
+        <!-- La siguiente variable permite manejar si se da o no error por no       -->
+        <!-- haberse generado apuntes. Su valor puede modificarse en el include.    -->
+        <!-- From retail cash account, force not error.                             -->
+        <!-- ====================================================================== -->
+        <set name='m_error_noapt'><true /></set>
+
+        <if>
+            <expr><eq><p_tabname />gret_caja</eq></expr>
+            <then>
+                <set name='m_error_noapt'><false /></set>
+            </then>
+        </if>
+
+        <if>
+            <expr><eq><p_tabname />cpar_cierreh</eq></expr>
+            <then>
+                <set name='m_error_noapt'><false /></set>
+            </then>
+        </if>
+
+        <!-- ====================================================================== -->
+        <!-- map with conversion tabname, colname.                                  -->
+        <!-- ====================================================================== -->
+        <map name='map-table-colseqno'>
+            <item><string>gcommovh</string><string>cabid</string></item>
+            <item><string>gcomalbh</string><string>cabid</string></item>
+            <item><string>gcomfach</string><string>cabid</string></item>
+            <item><string>geanmovh</string><string>cabid</string></item>
+            <item><string>gvenmovh</string><string>cabid</string></item>
+            <item><string>gvenalbh</string><string>cabid</string></item>
+            <item><string>gvenfach</string><string>cabid</string></item>
+            <item><string>gcomanth</string><string>cabid</string></item>
+            <item><string>ganticih</string><string>cabid</string></item>
+            <item><string>gpro_ordprodh</string><string>cabid</string></item>
+            <item><string>cpar_cierreh</string><string>cabid</string></item>
+            <item><string>galmval_exec</string><string>val_seqno</string></item>
+            <item><string>gven_reb_provdoc</string><string>prov_seqno</string></item>
+        </map>
+        
+        <set name='m_colname_fld'>
+            <map.get name='map-table-colseqno'>
+                <p_tabname />
+            </map.get>
+        </set>
+        
+        <!-- ====================================================================== -->
+        <!-- Allow adjust TAX differences in TPV accounting.                        -->
+        <!-- Can be modified in include [before].                                   -->
+        <!-- ====================================================================== -->
+        <set name='m_round_tax_gret_caja'>
+            <expr><eq><p_tabname />gret_caja</eq></expr>
+        </set>
+
+        <!-- ====================================================================== -->
+        <!-- Include customizable para operar con los apuntes.                      -->
+        <!-- ====================================================================== -->
+        <include code='iges_con_contab' name='before' />
+
+        <!-- ====================================================================== -->
+        <!-- Fills the contra account field of temp table @tmp_capuntes.            -->
+        <!-- ====================================================================== -->
+        <if>
+            <expr>
+                <select>
+                    <columns>COUNT(*)</columns>
+                    <from table='@tmp_capuntes' />
+                    <where>
+                        contra_account IS NOT NULL
+                    </where>
+                </select>
+            </expr>
+            <then>
+                <local_set_contra_account />
+            </then>
+        </if>
+
+        <!-- ====================================================================== -->
+        <!-- Procesos a realizar.                                                   -->
+        <!-- ====================================================================== -->
+        <select prefix='exists_'>
+            <columns>
+                COUNT(*) ccoscont
+            </columns>
+            <from table='@tmp_ccoscont' />
+        </select>
+
+        <select prefix='exists_'>
+            <columns>
+                COUNT(*) ctax_move_head
+            </columns>
+            <from table='@tmp_taxdata' />
+        </select>
+
+        <select prefix='exists_'>
+            <columns>
+                COUNT(*) cefectos
+            </columns>
+            <from table='@tmp_cefecont' />
+        </select>
+
+        <!-- ====================================================================== -->
+        <!-- [v_entry_dup]                                                          -->
+        <!--                                                                        -->
+        <!-- vtable with account entries, that must be duplicated with inverted     -->
+        <!-- sign.                                                                  -->
+        <!-- ====================================================================== -->
+        <vtable name='v_entry_dup'>
+            <column name='asient'    type='integer' />
+            <column name='fecha'     type='date' />
+            <column name='empcode'   type='string' />
+            <column name='loteid'    type='integer' />
+        </vtable>
+
+        <!-- ====================================================================== -->
+        <!-- Contabilizacion. Genera un asiento por factura o grupos de facturas    -->
+        <!-- segun la parametrizacion de los asientos contables.                    -->
+        <!-- ====================================================================== -->
+        <set name='capuntes_loteid' type='integer'>0</set>
+        <set name='capuntes_orden' type='integer'>0</set>
+
+        <set name='m_totdeb' type='decimal'>0</set>
+        <set name='m_tothab' type='decimal'>0</set>
+        <set name='m_divdeb' type='decimal'>0</set>
+        <set name='m_divhab' type='decimal'>0</set>
+
+        <null name='capuntes_jusser' type='string' />
+        
+        <!-- ====================================================================== -->
+        <!-- Si no hay apuntes en la temporal ==> ERROR.                            -->
+        <!-- ====================================================================== -->
+        <if>
+            <expr>
+                <not>
+                    <select>
+                        <columns>COUNT(*)</columns>
+                        <from table='@tmp_capuntes' />
+                    </select>
+                </not>
+            <and />
+                <m_error_noapt />
+            </expr>
+            <then>
+                <exception code='GENAPUNTES' message='iges_con_contab: NO SE HAN GENERADO APUNTES.'/>
+            </then>
+        </if>
+
+        
+        <foreach>
+            <select prefix='capuntes_' prepare='false'>
+                <columns>
+                    orden  m_orden,  diario, moneda, cambio, empcode,  proyec,   seccio,
+                    jusser m_jusser, fecha,  cuenta, ctaaux, dimcode1, dimcode2, codcon,
+                    concep,
+                                                                        
+                    <p_sistem /> sistem,
+
+                    agrupa m_agrupa, contra,
+                    CASE WHEN agrupa = 'C'
+                         THEN <p_feccon />
+                         ELSE fecval
+                     END fecval,
+                    CASE WHEN agrupa = 'C'
+                         THEN 0
+                         ELSE cabid
+                     END m_cabid,
+                    CASE WHEN agrupa = 'C'
+                         THEN 'X'
+                         ELSE docser
+                     END m_docser,
+
+                    <!-- =========================================================== -->
+                    <!-- ATENTION:                                                   -->
+                    <!--                                                             -->
+                    <!-- En la contabilización de albaranes de compras, la           -->
+                    <!-- referencia pasa a capuntes.docser y gcomalbh.docser pasa al -->
+                    <!-- capuntes.jusser. Al realizarse hasta ahora ruptura por      -->
+                    <!-- [jusser], no funciona.                                      -->
+                    <!-- =========================================================== -->
+                    CASE WHEN agrupa = 'C'
+                         THEN <trim>jusser</trim> || 'X'
+                         ELSE <trim>jusser</trim> || <trim>docser</trim>
+                     END m_ruptapt,
+                    cosaut,
+                    group_aux,
+                    dupasto_inv,
+
+                    SUM(debe) debe, SUM(haber) haber, SUM(divdeb) divdeb, SUM(divhab) divhab
+                </columns>
+                <from table='@tmp_capuntes' />
+                <group>
+                    1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25
+                </group>
+                <order>
+                    8, 22, 1
+                </order>
+            </select>
+            <before-group of='capuntes_m_ruptapt'>
+
+               <!-- ================================================================ -->
+                <!-- En un mismo asiento no puede haber apuntes de diferentes        -->
+                <!-- empresas.                                                       -->
+               <!-- ================================================================ -->
+                <if>
+                    <expr>
+                        <gt>
+                            <select prepare='false'>
+                                <columns>
+                                    COUNT(UNIQUE empcode)
+                                </columns>
+                                <from table='@tmp_capuntes' />
+                                <where>
+                                    (CASE WHEN agrupa = 'C'
+                                          THEN 'X'
+                                          ELSE docser
+                                     END) = <capuntes_m_docser />
+                                </where>
+                            </select>
+                            1
+                        </gt>
+                    </expr>
+                    <then>
+                        <exception code='DIFSOCI' message='iges_con_contab: Apuntes de diferentes sociedades en el mismo asiento.'/>
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Si se cambia de documento inicializar los totalizadores y el    -->
+                <!-- contador de apuntes en un asiento.                              -->
+                <!-- =============================================================== -->
+                <set name='capuntes_orden' type='integer'>1</set>
+                <null name='capuntes_first_apteid' type='integer' />
+
+                <set name='m_totdeb' type='decimal'>0</set>
+                <set name='m_tothab' type='decimal'>0</set>
+                <set name='m_divdeb' type='decimal'>0</set>
+                <set name='m_divhab' type='decimal'>0</set>
+
+                <!-- =============================================================== -->
+                <!-- Generar lote para enlace de iGES con iCON e insertar el enlace  -->
+                <!-- con subsistema origen (iGES). El enlace se realiza tanto si se  -->
+                <!-- genera asiento por documento como si no.                        -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr><eq><p_tabname />gret_caja</eq></expr>
+                    <then>
+                        <set name='m_colname'><string>liqid</string></set>
+                    </then>
+                    <else-if>
+                        <expr><eq><p_tabname />galmacen</eq></expr>
+                        <then>
+                            <set name='m_colname'><string>almid</string></set>
+                        </then>
+                    </else-if>
+                    <else>
+                        <set name='m_colname'><string>cabid</string></set>
+                    </else>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Generates loteid                                                -->
+                <!-- =============================================================== -->  
+                <insert table='cenllote'>
+                    <column name='loteid'>0</column>
+                    <column name='tabname'><p_tabname /></column>
+                </insert>
+                <set name='capuntes_loteid'><sqlca.serial /></set>
+
+                <!-- =============================================================== -->
+                <!-- Enlazo los apuntes a generar.                                   -->
+                <!-- =============================================================== -->  
+                <if>
+                    <expr><isnotnull><p_loteid_fld /></isnotnull></expr>
+                    <then>
+                        <update table='${p_tabname}'>
+                            <column name='${p_loteid_fld}'><capuntes_loteid /></column>
+                            <where>
+                                ${m_colname_fld} IN 
+                                         (SELECT a.cabid
+                                            FROM @tmp_capuntes a
+                                           WHERE a.diario = <capuntes_diario />   AND
+                                                 a.jusser = <capuntes_m_jusser /> AND
+                                                 a.fecha  = <capuntes_fecha />    AND
+                                                 <nvl>a.docser, <whitespace /></nvl> =
+                                                           (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                 THEN <nvl>a.docser, <whitespace /></nvl>
+                                                                 ELSE <capuntes_m_docser />
+                                                             END) AND
+                                                 a.orden  = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                  THEN a.orden
+                                                                  ELSE <capuntes_m_orden />
+                                                             END) AND
+                                                 a.cabid  = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                  THEN a.cabid
+                                                                  ELSE <capuntes_m_cabid />
+                                                             END) AND
+                                                 a.fecval = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                  THEN a.fecval
+                                                                  ELSE <capuntes_fecval />
+                                                              END)) AND
+                                 ${p_loteid_fld}  IS NULL
+                            </where>
+                        </update> 
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Generar nuevo numero de asiento.                                -->
+                <!-- =============================================================== -->
+                <set name='capuntes_asient' type='integer'>
+                    <execute-function name='icon_nxt_asient' db2vtable='true' type='integer'>
+                        <capuntes_empcode />
+                        <p_feccon />
+                        <number>0</number>
+                    </execute-function>
+                </set>
+
+                <!-- =============================================================== -->
+                <!-- Si la agrupacion es por cuenta, como numero de documento        -->
+                <!-- se toma el del justificante.                                    -->
+                <!-- =============================================================== -->
+                <set name='capuntes_docser'><capuntes_m_docser /></set>
+                <set name='capuntes_jusser'><capuntes_m_jusser /></set>
+
+                <!-- =============================================================== -->
+                <!-- Include customizable para permitir modificar los                -->
+                <!-- numeros de justificantes y documentos.                          -->
+                <!-- =============================================================== -->
+                <include code='iges_con_contab' name='docser' />
+                
+                <!-- =============================================================== -->
+                <!-- Numero justificantes y documentos si todavia no estan numerados.-->
+                <!-- =============================================================== -->
+                <null name='m_mask_tabname' type='string' />
+                <select prefix='m_' >
+                    <columns>
+                        CASE WHEN mask_tabname = "global"
+                             THEN 0
+                             ELSE 1
+                        END ord_cserjush,
+                        mask_tabname
+                    </columns>
+                    <from table='cjusnumh' />
+                    <where>
+                        mask_code    = <capuntes_jusser /> AND
+                        mask_tabname IN ("EF", "global")   AND
+                       (mask_fecbaj IS NULL OR mask_fecbaj > <p_feccon />)
+                    </where>
+                    <order>1</order>
+                </select>
+
+                <if>
+                    <expr><isnotnull><m_mask_tabname /></isnotnull></expr>
+                    <then>
+                        <execute-procedure name='icon_getnum_jusdoc'>
+                            <in>
+                                <m_mask_tabname />
+                                <null />
+                                <capuntes_empcode /> 
+                                <capuntes_proyec /> 
+                                <capuntes_seccio /> 
+                                <capuntes_jusser /> 
+                                <capuntes_docser />
+                                <capuntes_fecha  /> 
+                                <system.user.getCode /> 
+                            </in>
+                            <out>
+                                <var name='capuntes_jusser' />
+                                <var name='m_docser' />
+                            </out>
+                        </execute-procedure>
+                    </then>
+                </if>
+
+                <if>
+                    <expr><eq><capuntes_m_agrupa />C</eq></expr>
+                    <then>
+                        <set name='capuntes_docser'><capuntes_jusser /></set>
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- En contabilizacion de caja el docser es igual al justificante.  -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr><eq><p_tabname />gret_caja</eq></expr>
+                    <then>
+                        <set name='capuntes_docser'><capuntes_jusser /></set>
+                    </then>
+                </if>
+<!--
+    BPR/CGI  11-04-2018
+
+    The call to icon_getnum_jusdoc makes this task.
+
+                <if>
+                    <expr><string.matches><capuntes_docser />*-</string.matches></expr>
+                    <then>
+                        <set name='capuntes_docser'>
+                            <execute-function name='icon_nxt_docemp' db2vtable='true'>
+                                <capuntes_empcode />
+                                <capuntes_docser />
+                                <p_feccon />
+                                <string>S</string>
+                            </execute-function>
+                        </set>
+                    </then>
+                </if>
+-->
+            </before-group>
+
+            <after-group of='capuntes_m_ruptapt'>
+                <!-- =============================================================== -->
+                <!-- cuadre del asiento anterior.                                    -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr><ne><m_totdeb /><m_tothab /></ne></expr>
+                    <then>
+                        <local_iges_con_cuadre>
+                            <p_tabname />
+                            <capuntes_m_cabid />
+                            <p_sistem />
+                            <capuntes_apteid />
+                            <capuntes_first_apteid />
+                            <capuntes_empcode />
+                            <m_totdeb />
+                            <m_tothab />
+                            <m_divdeb />
+                            <m_divhab />
+                            <capuntes_asient />
+                            <capuntes_fecha />
+                        </local_iges_con_cuadre>
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Set in a vtable de account entry generated.                     -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr><ne><capuntes_dupasto_inv />0</ne></expr>
+                    <then>
+                        <vtable.insert name='v_entry_dup'>
+                            <column name='asient'><capuntes_asient /></column>
+                            <column name='fecha'><capuntes_fecha /></column>
+                            <column name='empcode'><capuntes_empcode /></column>
+                            <column name='loteid'><capuntes_loteid /></column>
+                        </vtable.insert>
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Generacion de movimientos de ingresos/gastos en presupuesto.    -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr>
+                        <isnotnull><p_tabname /></isnotnull>
+                    <and />
+                        <string.regexp>
+                            <p_tabname/>
+                            <string>(gcomfach|gvenfach|gcomalbh|gvenalbh|gcommovh|gvenmovh|cpar_cierreh)</string>
+                        </string.regexp>
+                    </expr>
+                    <then>
+                        <!-- ======================================================= -->
+                        <!-- Si existe presupuesto para el articulo, se debe de      -->
+                        <!-- desglosar en gastos el articulo y la VLOG.              -->
+                        <!-- ======================================================= -->
+                        <foreach>
+                            <select prepare='false' prefix='cpremovi_'>
+                                <columns>
+                                    tabori, inggas, docser, codpre, codpar,
+                                    tercer, contra, natura, codart, varlog,
+                                    SUM(cancon) cancon, SUM(import) import
+                                </columns>
+                                <from table='@tmp_cpremovi' />
+                                <where>
+                                    <string mode='unquoted'>
+                                        <ifthen>
+                                            <expr><m_is_construction /></expr>
+                                            <string>1=1</string>
+                                            <string>
+                                                EXISTS(SELECT linid
+                                                         FROM cpar_prearti
+                                                        WHERE cpar_prearti.empcode = '<capuntes_empcode />'
+                                                          AND cpar_prearti.codpre  = @tmp_cpremovi.codpre
+                                                          AND cpar_prearti.codpar  = @tmp_cpremovi.codpar
+                                                          AND cpar_prearti.codart  = @tmp_cpremovi.codart
+                                                          AND cpar_prearti.varlog  = @tmp_cpremovi.varlog)
+
+                                            </string>
+                                        </ifthen>
+                                    </string>
+                                </where>
+                                <group>
+                                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+                                </group>
+                            </select>
+                            <do>
+                                <set name='cpremovi_linid'>0</set>
+                                <set name='cpremovi_empcode'><capuntes_empcode /></set>
+                                <set name='cpremovi_estado'>A</set>
+
+                                <!-- =============================================== -->
+                                <!-- BPR 17-12-2014                                  -->
+                                <!-- To avoid problems with previous closures.       -->
+                                <!-- =============================================== -->
+                                <set name='cpremovi_fecdoc'><capuntes_fecval /></set>
+
+                                <if>
+                                    <expr><m_is_construction /></expr>
+                                    <then>
+                                        <set name='cpremovi_fecdoc'><capuntes_fecha /></set>
+                                    </then>
+                                </if>
+
+                                <set name='cpremovi_feccon'><capuntes_fecha /></set>
+                                <set name='cpremovi_codcon'><capuntes_codcon /></set>
+                                <set name='cpremovi_concep'><capuntes_concep /></set>
+                                <set name='cpremovi_loteid'><capuntes_loteid /></set>
+                                <set name='cpremovi_user_created'><system.user.getCode /></set>
+                                <set name='cpremovi_date_created'><date.current /></set>
+                                <set name='cpremovi_user_updated'><system.user.getCode /></set>
+                                <set name='cpremovi_date_updated'><date.current /></set>
+
+                                <include code='iges_con_contab' name='before_cpar_premovi' />
+
+                                <insert table='cpar_premovi' prefix='cpremovi_' />
+                                
+                                <!-- ======================================================= -->
+                                <!-- Luego de generar el registro de cpar_premovi se invoca  -->
+                                <!-- al include para generar compponente y relacionarlos     -->
+                                <!-- ======================================================= -->
+                                <include code='iges_con_contab' name='after_cpar_premovi' />
+                            </do>
+                        </foreach>
+
+                        <!-- ======================================================= -->
+                        <!-- Gastos sin presupuesto, no se desglosa el articulo.     -->
+                        <!-- In construction module always the budgets movements     -->
+                        <!-- at charged at item level.                               -->
+                        <!-- ======================================================= -->
+                        
+                        <!-- ======================================================= -->
+                        <!-- Custom CRP: Orden por prioridad según línea padre       -->
+                        <!-- ======================================================= -->
+                        <if>
+                            <expr><not><m_is_construction /></not></expr>
+                            <then>
+                                <foreach>
+                                    <select prepare='false' prefix='cpremovi_'>
+                                        <columns>
+                                            @tmp_cpremovi.tabori, @tmp_cpremovi.inggas, 
+                                            @tmp_cpremovi.docser, @tmp_cpremovi.codpre, 
+                                            @tmp_cpremovi.codpar, @tmp_cpremovi.tercer, 
+                                            @tmp_cpremovi.contra, @tmp_cpremovi.natura, 
+                                            @tmp_cpremovi.codart, @tmp_cpremovi.varlog,
+                                            gcomfacl.auxnum2,
+                                            SUM(@tmp_cpremovi.cancon) cancon, SUM(@tmp_cpremovi.import) import                                        
+                                        </columns>
+                                        <from table='@tmp_cpremovi'>
+                                            <join table='gcomfacl'>
+                                                <on>@tmp_cpremovi.codart = gcomfacl.codart</on>
+                                            </join>
+                                        </from>
+                                        <where>
+                                            NOT EXISTS(SELECT linid
+                                                         FROM cpar_prearti
+                                                        WHERE cpar_prearti.empcode = <capuntes_empcode />
+                                                          AND cpar_prearti.codpre  = @tmp_cpremovi.codpre
+                                                          AND cpar_prearti.codpar  = @tmp_cpremovi.codpar
+                                                          AND cpar_prearti.codart  = @tmp_cpremovi.codart
+                                                          AND cpar_prearti.varlog  = @tmp_cpremovi.varlog)
+                                            AND gcomfacl.cabid IN (SELECT gcomfach.cabid 
+                                                                     FROM gcomfach 
+                                                                    WHERE gcomfach.docser = @tmp_cpremovi.docser)
+                                        </where>
+                                        <group>
+                                            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+                                        </group>
+                                        <order>
+                                            gcomfacl.auxnum2 ASC
+                                        </order>
+                                    </select>
+                                    <do>
+                                        <!-- ======================================================= -->
+                                        <!-- 0.Identificador de línea factura                        -->
+                                        <!-- ======================================================= -->
+                                        <select first='1' prefix='m_gcomfacl_'>
+                                            <columns>
+                                                gcomfacl.linid,
+                                                gcomfacl.auxnum2 <alias name='linid_padre'/>
+                                            </columns>
+                                            <from table='gcomfach'>
+                                                <join table='gcomfacl'>
+                                                    <on>gcomfach.cabid = gcomfacl.cabid</on>
+                                                    <join table='gcomfacl_datc'>
+                                                        <on>gcomfacl.linid = gcomfacl_datc.linid</on>
+                                                    </join>
+                                                </join>
+                                            </from>
+                                            <where>
+                                                    gcomfach.loteid = <capuntes_loteid />
+                                                AND gcomfacl.codart = <cpremovi_codart/>
+                                            </where>
+                                        </select>
+                                        
+                                        <!-- ======================================================= -->
+                                        <!-- 1.Existen datos contables                               -->
+                                        <!-- ======================================================= -->
+                                        <select prefix='m_exists_'>
+                                            <columns>
+                                                COUNT(*) datcl
+                                            </columns>
+                                            <from table='gcomfach'>
+                                                <join table='gcomfacl'>
+                                                    <on>gcomfach.cabid = gcomfacl.cabid</on>
+                                                    <join table='gcomfacl_datc'>
+                                                        <on>gcomfacl.linid = gcomfacl_datc.linid</on>
+                                                    </join>
+                                                </join>
+                                            </from>
+                                            <where>
+                                                    gcomfach.loteid = <capuntes_loteid />
+                                                AND gcomfacl.codart = <cpremovi_codart/>
+                                            </where>
+                                        </select>
+
+                                        <!-- ======================================================= -->
+                                        <!-- 2. Familia del producto es agrupado                     -->
+                                        <!-- [NO] gartfami.agrele = 0                                -->
+                                        <!-- [SI] gartfami.agrele = 1                                -->
+                                        <!-- ======================================================= -->
+                                        <select prefix='m_gartfami_'>
+                                            <columns>
+                                                gartfami.agrele
+                                            </columns>
+                                            <from table='gartfami'>
+                                                <join table='garticul'>
+                                                    <on>gartfami.codigo = garticul.codfam</on>
+                                                </join>
+                                            </from>
+                                            <where>
+                                                garticul.codigo = <cpremovi_codart/>
+                                            </where>
+                                        </select>
+                                        
+                                        <!-- ======================================================= -->
+                                        <!-- Caso1. Trabaja como siempre                             -->
+                                        <!-- [SI] Existen datos contables mayor a 1                  -->
+                                        <!-- [SI] gartfami.agrele = 1                                -->
+                                        <!-- ======================================================= -->
+                                        <if>
+                                            <expr>
+                                                <gt>
+                                                    <m_exists_datcl/>
+                                                    <number>1</number>
+                                                </gt>
+                                                <or />
+                                                <eq>
+                                                    <m_gartfami_agrele/>
+                                                    <number>1</number>
+                                                </eq>
+                                            </expr>
+                                            <then>  
+                                                <set name='cpremovi_linid'>0</set>
+                                                <set name='cpremovi_empcode'><capuntes_empcode /></set>
+                                                <set name='cpremovi_estado'>A</set>
+                                                <set name='cpremovi_fecdoc'><capuntes_fecval /></set>
+                                                <set name='cpremovi_feccon'><capuntes_fecha /></set>
+                                                <set name='cpremovi_codcon'><capuntes_codcon /></set>
+                                                <set name='cpremovi_concep'><capuntes_concep /></set>
+                                                <set name='cpremovi_loteid'><capuntes_loteid /></set>
+                                                <set name='cpremovi_user_created'><system.user.getCode /></set>
+                                                <set name='cpremovi_date_created'><date.current /></set>
+                                                <set name='cpremovi_user_updated'><system.user.getCode /></set>
+                                                <set name='cpremovi_date_updated'><date.current /></set>
+
+                                                <include code='iges_con_contab' name='before_cpar_premovi' />
+
+                                                <insert table='cpar_premovi' prefix='cpremovi_' />
+                                                <set name='cpremovi_linid'><sqlca.serial /></set>
+                                                
+                                                <!-- ======================================================= -->
+                                                <!-- Guardamos en crp_related_cominv                         -->
+                                                <!-- ======================================================= -->
+                                                <set name='crp_related_cominv_loteid'><capuntes_loteid /></set>
+                                                <set name='crp_related_cominv_linid'><m_gcomfacl_linid /></set>
+                                                <set name='crp_related_cominv_cparpremovi'><cpremovi_linid /></set>
+                                                
+                                                <insert table='crp_related_cominv' prefix='crp_related_cominv_' />
+                                                
+                                                <!-- ======================================================= -->
+                                                <!-- Luego de generar el registro de cpar_premovi se invoca  -->
+                                                <!-- al include para generar compponente y relacionarlos     -->
+                                                <!-- ======================================================= -->
+                                                <include code='iges_con_contab' name='after_cpar_premovi' />
+                                            </then>
+                                            <else>
+                                                <!-- ========================================================= -->
+                                                <!-- Caso2. Familia del producto NO agrupado + NO línea padre  -->
+                                                <!-- [NO] gartfami.agrele = 0                                  -->
+                                                <!-- [NO] gcomfacl.auxnum2 = NULL                              -->
+                                                <!-- ========================================================= -->
+                                                <if>
+                                                    <expr>
+                                                        <eq><m_gartfami_agrele/><number>0</number></eq>
+                                                        <and />
+                                                        <isnull><m_gcomfacl_linid_padre /></isnull>
+                                                    </expr>
+                                                    <then>  
+                                                        <set name='m_end'>
+                                                            <math.ceiling>
+                                                                <cpremovi_cancon/>
+                                                            </math.ceiling>
+                                                        </set>
+                                                        <set name='m_import'>
+                                                           <div><cpremovi_import/><m_end/></div>
+                                                        </set>
+                                                        
+                                                        <for name='i' start='1' end='#m_end'>
+                                                            <do>
+                                                                <set name='cpremovi_linid'>0</set>
+                                                                <set name='cpremovi_empcode'><capuntes_empcode /></set>
+                                                                <set name='cpremovi_cancon'>1</set>
+                                                                <set name='cpremovi_import'><m_import/></set>
+                                                                <set name='cpremovi_estado'>A</set>
+                                                                <set name='cpremovi_fecdoc'><capuntes_fecval /></set>
+                                                                <set name='cpremovi_feccon'><capuntes_fecha /></set>
+                                                                <set name='cpremovi_codcon'><capuntes_codcon /></set>
+                                                                <set name='cpremovi_concep'><capuntes_concep /></set>
+                                                                <set name='cpremovi_loteid'><capuntes_loteid /></set>
+                                                                <set name='cpremovi_user_created'><system.user.getCode /></set>
+                                                                <set name='cpremovi_date_created'><date.current /></set>
+                                                                <set name='cpremovi_user_updated'><system.user.getCode /></set>
+                                                                <set name='cpremovi_date_updated'><date.current /></set>
+
+                                                                <include code='iges_con_contab' name='before_cpar_premovi' />
+                        
+                                                                <insert table='cpar_premovi' prefix='cpremovi_' />
+                                                                
+                                                                <set name='cpremovi_linid'><sqlca.serial /></set>
+                                                
+                                                                <!-- ======================================================= -->
+                                                                <!-- Guardamos en crp_related_cominv                         -->
+                                                                <!-- ======================================================= -->
+                                                                <set name='crp_related_cominv_loteid'><capuntes_loteid /></set>
+                                                                <set name='crp_related_cominv_linid'><m_gcomfacl_linid /></set>
+                                                                <set name='crp_related_cominv_cparpremovi'><cpremovi_linid /></set>
+                                                                
+                                                                <insert table='crp_related_cominv' prefix='crp_related_cominv_' />
+                                                                
+                                                                <!-- ======================================================= -->
+                                                                <!-- Luego de generar el registro de cpar_premovi se invoca  -->
+                                                                <!-- al include para generar compponente y relacionarlos     -->
+                                                                <!-- ======================================================= -->
+                                                                <include code='iges_con_contab' name='after_cpar_premovi' />
+                                                            </do>
+                                                        </for>
+                                                    </then>
+                                                </if>
+                                                
+                                                <!-- ========================================================= -->
+                                                <!-- Caso3. Familia del producto NO agrupado + línea padre     -->
+                                                <!-- [NO] gartfami.agrele = 0                                  -->
+                                                <!-- [NO] gcomfacl.auxnum2 != NULL                             -->
+                                                <!-- No debe respetar lo informado en gcomfacl_datc            -->
+                                                <!-- ========================================================= -->
+                                                <if>
+                                                    <expr>
+                                                        <eq><m_gartfami_agrele/><number>0</number></eq>
+                                                        <and />
+                                                        <isnotnull><m_gcomfacl_linid_padre /></isnotnull>
+                                                    </expr>
+                                                    <then>
+                                                        
+                                                        <!-- ======================================================= -->
+                                                        <!-- 3.0. Obtener elemento a asociar                         -->
+                                                        <!-- ======================================================= -->
+                                                        <select prefix='m_gcomfacl_padre_'>
+                                                            <columns>
+                                                                gcomfacl.impnet,
+                                                                gcomfacl.canfac
+                                                            </columns>
+                                                            <from table='gcomfacl'/>
+                                                            <where>
+                                                                gcomfacl.linid = <m_gcomfacl_linid_padre />
+                                                            </where>
+                                                        </select>
+                                                        
+                                                        <set name='m_import'>
+                                                           <div><cpremovi_import/><m_gcomfacl_padre_canfac/></div>
+                                                        </set>
+                                                        
+                                                        <foreach>
+                                                                <!-- ======================================================= -->
+                                                                <!-- 3.1. Iterar según los elmentos padre                    -->
+                                                                <!-- ======================================================= -->
+                                                                <select prefix='m_cinmelem_padre_'>
+                                                                    <columns>
+                                                                        crp_related_cominv.cinmelem
+                                                                    </columns>
+                                                                    <from table='crp_related_cominv'/>
+                                                                    <where>
+                                                                           crp_related_cominv.linid = <m_gcomfacl_linid_padre />
+                                                                    </where>
+                                                                    <order>
+                                                                        crp_related_cominv.id DESC
+                                                                    </order>
+                                                                </select>
+                                                            <do>
+                                                                
+                                                                <!-- ======================================================= -->
+                                                                <!-- 3.2. Obtener inversión + partida de la línea padre      -->
+                                                                <!-- ======================================================= -->
+                                                                <select prefix='m_inv_padre_'>
+                                                                    <columns>
+                                                                        cinmelem.codpre,
+                                                                        cinmelem.codpar
+                                                                    </columns>
+                                                                    <from table='cinmelem'/>
+                                                                    <where>
+                                                                           cinmelem.seqno = <m_cinmelem_padre_cinmelem />
+                                                                    </where>
+                                                                </select>
+                                                               
+                                                                <set name='cpremovi_linid'>0</set>
+                                                                <set name='cpremovi_empcode'><capuntes_empcode /></set>
+                                                                <set name='cpremovi_cancon'>1</set>
+                                                                <set name='cpremovi_estado'>A</set>
+                                                                <set name='cpremovi_import'><m_import/></set>
+                                                                <set name='cpremovi_codpre'><m_inv_padre_codpre /></set>
+                                                                <set name='cpremovi_codpar'><m_inv_padre_codpar /></set>
+                                                                <set name='cpremovi_fecdoc'><capuntes_fecval /></set>
+                                                                <set name='cpremovi_feccon'><capuntes_fecha /></set>
+                                                                <set name='cpremovi_codcon'><capuntes_codcon /></set>
+                                                                <set name='cpremovi_concep'><capuntes_concep /></set>
+                                                                <set name='cpremovi_loteid'><capuntes_loteid /></set>
+                                                                <set name='cpremovi_user_created'><system.user.getCode /></set>
+                                                                <set name='cpremovi_date_created'><date.current /></set>
+                                                                <set name='cpremovi_user_updated'><system.user.getCode /></set>
+                                                                <set name='cpremovi_date_updated'><date.current /></set>
+                                                                
+                                                                <include code='iges_con_contab' name='before_cpar_premovi' />
+                        
+                                                                <insert table='cpar_premovi' prefix='cpremovi_' />
+                                                                
+                                                                <set name='cpremovi_linid'><sqlca.serial /></set>
+                                                                
+                                                                <!-- ======================================================= -->
+                                                                <!-- Guardamos en crp_related_cominv                         -->
+                                                                <!-- ======================================================= -->
+                                                                <set name='crp_related_cominv_loteid'><capuntes_loteid /></set>
+                                                                <set name='crp_related_cominv_linid'><m_gcomfacl_linid /></set>
+                                                                <set name='crp_related_cominv_linori'><m_gcomfacl_linid_padre /></set>
+                                                                <set name='crp_related_cominv_cparpremovi'><cpremovi_linid /></set>
+                                                                <set name='crp_related_cominv_cinmelem'><m_cinmelem_padre_cinmelem /></set>
+                                                                
+                                                                <insert table='crp_related_cominv' prefix='crp_related_cominv_' />
+                                                                
+                                                                <!-- ======================================================= -->
+                                                                <!-- Luego de generar el registro de cpar_premovi se invoca  -->
+                                                                <!-- al include para generar compponente y relacionarlos     -->
+                                                                <!-- ======================================================= -->
+                                                                <include code='iges_con_contab' name='after_cpar_premovi' />
+                                                            </do>
+                                                        </foreach>
+                                                    </then>
+                                                </if>
+                                            </else>
+                                        </if>
+                                    </do>
+                                </foreach>
+                            </then>
+                        </if>
+
+                        <!-- ======================================================= -->
+                        <!-- ATENCION: Si Agrupamos los apuntes (P.E. gcommov), nos  -->
+                        <!-- genera todos los gastos/ingresos en presupuesto cada    -->
+                        <!-- vez que se cumple la condición. En gcomfac, al terminar -->
+                        <!-- la cabecera, nos encargamos de limpiar esta tabla pero  -->
+                        <!-- en gcommov debe hacerse explicitamente...               -->
+                        <!-- ======================================================= -->
+                        <delete table='@tmp_cpremovi'>
+                            <where>
+                                1=1
+                            </where>
+                        </delete>
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Include de customización después de haber generado un asiento.  -->
+                <!-- =============================================================== -->
+                <include code='iges_con_contab' name='after_asiento' />
+
+            </after-group>
+
+            <do>
+
+                <!-- =============================================================== -->
+                <!-- Verificacion de existencia de seccion.                          -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr>
+                        <not>
+                            <select>
+                                <columns>COUNT(*)</columns>
+                                <from table='cseccion' />
+                                <where>
+                                    codigo = <capuntes_seccio />
+                                </where>
+                            </select>
+                        </not>
+                    </expr>
+                    <then>
+                        <exception code='SECCION' message='iges_con_contab: Seccion: [{0}] no definida en [cseccion].'>
+                            <arg><capuntes_seccio /></arg>
+                        </exception>
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Se evita la posibilidad que un apunte vaya informado tanto al   -->
+                <!-- debe como al haber.                                             -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr>
+                        <ne><capuntes_debe />0</ne>
+                    <and />
+                        <ne><capuntes_haber />0</ne>
+                    </expr>
+                    <then>
+                        <if>
+                            <expr><gt><capuntes_debe /><capuntes_haber /></gt></expr>
+                            <then>
+                                <set name='capuntes_debe'><sub><capuntes_debe /><capuntes_haber /></sub></set>
+                                <set name='capuntes_divdeb'><sub><capuntes_divdeb /><capuntes_divhab /></sub></set>
+                                <set name='capuntes_haber'>0</set>
+                                <set name='capuntes_divhab'>0</set>
+                            </then>
+                            <else>
+                                <set name='capuntes_haber'><sub><capuntes_haber /><capuntes_debe /></sub></set>
+                                <set name='capuntes_divhab'><sub><capuntes_divhab /><capuntes_divdeb /></sub></set>
+                                <set name='capuntes_debe'>0</set>
+                                <set name='capuntes_divdeb'>0</set>
+                            </else>
+                        </if>
+                    </then>
+                </if>
+
+                <set name='m_totdeb'>
+                    <math.round>
+                        <add><m_totdeb /><capuntes_debe /></add>
+                        <number>2</number>
+                    </math.round>
+                </set>
+                <set name='m_tothab'>
+                    <math.round>
+                        <add><m_tothab /><capuntes_haber /></add>
+                        <number>2</number>
+                    </math.round>
+                </set>
+                <set name='m_divdeb'>
+                    <math.round>
+                        <add><m_divdeb /><capuntes_divdeb /></add>
+                        <number>2</number>
+                    </math.round>
+                </set>
+                <set name='m_divhab'>
+                    <math.round>
+                        <add><m_divhab /><capuntes_divhab /></add>
+                        <number>2</number>
+                    </math.round>
+                </set>
+
+                <null name='m_def_ctaaux' type='string' />
+
+                <!-- Setea capuntes.codaux -->
+                <select prefix='ccuentas_'>
+                    <columns>
+                        ccuentas.codaux
+                    </columns>
+                    <from table='ccuentas' />
+                    <where>
+                            placon = (SELECT placon FROM cempresa
+                                       WHERE empcode = <capuntes_empcode />)
+                        AND codigo = <capuntes_cuenta />
+                    </where>
+                </select>
+
+                <if>
+                    <expr><isnotnull><ccuentas_codaux /></isnotnull></expr>
+                    <then>
+                        <set name='capuntes_codaux'><ccuentas_codaux /></set>
+                    </then>
+                    <else>
+                        <set name='capuntes_codaux'><m_def_ctaaux /></set>
+                    </else>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Field origen allows to distinguish in case when a same table    -->
+                <!-- and row has more than one accounting entry.                     -->
+                <!-- For example in a purchase delivery note, gcommovh.loteid can    -->
+                <!-- point three accounting entries:                                 --> 
+                <!--                                                                 -->
+                <!--        . Accounting entry as movement. origen = 'TC'            -->
+                <!--        . Accounting entry as delivery note. origen = 'AC'       -->
+                <!--        . Delivery note with invoice no received. origen = 'FN'  -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr><eq><p_tabname />galmacen</eq></expr>
+                    <then>
+                        <set name='m_origen'>VS</set>
+                    </then>
+                    <else>
+                        <set name='m_origen'>G</set>
+                    </else>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- This code is useful when a purchase invoice has source delivery -->
+                <!-- note. Allow to generate an entry for 4009 account,              -->
+                <!-- in capuntes for each source delivery note.                      -->
+                <!-- If you want an only entry, set the value '0' in next include.   -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr>
+                        <ne><capuntes_group_aux />0</ne>
+                    <and />
+                        <isnotnull><capuntes_group_aux /></isnotnull>
+                    </expr>
+                    <then>
+                        <set name='capuntes_docser'><capuntes_group_aux /></set>
+                    </then>
+                </if>
+
+                <include code='iges_con_contab' name='before_capuntes' />
+
+                <insert table='capuntes'>
+                    <column name='apteid'>0</column>
+                    <column name='diario'><capuntes_diario /></column>
+                    <column name='moneda'><capuntes_moneda /></column>
+                    <column name='cambio'><capuntes_cambio /></column>
+                    <column name='empcode'><capuntes_empcode /></column>
+                    <column name='proyec'><capuntes_proyec /></column>
+                    <column name='seccio'><capuntes_seccio /></column>
+                    <column name='jusser'><capuntes_jusser /></column>
+                    <column name='docser'><capuntes_docser /></column>
+                    <column name='fecha'><capuntes_fecha /></column>
+                    <column name='asient'><capuntes_asient /></column>
+                    <column name='orden'><capuntes_orden /></column>
+                    <column name='cuenta'><capuntes_cuenta /></column>
+                    <column name='dimcode1'><capuntes_dimcode1 /></column>
+                    <column name='dimcode2'><capuntes_dimcode2 /></column>
+                    <column name='codcon'><capuntes_codcon /></column>
+                    <column name='concep'><capuntes_concep /></column>
+                    <column name='debe'><capuntes_debe /></column>
+                    <column name='haber'><capuntes_haber /></column>
+                    <column name='divdeb'><capuntes_divdeb /></column>
+                    <column name='divhab'><capuntes_divhab /></column>
+                    <column name='cantid1'>0</column>
+                    <column name='cantid2'>0</column>
+                    <column name='sistem'><p_sistem /></column>
+                    <column name='fecval'><capuntes_fecval /></column>
+                    <column name='contra'><capuntes_contra /></column>
+                    <column name='codaux'><capuntes_codaux /></column>
+                    <column name='ctaaux'><capuntes_ctaaux /></column>
+                    <column name='origen'><m_origen /></column>
+                    <column name='loteid'><capuntes_loteid /></column>
+                    <column name='punteo'>N</column>
+                </insert>
+
+                <set name='capuntes_apteid'><sqlca.serial /></set>
+                <set name='capuntes_orden'><add><capuntes_orden />1</add></set>
+                <if>
+                    <expr><isnull><capuntes_first_apteid /></isnull></expr>
+                    <then>
+                        <set name='capuntes_first_apteid'><capuntes_apteid /></set>
+                    </then>
+                </if>
+                
+                
+                <!-- =============================================================== -->
+                <!-- CUSTOM CRP 31/03/2023.                                          -->
+                <!--                                                                 -->
+                <!-- LLama a un proceso que permite generar distribución de ajustes  -->
+                <!-- sobre el apunte en base a la programación [capuprog]            -->
+                <!-- =============================================================== -->
+                <execute-procedure name='capuprog_genera'>
+                    <in>
+                        <capuntes_apteid  />
+                    </in>
+                </execute-procedure>
+
+                <!-- =============================================================== -->
+                <!-- Genera costes asociados al apunte (si los hay).                 -->
+                <!--                                                                 -->
+                <!-- ATENCION: El <trim>@tmp_capuntes.concep</trim> del WHERE se     -->
+                <!-- pone porque cuando se monta el concep a traves del include      -->
+                <!-- puede ocurrir que tenga un espacio en blanco delante, y al      -->
+                <!-- cargar este campo en el select principal de este foreach, la    -->
+                <!-- variable capuntes_concep ya no contiene el espacio en blanco, y -->
+                <!-- para que se cumpla la igualdad le aplicamos el trim.            -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr><ne><exists_ccoscont />0</ne></expr>
+                    <then>
+                        <foreach>
+                            <select prefix='ccoscont_' prepare='false'>
+                                <columns>
+                                    @tmp_ccoscont.proyec, @tmp_ccoscont.seccio,
+                                    @tmp_ccoscont.ctaexp, @tmp_ccoscont.centro,
+                                    SUM(@tmp_ccoscont.debe) debe, SUM(@tmp_ccoscont.haber) haber
+                                </columns>
+                                <from table='@tmp_capuntes'>
+                                    <join table='@tmp_ccoscont'>
+                                        <on>@tmp_capuntes.apteid = @tmp_ccoscont.apteid</on>
+                                    </join>
+                                </from>
+                                <where>
+                                    @tmp_capuntes.orden      = <capuntes_m_orden />   AND
+                                    @tmp_capuntes.diario     = <capuntes_diario />    AND
+                                    @tmp_capuntes.moneda     = <capuntes_moneda />    AND
+                                    @tmp_capuntes.cambio     = <capuntes_cambio />    AND
+                                    @tmp_capuntes.proyec     = <capuntes_proyec />    AND
+                                    @tmp_capuntes.seccio     = <capuntes_seccio />    AND
+                                    @tmp_capuntes.jusser     = <capuntes_m_jusser />  AND
+                                    @tmp_capuntes.group_aux  = <capuntes_group_aux /> AND
+                                    @tmp_capuntes.fecha      = <capuntes_fecha />     AND
+                                    @tmp_capuntes.cuenta     = <capuntes_cuenta />    AND
+                                    @tmp_capuntes.ctaaux     = <capuntes_ctaaux />    AND
+                                    @tmp_capuntes.dimcode1   = <capuntes_dimcode1 />  AND
+                                    @tmp_capuntes.dimcode2   = <capuntes_dimcode2 />  AND
+                                    @tmp_capuntes.docser     = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                     THEN @tmp_capuntes.docser
+                                                                     ELSE <capuntes_m_docser />
+                                                                 END) AND
+                                    <nvl>@tmp_capuntes.codcon, <whitespace /></nvl> = <nvl><capuntes_codcon />, <whitespace /></nvl> AND
+                                    <nvl><trim>@tmp_capuntes.concep</trim>, <whitespace /></nvl> = <nvl><capuntes_concep />, <whitespace /></nvl> AND
+                  <!--                  @tmp_capuntes.sistem     = <p_sistem /> AND -->
+                                    @tmp_capuntes.agrupa     = <capuntes_m_agrupa /> AND
+                                    <nvl>@tmp_capuntes.contra, <whitespace /></nvl> = <nvl><capuntes_contra />, <whitespace /></nvl> AND
+                                    @tmp_capuntes.cabid      = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                     THEN @tmp_capuntes.cabid
+                                                                     ELSE <capuntes_m_cabid />
+                                                                 END) AND
+                                    @tmp_capuntes.fecval     = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                     THEN @tmp_capuntes.fecval
+                                                                     ELSE <capuntes_fecval />
+                                                                 END)
+                                </where>
+                                <group>
+                                    1, 2, 3, 4
+                                </group>
+                            </select>
+                            <do>
+                                <if>
+                                    <expr>
+                                        <ne><ccoscont_debe />0</ne>
+                                    <and />
+                                        <ne><ccoscont_haber />0</ne>
+                                    </expr>
+                                    <then>
+                                        <if>
+                                            <expr><gt><ccoscont_debe /><ccoscont_haber /></gt></expr>
+                                            <then>
+                                                <set name='ccoscont_debe'><sub><ccoscont_debe /><ccoscont_haber /></sub></set>
+                                                <set name='ccoscont_haber'>0</set>
+                                            </then>
+                                            <else>
+                                                <set name='ccoscont_haber'><sub><ccoscont_haber /><ccoscont_debe /></sub></set>
+                                                <set name='ccoscont_debe'>0</set>
+                                            </else>
+                                        </if>
+                                    </then>
+                                </if>
+
+                                <if>
+                                    <expr><ne><capuntes_debe />0</ne></expr>
+                                    <then>
+                                        <set name='ccoscont_porcen'>
+                                            <mul>
+                                                <ccoscont_debe />
+                                                <div>100<capuntes_debe /></div>
+                                            </mul>
+                                        </set>
+                                    </then>
+                                    <else>
+                                        <if>
+                                            <expr><ne><capuntes_haber />0</ne></expr>
+                                            <then>
+                                                <set name='ccoscont_porcen'>
+                                                    <mul>
+                                                        <ccoscont_haber />
+                                                        <div>100<capuntes_haber /></div>
+                                                    </mul>
+                                                </set>
+                                            </then>
+                                            <else>
+                                                <set name='ccoscont_porcen'>100</set>
+                                            </else>
+                                        </if>
+                                    </else>
+                                </if>
+
+                                <!-- =============================================== -->
+                                <!-- El porcentaje no puede ser superior a 100. Esto -->
+                                <!-- puede ocurrir si se mezclan de importes         -->
+                                <!-- positivos y negativos.                          -->
+                                <!-- =============================================== -->
+                                <if>
+                                    <expr><gt><ccoscont_porcen />100</gt></expr>
+                                    <then>
+                                        <set name='ccoscont_porcen'>100</set>
+                                    </then>
+                                </if>
+
+                                <set name='ccoscont_orden'>0</set>
+                                <set name='ccoscont_apteid'><capuntes_apteid /></set>
+                                <set name='ccoscont_fecha'><capuntes_fecha /></set>
+                                <set name='ccoscont_diario'><capuntes_diario /></set>
+                                <set name='ccoscont_empcode'><capuntes_empcode /></set>
+                                <set name='ccoscont_jusser'><capuntes_jusser /></set>
+                                <set name='ccoscont_docser'><capuntes_docser /></set>
+                                <set name='ccoscont_cuenta'><capuntes_cuenta /></set>
+                                <set name='ccoscont_dimcode1'><capuntes_dimcode1 /></set>
+                                <set name='ccoscont_dimcode2'><capuntes_dimcode2 /></set>
+                                <set name='ccoscont_sistem'><p_sistem /></set>
+                                <set name='ccoscont_codcon'><capuntes_codcon /></set>
+                                <set name='ccoscont_concep'><capuntes_concep /></set>
+                                <set name='ccoscont_cantid1'>0</set>
+                                <set name='ccoscont_cantid2'>0</set>
+
+                                <include code='iges_con_contab' name='before_ccoscont' />
+
+                                <insert table='ccoscont' prefix='ccoscont_' />
+
+                            </do>
+                        </foreach>                             <!-- Cursor de costes -->
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Si el documento no es del tipo Factura, para optimizar,         -->
+                <!-- obviamos la  generacion de IVA y de efectos.                    -->
+                <!-- =============================================================== -->
+                <if>
+                    <expr>
+                        <not>
+                            <string.regexp>
+                                <p_tabname/>
+                                <string>(gvenfach|gcomfach|gret_caja|ganticih|gcomanth)</string>
+                            </string.regexp>
+                        </not>
+                    <or />
+                        <isnull><p_tabname /></isnull>
+                    </expr>
+                    <then>
+                        <foreach.continue />
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Generar IVA asociado al apunte (si lo hay).                     -->
+                <!-- Previamente realizo backup del apunte del tercero, por si hay   -->
+                <!-- diferencias por divisas entre registro de iva-contabilidad.     -->
+                <!--                                                                 -->
+                <!-- ATENCION: El <trim>@tmp_capuntes.concep</trim> del WHERE se     -->
+                <!-- pone porque cuando se monta el concep a traves del include      -->
+                <!-- puede ocurrir que tenga un espacio en blanco delante, y al      -->
+                <!-- cargar este campo en el select  principal de este foreach, la   -->
+                <!-- variable capuntes_concep ya no contiene el espacio en blanco, y -->
+                <!-- para que se cumpla la igualdad le aplicamos el trim.            -->
+                <!-- =============================================================== -->
+                <set name='t_apteid'><capuntes_apteid /></set>
+                <set name='t_debe'><capuntes_debe /></set>
+                <set name='t_haber'><capuntes_haber /></set>
+                <set name='t_divdeb'><capuntes_divdeb /></set>
+                <set name='t_divhab'><capuntes_divhab /></set>
+
+                <if>
+                    <expr><ne><exists_ctax_move_head />0</ne></expr>
+                    <then>
+                        <set name='ctax_move_head_taxh_seqno'>0</set>
+                        <foreach>
+                            <select prefix='ctax_data_' prepare='false'>
+                                <columns>
+                                    @tmp_taxdata.*
+                                </columns>
+                                <from table='@tmp_taxdata'>
+                                    <join table='@tmp_capuntes'>
+                                        <on>@tmp_taxdata.taxh_apteid = @tmp_capuntes.apteid</on>
+                                    </join>
+                                </from>
+                                <where>
+                                    @tmp_capuntes.orden      = <capuntes_m_orden />   AND
+                                    @tmp_capuntes.diario     = <capuntes_diario />    AND
+                                    @tmp_capuntes.moneda     = <capuntes_moneda />    AND
+                                    @tmp_capuntes.cambio     = <capuntes_cambio />    AND
+                                    @tmp_capuntes.proyec     = <capuntes_proyec />    AND
+                                    @tmp_capuntes.seccio     = <capuntes_seccio />    AND
+                                    @tmp_capuntes.jusser     = <capuntes_m_jusser />  AND
+                                    @tmp_capuntes.group_aux  = <capuntes_group_aux /> AND
+                                    @tmp_capuntes.fecha      = <capuntes_fecha />     AND
+                                    @tmp_capuntes.cuenta     = <capuntes_cuenta />    AND
+                                    @tmp_capuntes.dimcode1   = <capuntes_dimcode1 />  AND
+                                    @tmp_capuntes.dimcode2   = <capuntes_dimcode2 />  AND
+                                    @tmp_capuntes.ctaaux     = <capuntes_ctaaux />    AND
+                                    @tmp_capuntes.docser     = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                     THEN @tmp_capuntes.docser
+                                                                     ELSE <capuntes_m_docser />
+                                                                 END) AND
+                                    @tmp_capuntes.orden    = <capuntes_m_orden /> AND
+                                    <nvl>@tmp_capuntes.codcon, <whitespace /></nvl> = <nvl><capuntes_codcon />, <whitespace /></nvl> AND
+                                    <nvl><trim>@tmp_capuntes.concep</trim>, <whitespace /></nvl> = <nvl><capuntes_concep />, <whitespace /></nvl> AND
+                <!--                    @tmp_capuntes.sistem   = <p_sistem /> AND  -->
+                                    @tmp_capuntes.agrupa   = <capuntes_m_agrupa /> AND
+                                    <nvl>@tmp_capuntes.contra, <whitespace /></nvl>   = <nvl><capuntes_contra />, <whitespace /></nvl> AND
+                                    @tmp_capuntes.cabid    = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                   THEN @tmp_capuntes.cabid
+                                                                   ELSE <capuntes_m_cabid />
+                                                               END) AND
+                                    @tmp_capuntes.fecval   = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                   THEN @tmp_capuntes.fecval
+                                                                   ELSE <capuntes_fecval />
+                                                               END)
+                                </where>
+                            </select>
+                            <do>
+
+                                <if>
+                                    <expr><eq><ctax_data_taxh_natfac />V</eq> <and /> <ge><ctax_data_taxl_cuodeddiv />0</ge></expr>
+                                    <then>
+                                        <set name='capuntes_debe'>0</set>
+                                        <set name='capuntes_haber'><ctax_data_taxl_cuoded /></set>
+                                        <set name='capuntes_divdeb'>0</set>
+                                        <set name='capuntes_divhab'><ctax_data_taxl_cuodeddiv /></set>
+                                    </then>
+                                    <else-if>
+                                        <expr><eq><ctax_data_taxh_natfac />V</eq> <and /> <lt><ctax_data_taxl_cuodeddiv />0</lt></expr>
+                                        <then>
+                                            <set name='capuntes_debe'><neg><ctax_data_taxl_cuoded /></neg></set>
+                                            <set name='capuntes_haber'>0</set>
+                                            <set name='capuntes_divdeb'><neg><ctax_data_taxl_cuodeddiv /></neg></set>
+                                            <set name='capuntes_divhab'>0</set>
+                                        </then>
+                                    </else-if>
+                                    <else-if>
+                                        <expr><eq><ctax_data_taxh_natfac />C</eq> <and /> <ge><ctax_data_taxl_cuodeddiv />0</ge></expr>
+                                        <then>
+                                            <set name='capuntes_debe'><ctax_data_taxl_cuoded /></set>
+                                            <set name='capuntes_haber'>0</set>
+                                            <set name='capuntes_divdeb'><ctax_data_taxl_cuodeddiv /></set>
+                                            <set name='capuntes_divhab'>0</set>
+                                        </then>
+                                    </else-if>
+                                    <else>
+                                        <set name='capuntes_debe'>0</set>
+                                        <set name='capuntes_haber'><neg><ctax_data_taxl_cuoded /></neg></set>
+                                        <set name='capuntes_divdeb'>0</set>
+                                        <set name='capuntes_divhab'><neg><ctax_data_taxl_cuodeddiv /></neg></set>
+                                    </else>
+                                </if>
+
+                                <!-- =============================================== -->
+                                <!-- First insert head.                              -->
+                                <!-- =============================================== -->
+                                <if>
+                                    <expr><eq><ctax_move_head_taxh_seqno />0</eq></expr>
+                                    <then>
+                                        <set name='ctax_move_head_taxh_apteid'><capuntes_apteid /></set>
+                                        <set name='ctax_move_head_taxh_natfac'><ctax_data_taxh_natfac /></set>
+                                        <set name='ctax_move_head_taxh_tipdoc'><ctax_data_taxh_tipdoc /></set>
+                                        <set name='ctax_move_head_taxh_fecha'><ctax_data_taxh_fecha /></set>
+                                        <set name='ctax_move_head_taxh_fecdoc'><ctax_data_taxh_fecdoc /></set>
+                                        <set name='ctax_move_head_taxh_fecope'><ctax_data_taxh_fecope /></set>
+                                        <set name='ctax_move_head_taxh_fecrec'><ctax_data_taxh_fecrec /></set>
+                                        <set name='ctax_move_head_taxh_moneda'><ctax_data_taxh_moneda /></set>
+                                        <set name='ctax_move_head_taxh_cambio'><ctax_data_taxh_cambio /></set>
+                                        <set name='ctax_move_head_taxh_empcode'><ctax_data_taxh_empcode /></set>
+                                        <set name='ctax_move_head_taxh_ciftyp_emp'><ctax_data_taxh_ciftyp_emp /></set>
+                                        <set name='ctax_move_head_taxh_cifiss_emp'><ctax_data_taxh_cifiss_emp /></set>
+                                        <set name='ctax_move_head_taxh_cifemp'><ctax_data_taxh_cifemp /></set>
+                                        <set name='ctax_move_head_taxh_proyec'><ctax_data_taxh_proyec /></set>
+                                        <set name='ctax_move_head_taxh_seccio'><ctax_data_taxh_seccio /></set>
+                                        <set name='ctax_move_head_taxh_key'><ctax_data_taxh_key /></set>
+                                        <set name='ctax_move_head_taxh_book'><ctax_data_taxh_book /></set>
+                                        <set name='ctax_move_head_taxh_sistem'><p_sistem /></set>
+                                        <set name='ctax_move_head_taxh_jusser'><capuntes_jusser /></set>
+                                        <set name='ctax_move_head_taxh_docser'><capuntes_docser /></set>
+                                        <set name='ctax_move_head_taxh_refter'><ctax_data_taxh_refter /></set>
+                                        <set name='ctax_move_head_taxh_docrec'><ctax_data_taxh_docrec /></set>
+                                        <set name='ctax_move_head_taxh_tercer'><ctax_data_taxh_tercer /></set>
+                                        <set name='ctax_move_head_taxh_tipdir'><ctax_data_taxh_tipdir /></set>
+                                        <set name='ctax_move_head_taxh_nombre'><ctax_data_taxh_nombre /></set>
+                                        <set name='ctax_move_head_taxh_ciftyp'><ctax_data_taxh_ciftyp /></set>
+                                        <set name='ctax_move_head_taxh_cifiss'><ctax_data_taxh_cifiss /></set>
+                                        <set name='ctax_move_head_taxh_cifter'><ctax_data_taxh_cifter /></set>
+                                        <set name='ctax_move_head_taxh_coda2'><ctax_data_taxh_coda2 /></set>
+                                        <set name='ctax_move_head_taxh_codpos'><ctax_data_taxh_codpos /></set>
+                                        <set name='ctax_move_head_taxh_zondel'><ctax_data_taxh_zondel /></set>
+                                        <set name='ctax_move_head_taxh_zonter'><ctax_data_taxh_zonter /></set>
+                                        <set name='ctax_move_head_taxh_group'><ctax_data_taxh_group /></set>
+                                        <set name='ctax_move_head_taxh_taiter'><ctax_data_taxh_taiter /></set>
+                                        <set name='ctax_move_head_taxh_import'><ctax_data_taxh_import /></set>
+                                        <set name='ctax_move_head_taxh_impdiv'><ctax_data_taxh_impdiv /></set>
+                                        <set name='ctax_move_head_taxh_status'>0</set>
+                                        
+                                        <set name='ctax_move_head_taxh_auxchr1'><ctax_data_taxh_auxchr1 /></set>
+                                        <set name='ctax_move_head_taxh_auxchr2'><ctax_data_taxh_auxchr2 /></set>                                      
+                                        <set name='ctax_move_head_taxh_auxchr3'><ctax_data_taxh_auxchr3 /></set>
+                                        <set name='ctax_move_head_taxh_auxchr4'><ctax_data_taxh_auxchr4 /></set>
+                                        <set name='ctax_move_head_taxh_auxfec1'><ctax_data_taxh_auxfec1 /></set>                                        
+                                        <set name='ctax_move_head_taxh_auxfec2'><ctax_data_taxh_auxfec2 /></set>
+                                        <set name='ctax_move_head_taxh_auxnum1'><ctax_data_taxh_auxnum1 /></set>                                        
+                                        <set name='ctax_move_head_taxh_auxnum2'><ctax_data_taxh_auxnum2 /></set>                                     
+                                        <!-- ======================================= -->
+                                        <!-- ======================================= -->
+                                        <insert table='ctax_move_head' prefix='ctax_move_head_' />
+
+                                        <set name='ctax_move_head'><sqlca.serial /></set>
+                                        
+                                        <set name='creatbai'>
+                                            <select>
+                                                <columns>
+                                                    COUNT(*)
+                                                </columns>
+                                                <from table='ctax_agencia' >
+                                                    <join table='ctax_agencia_empresa'>
+                                                        <on>ctax_agencia.agen_code = ctax_agencia_empresa.emp_agencia</on>
+                                                    </join>
+                                                </from>
+                                                <where>
+                                                    ctax_agencia.idversiontbai IS NOT NULL
+                                                    AND TODAY BETWEEN ctax_agencia_empresa.emp_startdata AND NVL(ctax_agencia_empresa.emp_deadline, TODAY) 
+                                                    AND ctax_agencia_empresa.emp_empcode =  <ctax_move_head_taxh_empcode />
+                                                    AND ctax_agencia_empresa.emp_cifemp = <ctax_move_head_taxh_cifemp />    
+                                                    AND ctax_agencia_empresa.emp_zondel = <ctax_move_head_taxh_zondel />
+                                                </where>
+                                            </select>
+                                        </set>
+                                        
+                                        <if>
+                                            <expr>
+                                                <gt>
+                                                    <creatbai/>
+                                                    0
+                                                </gt>
+                                            </expr>
+                                            <then>
+                                                <set name='newFacidx'>
+                                                    <call name='estbai_facturas_generate' type='js'>
+                                                        <args>
+                                                            <arg><null/></arg>
+                                                            <arg><null/></arg>
+                                                            <arg><null/></arg>
+                                                            <arg><string>ctax_move_head.taxh_seqno = <ctax_move_head/></string></arg>
+                                                            <arg>0</arg>
+                                                            <arg>1</arg>
+                                                        </args>
+                                                    </call>
+                                                </set>
+                                            </then>
+                                        </if>
+                                        
+                                    </then>
+                                </if>
+
+                                <!-- =============================================== -->
+                                <!-- Insertar el apunte generado por el IVA.         -->
+                                <!-- =============================================== -->
+                                <set name='m_totdeb'>
+                                    <math.round>
+                                        <add>
+                                            <m_totdeb />
+                                            <capuntes_debe />
+                                        </add>
+                                        <number>2</number>
+                                    </math.round>
+                                </set>
+                                <set name='m_tothab'>
+                                    <math.round>
+                                        <add>
+                                            <m_tothab />
+                                            <capuntes_haber />
+                                        </add>
+                                        <number>2</number>
+                                    </math.round>
+                                </set>
+                                <set name='m_divdeb'>
+                                    <math.round>
+                                        <add>
+                                            <m_divdeb />
+                                            <capuntes_divdeb />
+                                        </add>
+                                        <number>2</number>
+                                    </math.round>
+                                </set>
+                                <set name='m_divhab'>
+                                    <math.round>
+                                        <add>
+                                            <m_divhab />
+                                            <capuntes_divhab />
+                                        </add>
+                                        <number>2</number>
+                                    </math.round>
+                                </set>
+                                <include code='iges_con_contab' name='before_capuntes_iva' />
+
+                                <insert table='capuntes'>
+                                    <column name='apteid'>0</column>
+                                    <column name='diario'><capuntes_diario /></column>
+                                    <column name='moneda'><capuntes_moneda /></column>
+                                    <column name='cambio'><capuntes_cambio /></column>
+                                    <column name='empcode'><capuntes_empcode /></column>
+                                    <column name='proyec'><ctax_move_head_taxh_proyec /></column>
+                                    <column name='seccio'><ctax_move_head_taxh_seccio /></column>
+                                    <column name='jusser'><ctax_move_head_taxh_jusser /></column>
+                                    <column name='docser'><ctax_move_head_taxh_docser /></column>
+                                    <column name='fecha'><capuntes_fecha /></column>
+                                    <column name='asient'><capuntes_asient /></column>
+                                    <column name='orden'><capuntes_orden /></column>
+                                    <column name='cuenta'><ctax_data_taxl_cuenta /></column>
+                                    <column name='dimcode1'><capuntes_dimcode1 /></column>
+                                    <column name='dimcode2'><capuntes_dimcode2 /></column>
+                                    <column name='codcon'><capuntes_codcon /></column>
+                                    <column name='concep'><capuntes_concep /></column>
+                                    <column name='debe'><capuntes_debe /></column>
+                                    <column name='haber'><capuntes_haber /></column>
+                                    <column name='divdeb'><capuntes_divdeb /></column>
+                                    <column name='divhab'><capuntes_divhab /></column>
+                                    <column name='cantid1'>0</column>
+                                    <column name='cantid2'>0</column>
+                                    <column name='sistem'><p_sistem /></column>
+                                    <column name='fecval'><capuntes_fecval /></column>
+
+                                    <!-- =================================== -->
+                                    <!-- Reset contra account in tax entry.  -->
+                                    <!-- =================================== -->
+                                    <column name='contra'><null /></column>
+
+                                    <column name='origen'>I</column>
+                                    <column name='loteid'><capuntes_loteid /></column>
+                                    <column name='punteo'>N</column>
+                                </insert>
+
+                                <set name='capuntes_orden'><add><capuntes_orden />1</add></set>
+                                <set name='ctax_move_line_taxl_aptdes'><sqlca.serial /></set>
+
+                                <set name='ctax_move_line_taxl_seqno'>0</set>
+                                <set name='ctax_move_line_taxh_seqno'><ctax_move_head_taxh_seqno /></set>
+                                <set name='ctax_move_line_taxl_type'><ctax_data_taxl_type /></set>
+                                <set name='ctax_move_line_taxl_porcen'><ctax_data_taxl_porcen /></set>
+                                <set name='ctax_move_line_taxl_porded'><ctax_data_taxl_porded /></set>
+                                <set name='ctax_move_line_taxl_porpro'><ctax_data_taxl_porpro /></set>
+                                <set name='ctax_move_line_taxl_oper'><ctax_data_taxl_oper /></set>
+                                <set name='ctax_move_line_taxl_code'><ctax_data_taxl_code /></set>
+                                <set name='ctax_move_line_taxl_basimp'><ctax_data_taxl_basimp /></set>
+                                <set name='ctax_move_line_taxl_basnimp'><ctax_data_taxl_basnimp /></set>
+                                <set name='ctax_move_line_taxl_cuoded'><ctax_data_taxl_cuoded /></set>
+                                <set name='ctax_move_line_taxl_cuonded'><ctax_data_taxl_cuonded /></set>
+                                <set name='ctax_move_line_taxl_basimpdiv'><ctax_data_taxl_basimpdiv /></set>
+                                <set name='ctax_move_line_taxl_cuodeddiv'><ctax_data_taxl_cuodeddiv /></set>
+                                <set name='ctax_move_line_taxl_cuondeddiv'><ctax_data_taxl_cuondeddiv /></set>
+                                <set name='ctax_move_line_taxl_key'><ctax_data_taxl_key /></set>
+                                <set name='ctax_move_line_taxl_valori'><ctax_data_taxl_valori /></set>
+                                <set name='ctax_move_line_taxl_valida'><ctax_data_taxl_valida /></set>
+                                <set name='ctax_move_line_taxl_telsend'><ctax_data_taxl_telsend /></set>
+                                <set name='ctax_move_line_taxl_rule'><ctax_data_taxl_rule /></set>
+
+                                <insert table='ctax_move_line' prefix='ctax_move_line_' />
+
+                                <include code='iges_con_contab' name='before_ctax_move_head' />
+
+                                <set name='ctax_move_line_taxl_seqno'><sqlca.serial /></set>
+                            </do>
+                        </foreach>              <!-- Cursor IVA                      -->
+                    </then>
+                </if>
+
+                <!-- =============================================================== -->
+                <!-- Genera efectos asociados al apunte (si los hay).                -->
+                <!--                                                                 -->
+                <!-- ATENCION: El <trim>@tmp_capuntes.concep</trim> del WHERE se     -->
+                <!-- pone porque cuando se monta el concep a traves del include      -->
+                <!-- puede ocurrir que tenga un espacio en blanco delante, y al      -->
+                <!-- cargar este campo en el select principal de este foreach, la    -->
+                <!-- variable capuntes_concep ya no contiene el espacio en blanco, y -->
+                <!-- para que se cumpla la igualdad le aplicamos el trim.            -->
+                <!-- =============================================================== -->
+                <set name='cefectos_numefe'>0</set>
+
+                <if>
+                    <expr><ne><exists_cefectos />0</ne></expr>
+                    <then>
+                        <foreach>
+                            <select prefix='cefectos_' prepare='false'>
+                                <columns>
+                                    @tmp_cefecont.tercer,  @tmp_cefecont.cuenta,  @tmp_cefecont.clase,
+                                    @tmp_cefecont.fecha,   @tmp_cefecont.fecven,  @tmp_cefecont.empcode,
+                                    @tmp_cefecont.proyec,  @tmp_cefecont.seccio,  @tmp_cefecont.tipefe,
+                                    @tmp_cefecont.estado,  @tmp_cefecont.caduca,  @tmp_cefecont.ctafin,
+                                    @tmp_cefecont.numban,  @tmp_cefecont.agente,  @tmp_cefecont.parest,
+                                    @tmp_cefecont.import,  @tmp_cefecont.impdiv,  @tmp_cefecont.impiva,
+                                    @tmp_cefecont.impret,  @tmp_cefecont.codppa,  @tmp_cefecont.gastos,
+                                    @tmp_cefecont.difcam,  @tmp_cefecont.tipdoc,  @tmp_cefecont.codper,
+                                    @tmp_cefecont.genpos,  @tmp_cefecont.auxchr1, @tmp_cefecont.auxchr2,
+                                    @tmp_cefecont.auxchr3, @tmp_cefecont.auxchr4, @tmp_cefecont.auxchr5,
+                                    @tmp_cefecont.auxnum1, @tmp_cefecont.auxnum2, @tmp_cefecont.auxnum3, 
+                                    @tmp_cefecont.auxnum4, @tmp_cefecont.auxnum5
+                                </columns>
+                                <from table='@tmp_cefecont'>
+                                    <join table='@tmp_capuntes'>
+                                        <on>@tmp_cefecont.apteid = @tmp_capuntes.apteid</on>
+                                    </join>
+                                </from>
+                                <where>
+                                    @tmp_capuntes.orden    = <capuntes_m_orden /> AND
+                                    @tmp_capuntes.diario   = <capuntes_diario /> AND
+                                    @tmp_capuntes.moneda   = <capuntes_moneda /> AND
+                                    @tmp_capuntes.cambio   = <capuntes_cambio /> AND
+                                    @tmp_capuntes.proyec   = <capuntes_proyec /> AND
+                                    @tmp_capuntes.seccio   = <capuntes_seccio /> AND
+                                    @tmp_capuntes.jusser   = <capuntes_m_jusser /> AND
+                                    @tmp_capuntes.group_aux  = <capuntes_group_aux /> AND
+                                    @tmp_capuntes.fecha    = <capuntes_fecha /> AND
+                                    @tmp_capuntes.cuenta   = <capuntes_cuenta /> AND
+                                    @tmp_capuntes.dimcode1 = <capuntes_dimcode1 /> AND
+                                    @tmp_capuntes.dimcode2 = <capuntes_dimcode2 /> AND
+                                    @tmp_capuntes.ctaaux   = <capuntes_ctaaux /> AND
+                                    @tmp_capuntes.docser   = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                   THEN @tmp_capuntes.docser
+                                                                   ELSE <capuntes_m_docser />
+                                                               END) AND
+                                    @tmp_capuntes.orden  = <capuntes_m_orden /> AND
+                                    <nvl>@tmp_capuntes.codcon, <whitespace /></nvl> = <nvl><capuntes_codcon />, <whitespace /></nvl> AND
+                                    <nvl><trim>@tmp_capuntes.concep</trim>, <whitespace /></nvl> = <nvl><capuntes_concep />, <whitespace /></nvl> AND
+                              <!--      @tmp_capuntes.sistem   = <p_sistem />      AND  -->
+                                    @tmp_capuntes.agrupa   = <capuntes_m_agrupa /> AND
+                                    <nvl>@tmp_capuntes.contra, <whitespace /></nvl> = <nvl><capuntes_contra />, <whitespace /></nvl> AND
+                                    @tmp_capuntes.cabid    = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                   THEN @tmp_capuntes.cabid
+                                                                   ELSE <capuntes_m_cabid />
+                                                               END) AND
+                                    @tmp_capuntes.fecval   = (CASE WHEN <capuntes_m_agrupa /> = 'C'
+                                                                   THEN @tmp_capuntes.fecval
+                                                                   ELSE <capuntes_fecval />
+                                                               END)
+                                </where>
+                            </select>
+                            <do>
+                                <set name='cefectos_numefe'><add><cefectos_numefe />1</add></set>
+                                <set name='cefectos_cambio'><capuntes_cambio /></set>
+
+                                <if>
+                                    <expr><isnull><cefectos_cuenta /></isnull></expr>
+                                    <then>
+                                        <set name='cefectos_cuenta'><capuntes_cuenta /></set>
+                                    </then>
+                                </if>
+
+                                <if>
+                                    <expr><isnull><cefectos_empcode /></isnull></expr>
+                                    <then>
+                                        <set name='cefectos_empcode'><capuntes_empcode /></set>
+                                    </then>
+                                </if>
+
+                                <if>
+                                    <expr><isnull><cefectos_proyec /></isnull></expr>
+                                    <then>
+                                        <set name='cefectos_proyec'><capuntes_proyec /></set>
+                                    </then>
+                                </if>
+
+                                <if>
+                                    <expr><isnull><cefectos_seccio /></isnull></expr>
+                                    <then>
+                                        <set name='cefectos_seccio'><capuntes_seccio /></set>
+                                    </then>
+                                </if>
+
+                                <!-- =============================================== -->
+                                <!-- La fecha de emision del efecto debe ser la de   -->
+                                <!-- la factura y no la de contabilizacion, por eso  -->
+                                <!-- se utiliza capuntes_fecval.                     -->
+                                <!-- =============================================== -->
+                                <set name='cefectos_numero'>0</set>
+                                <set name='cefectos_apteid'><capuntes_apteid /></set>
+                                <set name='cefectos_jusser'><capuntes_jusser /></set>
+                                <set name='cefectos_docser'><capuntes_docser /></set>
+                                <set name='cefectos_sistem'><p_sistem /></set>
+                                <set name='cefectos_moneda'><capuntes_moneda /></set>
+                                <set name='cefectos_impppa'>0</set>
+                                <set name='cefectos_feccon'><p_feccon /></set>
+                                <set name='cefectos_numori'>0</set>
+                                <set name='cefectos_numdes'>0</set>
+                                <set name='cefectos_opeant'>0</set>
+                                <set name='cefectos_openum'>1</set>
+
+                                <include code='iges_con_contab' name='before_cefectos' />
+                                <insert table='cefectos' prefix='cefectos_' />
+
+                                <include code='iges_con_contab' name='after_cefectos' />
+
+                            </do>
+                        </foreach>                               <!-- Cursor efectos -->
+                    </then>
+                </if>
+
+            </do>
+        </foreach>                                               <!-- Cursor apuntes -->
+
+        <!-- ======================================================================= -->
+        <!-- Solo para cajeras, guardar el justificante.                             -->
+        <!-- La condición estado != 'C' es importante, pues hay casos donde se       -->
+        <!-- genera mas de un asiento por liquidación. En el segundo asiento,        -->
+        <!-- generalmente el de ingresos del banco, no se ha de cambiar el           -->
+        <!-- justificante de la liquidación. Incluso las cajas que no generan        -->
+        <!-- apuntes deben generar serie de justificante                             -->
+        <!-- ======================================================================= -->
+        <if>
+            <expr><eq><p_tabname />gret_caja</eq></expr>
+            <then>
+                <update table='gret_caja'>
+                    <column name='jusser'><ifnull><capuntes_jusser /><string>AMOUNT-0</string></ifnull></column>
+                    <column name='estado'>C</column>
+                    <where>
+                        delega = <global.get name='g_delega' /> AND
+                        fecven = <p_feccon />                   AND
+                        estado != 'C'
+                    </where>
+                </update>
+            </then>
+        </if>
+
+        <!-- ======================================================================= -->
+        <!-- Duplicate entries if required.                                          -->
+        <!-- ======================================================================= -->
+        <foreach>
+            <in prefix='m_'>
+                <v_entry_dup />
+            </in>
+            <do>
+                <call name='capuntes_duplasto' into='v_output_duplasto'>
+                    <p_sistem />                             <!-- p_area             -->
+                    <m_empcode />                            <!-- p_empcode          -->
+                    <m_fecha />                              <!-- p_fecha            -->
+                    <m_asient />                             <!-- p_asient           -->
+                    <null />                                 <!-- p_empcodenew       -->
+                    <add>
+                        <m_fecha />
+                        <date.units type='d'>1</date.units>
+                    </add>
+                    <null />                                 <!-- p_dianew           -->
+                    <null />                                 <!-- p_pronew           -->
+                    <null />                                 <!-- p_secnew           -->
+                    <null />                                 <!-- p_sisnew           -->
+                    <null />                                 <!-- p_jusnew           -->
+                    <null />                                 <!-- p_docnew           -->
+                    <null />                                 <!-- p_orinew           -->
+                    <number>1</number>                       <!-- p_invasi           -->
+                </call>
+
+                <!-- =============================================================== -->
+                <!-- Set link with source document to account entry generated.       -->
+                <!-- =============================================================== -->
+                <foreach>
+                    <in prefix='m_new_'>
+                        <v_output_duplasto/>
+                    </in>
+                    <do>
+                        <update table='capuntes'>
+                            <column name='loteid'><m_loteid /></column>
+                            <where>
+                                asient  = <m_new_asient /> AND
+                                fecha   = <m_new_fecha />  AND
+                                empcode = <m_new_empcode />
+                            </where>
+                        </update>
+
+                        <foreach.exit />
+                    </do>
+                </foreach>
+            </do>
+        </foreach>
+
+        <!-- ======================================================================= -->
+        <!-- Reseteo de la numeración de registro de '@tmp_capuntes', que se utiliza -->
+        <!-- en iges_set_contab.                                                     -->
+        <!-- ======================================================================= -->
+        <global.set name='g_apteid'>0</global.set>
+
+        <!-- ======================================================================= -->
+        <!-- Al final de todo include customizable para operar con los apuntes.      -->
+        <!-- ======================================================================= -->
+        <include code='iges_con_contab' name='after' />
+
+    </body>
+</xsql-script>
