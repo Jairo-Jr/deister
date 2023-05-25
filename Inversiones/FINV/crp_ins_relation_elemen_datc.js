@@ -25,8 +25,8 @@
  * 
  * 
  *  JS: crp_ins_relation_elemen_datc
- *      Version     : 1.0
- *      Date        : 24-05-2023
+ *      Version     : 1.1
+ *      Date        : 25-05-2023
  *      Description : Registra en la tabla de apoyo 'crp_relation_elemen_datc' 
  *                    los datos requeridos para la geneacion de partida de inversion.
  * 
@@ -45,15 +45,15 @@
  *      @param   {integer}   pIntDatContId      Identificador del dato contable
  *      @param   {integer}   pIntIdElemento     Identificaodr del elemento
  *      @param   {integer}   pIntCantidad       Cantidad de unidades a ser distribuido
- *      @param   {integer}   pIntImporte        Importe a ser distribuido
+ *      @param   {integer}   pFloatImporte      Importe a ser distribuido
  * 
  **/
-function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento, pIntCantidad, pIntImporte) { 
+function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento, pIntCantidad, pFloatImporte) { 
     try {
         Ax.db.beginWork(); 
 
         // TODO: Validar que cantidad e importe, ambos no sean mayores a cero
-        if ( (pIntCantidad == 0 && pIntImporte == 0) || (pIntCantidad > 0 && pIntImporte > 0) ) {
+        if ( (pIntCantidad == 0 && pFloatImporte == 0) || (pIntCantidad > 0 && pFloatImporte > 0) ) {
             throw `Los campos CANTIDAD e IMPORTE, solo uno de ellos debe ser diferente de cero`;
         }
 
@@ -77,7 +77,7 @@ function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento
 
         // Se calcula el acumulado de cantidad e importe
         var mIntCantAcumulado = mObjRelacionElemen.cant + pIntCantidad;
-        var mIntImportAcumulado = mObjRelacionElemen.import + pIntImporte;
+        var mIntImportAcumulado = mObjRelacionElemen.import + pFloatImporte;
 
         // Obtiene cantidad facturada e importe neto
         var mObjLinFac = Ax.db.executeQuery(`
@@ -103,17 +103,19 @@ function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento
         if (mIntDifCant < 0 || mIntDifImport < 0) {
             throw `El acumulado de CANTIDAD e IMPORTE supera a lo informado en la factura. [${mIntDifCant}] - [${mIntDifImport}]`;
         }
+        
+        var mFloatPorcen = (pIntCantidad / mIntCantFac) * 100 + (pFloatImporte / mIntImportFac) * 100;
 
         Ax.db.execute(`
-            INSERT INTO crp_relation_elemen_datc (datcontid, linid, cinmelem, cant, import) VALUES (?, ?, ?, ?, ?);
-        `, pIntDatContId, pIntLineaId, pIntIdElemento, pIntCantidad, pIntImporte);
+            INSERT INTO crp_relation_elemen_datc (datcontid, linid, cinmelem, cant, import, porcen) VALUES (?, ?, ?, ?, ?, ?);
+        `, pIntDatContId, pIntLineaId, pIntIdElemento, pIntCantidad, pFloatImporte, mFloatPorcen);
 
         // Ax.db.insert('crp_relation_elemen_datc', {
         //     datcontid: pIntDatContId,
         //     linid: pIntLineaId,
         //     cinmelem: pIntIdElemento,
         //     cant: pIntCantidad,
-        //     import: pIntImporte
+        //     import: pFloatImporte
         // });
 
         Ax.db.commitWork();
@@ -123,9 +125,3 @@ function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento
         throw new Ax.ext.Exception("ERROR: [${error}]", {error});
     }
 }
-
-
-
-var pIntLineaId = 34727, pIntDatContId = 377, pIntIdElemento = 14296, pIntCantidad = 5, pIntImporte = 0;
-
-crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento, pIntCantidad, pIntImporte)
