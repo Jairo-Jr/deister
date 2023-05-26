@@ -1,0 +1,326 @@
+SELECT 
+        
+        UNIQUE garticul.codigo, '[' || TRIM(garticul.codigo) || '] ' || NVL(garticul.nomart, '')
+    
+  FROM garticul
+      ,garticul_wh_catalg_v
+      ,garticul_ext      ,crp_tipo_producto
+ WHERE 
+       garticul.codigo = garticul_wh_catalg_v.codart AND 
+       garticul_wh_catalg_v.valcat = ${valcat} AND 
+       (garticul_wh_catalg_v.codpro IS NULL OR garticul_wh_catalg_v.codpro = ${tercer}) AND 
+       (garticul_wh_catalg_v.codalm IS NULL OR garticul_wh_catalg_v.codalm = ${almori}) AND 
+       (garticul_wh_catalg_v.prov_fecbaj IS NULL OR garticul_wh_catalg_v.prov_fecbaj > ${fecha}) AND 
+       (garticul_wh_catalg_v.alm_fecbaj  IS NULL OR garticul_wh_catalg_v.alm_fecbaj  > ${fecha}) AND 
+       garticul.codigo = garticul_ext.codigo AND 
+       garticul_ext.tipo_producto = crp_tipo_producto.codigo
+ AND 
+         (UPPER (garticul.codigo) LIKE UPPER ('%${q}%') OR
+          UPPER (garticul.nomart) LIKE UPPER ('%${q}%'))
+             
+        AND garticul.estado NOT IN ('B', 'P')
+        AND garticul.grpemp IN (SELECT holcode FROM choldinl WHERE empcode = ${empcode})
+        AND (NVL(garticul.fecbaj, ${fecha}) >= ${fecha})
+        AND garticul.codigo IN (SELECT codart
+                                  FROM garticul_estges_v a
+                                 WHERE NVL(a.tabname, ${tabname} )     = ${tabname}
+                                   AND NVL(a.tipdoc,  ${tipdoc}  )     = ${tipdoc}
+                                   AND NVL(a.fecini,  ${fecha}   ) <= ${fecha}
+                                   AND NVL(a.fecfin,  ${fecha}   ) >= ${fecha})
+        AND crp_tipo_producto.indfarmalog IN (SELECT CASE WHEN ${tipdoc} IN ('APDI', 'APD2', 'AJDI', 'AJD2') THEN 'FARMA'
+                                                          WHEN ${tipdoc} IN ('AJPL', 'AJNL') THEN 'LOG'
+                                                          ELSE '0'
+                                                     END from wic_dual)
+
+
+
+
+
+
+
+
+                                                     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     SELECT 
+        garticul.codigo, garticul.nomart, garticul.stock, garticul.lotes,
+
+        CASE WHEN garticul.desvar = 'V' THEN garticul.nomart
+             ELSE NULL
+          END desvar,
+
+        CASE WHEN gartlote_control_lot(garticul.codigo, ${almori}, ${almdes}) = 0 THEN '0'
+             ELSE NULL
+         END numlot,
+
+		gartlote_control_lot(garticul.codigo, ${almori}, ${almdes}) 		 			  			batch_control,
+		gartlote_has_exists(garticul.codigo, ${almori}, ${almdes}, ${tipmov}) 			  			validate_batch,
+
+		CASE WHEN ${salori} != 'N' AND garticul.stock != 'N'
+			 THEN garticul_get_indstk(
+			 		   ${almori}, ${ctaori}, garticul.codigo,
+					   gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo), ${fecha})
+		     ELSE 'N'
+		 END 																						item_salori,
+
+		CASE WHEN ${saldes} != 'N' AND garticul.stock != 'N'
+			 THEN  garticul_get_indstk(
+			 		  NVL(${almdes}, ${almori}),  ${ctades}, garticul.codigo,
+					   gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo), ${fecha})
+			 ELSE 'N'
+		 END 																						item_saldes,
+
+        gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo) varstk,
+
+        gart_unidefs_get_udmexp(${almori},
+                                garticul.codigo,
+                                gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+                                ${fecha}) udmori,
+
+        CASE WHEN ${proubi} IN ('N', 'D') THEN '0'
+             ELSE geanmovh_get_ubiori(
+             		 ${cabmov},
+                     ${almori},
+                     ${ctaori},
+                     garticul.codigo,
+                     gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+					 CASE WHEN garticul.lotes != 'C' THEN '0' ELSE NULL END,
+					 '0',
+					 ${salori})
+         END ubiori,
+
+        CASE WHEN ${proubi} IN ('N', 'O') THEN '0'
+             ELSE geanmovh_get_ubides(
+             		${cabmov},
+                    ${almori},
+                    ${almdes},
+                    ${ctades},
+                    garticul.codigo,
+                    gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+                    CASE WHEN garticul.lotes != 'C' THEN '0' ELSE NULL END,
+                    '0',
+                    ${saldes})
+         END ubides,
+
+		CASE WHEN ${terstk} != 'N' AND (${salori} != 'N' OR ${saldes} != 'N')
+			 THEN geanmovl_get_terdep(
+			 		${almori},
+               		${almdes},
+                	${ctaori},
+                    ${ctades},
+                    garticul.codigo,
+		            gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+					${fecha},
+					${head_terdep})
+			 ELSE '0'
+		  END terdep,
+
+         garticul.desvar tipdes,
+
+         0               canmov,
+
+         CASE WHEN garticul.udmaux IS NOT NULL
+         	  THEN 0
+         	  ELSE CAST(NULL AS decimal ) 
+          END            canalt,
+
+         CAST(NULL AS char )  udmalt,
+         garticul.auxchr4
+    
+  FROM garticul
+      ,garticul_wh_catalg_v
+      ,garticul_ext      ,crp_tipo_producto
+ WHERE 
+       garticul.codigo = garticul_wh_catalg_v.codart AND 
+       garticul_wh_catalg_v.valcat = ${valcat} AND 
+       (garticul_wh_catalg_v.codpro IS NULL OR garticul_wh_catalg_v.codpro = ${tercer}) AND 
+       (garticul_wh_catalg_v.codalm IS NULL OR garticul_wh_catalg_v.codalm = ${almori}) AND 
+       (garticul_wh_catalg_v.prov_fecbaj IS NULL OR garticul_wh_catalg_v.prov_fecbaj > ${fecha}) AND 
+       (garticul_wh_catalg_v.alm_fecbaj  IS NULL OR garticul_wh_catalg_v.alm_fecbaj  > ${fecha}) AND
+       garticul.codigo = garticul_ext.codigo AND 
+       garticul_ext.tipo_producto = crp_tipo_producto.codigo
+ AND 
+            garticul.codigo = ${q}
+        AND garticul.estado NOT IN ('B', 'P')
+        AND garticul.grpemp IN (SELECT holcode FROM choldinl WHERE empcode = ${empcode})
+        AND (fecbaj IS NULL OR garticul.fecbaj > ${fecha})
+        AND garticul.codigo IN (SELECT codart
+                                  FROM garticul_estges_v a
+                                 WHERE NVL(a.tabname, ${tabname} )     = ${tabname}
+                                   AND NVL(a.tipdoc,  ${tipdoc}  )     = ${tipdoc}
+                                   AND NVL(a.fecini,  ${fecha}   ) <= ${fecha}
+                                   AND NVL(a.fecfin,  ${fecha}   ) >= ${fecha})
+        AND crp_tipo_producto.indfarmalog IN (SELECT CASE WHEN ${tipdoc} IN ('APDI', 'APD2', 'AJDI', 'AJD2') THEN 'FARMA'
+                                                          WHEN ${tipdoc} IN ('AJPL', 'AJNL') THEN 'LOG'
+                                                          ELSE '0'
+                                                     END from wic_dual)
+
+
+
+
+
+
+HELPER ORIGINAL
+
+
+
+
+
+
+<select>
+    <columns>
+        UNIQUE garticul.codigo, '[' || <trim>garticul.codigo</trim> || '] ' || <nvl>garticul.nomart, <whitespace/></nvl>
+    </columns>
+    <from table= 'garticul'>
+    <join table='garticul_wh_catalg_v'>
+    <on>garticul.codigo = garticul_wh_catalg_v.codart</on>
+    <on>garticul_wh_catalg_v.valcat = ${valcat}</on>
+    <on>(garticul_wh_catalg_v.codpro IS NULL OR garticul_wh_catalg_v.codpro = ${tercer})</on>
+    <on>(garticul_wh_catalg_v.codalm IS NULL OR garticul_wh_catalg_v.codalm = ${almori})</on>
+    <on>(garticul_wh_catalg_v.prov_fecbaj IS NULL OR garticul_wh_catalg_v.prov_fecbaj &gt; ${fecha})</on>
+    <on>(garticul_wh_catalg_v.alm_fecbaj  IS NULL OR garticul_wh_catalg_v.alm_fecbaj  &gt; ${fecha})</on>
+    </join>
+    </from>
+    <where>
+         (UPPER (garticul.codigo) LIKE UPPER ('%${q}%') OR
+          UPPER (garticul.nomart) LIKE UPPER ('%${q}%') OR
+          EXISTS(SELECT gartiean.codean FROM gartiean
+           WHERE gartiean.codart = garticul.codigo
+             AND gartiean.codean LIKE UPPER ('${q}%')))
+             
+        AND garticul.estado NOT IN ('B', 'P')
+        AND garticul.grpemp IN (SELECT holcode
+                                  FROM choldinl
+                                 WHERE empcode = ${empcode})
+        AND (fecbaj IS NULL OR garticul.fecbaj &gt; ${fecha})
+        AND garticul.codigo IN (SELECT codart
+                                  FROM garticul_estges_v a
+                                 WHERE <nvl>a.tabname, ${tabname} </nvl>     = ${tabname}
+                                   AND <nvl>a.tipdoc,  ${tipdoc}  </nvl>     = ${tipdoc}
+                                   AND <nvl>a.fecini,  ${fecha}   </nvl> &lt;= ${fecha}
+                                   AND <nvl>a.fecfin,  ${fecha}   </nvl> &gt;= ${fecha})
+        
+    </where>
+</select>
+
+
+
+
+
+SELECT 
+        garticul.codigo, garticul.nomart, garticul.stock, garticul.lotes,
+
+        CASE WHEN garticul.desvar = 'V' THEN garticul.nomart
+             ELSE NULL
+          END desvar,
+
+        CASE WHEN gartlote_control_lot(garticul.codigo, ${almori}, ${almdes}) = 0 THEN '0'
+             ELSE NULL
+         END numlot,
+
+		gartlote_control_lot(garticul.codigo, ${almori}, ${almdes}) 		 			  			batch_control,
+		gartlote_has_exists(garticul.codigo, ${almori}, ${almdes}, ${tipmov}) 			  			validate_batch,
+
+		CASE WHEN ${salori} != 'N' AND garticul.stock != 'N'
+			 THEN garticul_get_indstk(
+			 		   ${almori}, ${ctaori}, garticul.codigo,
+					   gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo), ${fecha})
+		     ELSE 'N'
+		 END 																						item_salori,
+
+		CASE WHEN ${saldes} != 'N' AND garticul.stock != 'N'
+			 THEN  garticul_get_indstk(
+			 		  NVL(${almdes}, ${almori}),  ${ctades}, garticul.codigo,
+					   gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo), ${fecha})
+			 ELSE 'N'
+		 END 																						item_saldes,
+
+        gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo) varstk,
+
+        gart_unidefs_get_udmexp(${almori},
+                                garticul.codigo,
+                                gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+                                ${fecha}) udmori,
+
+        CASE WHEN ${proubi} IN ('N', 'D') THEN '0'
+             ELSE geanmovh_get_ubiori(
+             		 ${cabmov},
+                     ${almori},
+                     ${ctaori},
+                     garticul.codigo,
+                     gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+					 CASE WHEN garticul.lotes != 'C' THEN '0' ELSE NULL END,
+					 '0',
+					 ${salori})
+         END ubiori,
+
+        CASE WHEN ${proubi} IN ('N', 'O') THEN '0'
+             ELSE geanmovh_get_ubides(
+             		${cabmov},
+                    ${almori},
+                    ${almdes},
+                    ${ctades},
+                    garticul.codigo,
+                    gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+                    CASE WHEN garticul.lotes != 'C' THEN '0' ELSE NULL END,
+                    '0',
+                    ${saldes})
+         END ubides,
+
+		CASE WHEN ${terstk} != 'N' AND (${salori} != 'N' OR ${saldes} != 'N')
+			 THEN geanmovl_get_terdep(
+			 		${almori},
+               		${almdes},
+                	${ctaori},
+                    ${ctades},
+                    garticul.codigo,
+		            gartvarl_get_comvldef(${almori}, NULL, NULL, garticul.codigo),
+					${fecha},
+					${head_terdep})
+			 ELSE '0'
+		  END terdep,
+
+         garticul.desvar tipdes,
+
+         0               canmov,
+
+         CASE WHEN garticul.udmaux IS NOT NULL
+         	  THEN 0
+         	  ELSE CAST(NULL AS decimal ) 
+          END            canalt,
+
+         CAST(NULL AS char )  udmalt,
+         garticul.auxchr4
+    
+  FROM garticul
+      ,garticul_wh_catalg_v
+ WHERE 
+       garticul.codigo = garticul_wh_catalg_v.codart AND 
+       garticul_wh_catalg_v.valcat = ${valcat} AND 
+       (garticul_wh_catalg_v.codpro IS NULL OR garticul_wh_catalg_v.codpro = ${tercer}) AND 
+       (garticul_wh_catalg_v.codalm IS NULL OR garticul_wh_catalg_v.codalm = ${almori}) AND 
+       (garticul_wh_catalg_v.prov_fecbaj IS NULL OR garticul_wh_catalg_v.prov_fecbaj > ${fecha}) AND 
+       (garticul_wh_catalg_v.alm_fecbaj  IS NULL OR garticul_wh_catalg_v.alm_fecbaj  > ${fecha}) 
+ AND 
+            garticul.codigo = ${q}
+        AND garticul.estado NOT IN ('B', 'P')
+        AND garticul.grpemp IN (SELECT holcode FROM choldinl WHERE empcode = ${empcode})
+        AND (fecbaj IS NULL OR garticul.fecbaj > ${fecha})
+        AND garticul.codigo IN (SELECT codart
+                                  FROM garticul_estges_v a
+                                 WHERE NVL(a.tabname, ${tabname} )     = ${tabname}
+                                   AND NVL(a.tipdoc,  ${tipdoc}  )     = ${tipdoc}
+                                   AND NVL(a.fecini,  ${fecha}   ) <= ${fecha}
+                                   AND NVL(a.fecfin,  ${fecha}   ) >= ${fecha})

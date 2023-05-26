@@ -160,10 +160,10 @@
                         </gt>
                     </expr>
                     <then>
-                        <exception code='DESCUADRE' message='local_iges_con_cuadre: Asiento descuadrado. Debe:[{0}]-Haber:[{1}]. Revisar [gconasih].'>
+                        <!-- <exception code='DESCUADRE' message='local_iges_con_cuadre: Asiento descuadrado. Debe:[{0}]-Haber:[{1}]. Revisar [gconasih].'>
                             <arg><p_totdeb /></arg>
                             <arg><p_tothab /></arg>
-                        </exception>
+                        </exception> -->
                     </then>
                 </if>
 
@@ -904,6 +904,43 @@
                         <!-- at charged at item level.                               -->
                         <!-- ======================================================= -->
                         
+                        <print.sql>
+                            <select prepare='false' prefix='cpremovi_'>
+                                <columns>
+                                    @tmp_cpremovi.tabori, @tmp_cpremovi.inggas, 
+                                    @tmp_cpremovi.docser, @tmp_cpremovi.codpre, 
+                                    @tmp_cpremovi.codpar, @tmp_cpremovi.tercer, 
+                                    @tmp_cpremovi.contra, @tmp_cpremovi.natura, 
+                                    @tmp_cpremovi.codart, @tmp_cpremovi.varlog,
+                                    gcomfacl.auxnum2, gcomfacl.linid,
+                                    SUM(@tmp_cpremovi.cancon) cancon, SUM(@tmp_cpremovi.import) import                                        
+                                </columns>
+                                <from table='@tmp_cpremovi'>
+                                    <join table='gcomfacl'>
+                                        <on>@tmp_cpremovi.codart = gcomfacl.codart</on>
+                                    </join>
+                                </from>
+                                <where>
+                                    NOT EXISTS(SELECT linid
+                                                 FROM cpar_prearti
+                                                WHERE cpar_prearti.empcode = <capuntes_empcode />
+                                                  AND cpar_prearti.codpre  = @tmp_cpremovi.codpre
+                                                  AND cpar_prearti.codpar  = @tmp_cpremovi.codpar
+                                                  AND cpar_prearti.codart  = @tmp_cpremovi.codart
+                                                  AND cpar_prearti.varlog  = @tmp_cpremovi.varlog)
+                                    AND gcomfacl.cabid IN (SELECT gcomfach.cabid 
+                                                             FROM gcomfach 
+                                                            WHERE gcomfach.docser = @tmp_cpremovi.docser)
+                                </where>
+                                <group>
+                                    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+                                </group>
+                                <order>
+                                    gcomfacl.auxnum2 ASC
+                                </order>
+                            </select>
+                        </print.sql>
+                        
                         <!-- ======================================================= -->
                         <!-- Custom CRP: Orden por prioridad según línea padre       -->
                         <!-- ======================================================= -->
@@ -988,7 +1025,28 @@
                                                 AND gcomfacl.codart = <cpremovi_codart/>
                                             </where>
                                         </select>
+
+                                        <!--                          OLD                            -->
+                                        <!-- ======================================================= -->
+                                        <!-- 2. Familia del producto es agrupado                     -->
+                                        <!-- [NO] gartfami.agrele = 0                                -->
+                                        <!-- [SI] gartfami.agrele = 1                                -->
+                                        <!-- ======================================================= -->
+                                        <!-- <select prefix='m_gartfami_'>
+                                            <columns>
+                                                gartfami.agrele
+                                            </columns>
+                                            <from table='gartfami'>
+                                                <join table='garticul'>
+                                                    <on>gartfami.codigo = garticul.codfam</on>
+                                                </join>
+                                            </from>
+                                            <where>
+                                                garticul.codigo = <cpremovi_codart/>
+                                            </where>
+                                        </select> -->
                                         
+                                        <!--                          NEW                            -->
                                         <!-- ======================================================= -->
                                         <!-- 2. Partida de inversion es agrupado                     -->
                                         <!-- [NO] cpar_parprel.auxnum1 = 0                           -->
@@ -1061,7 +1119,8 @@
                                             <else>
                                                 <!-- ========================================================= -->
                                                 <!-- Caso2. Familia del producto NO agrupado + NO línea padre  -->
-                                                <!-- [NO] cpar_parprel.auxnum1 = 1                             -->
+                                                <!-- [NO] gartfami.agrele = 0         (OLD)                    -->
+                                                <!-- [NO] cpar_parprel.auxnum1 = 1    (NEW)                    -->
                                                 <!-- [NO] gcomfacl.auxnum2 = NULL                              -->
                                                 <!-- ========================================================= -->
                                                 <if>
@@ -1072,6 +1131,7 @@
                                                         <isnull><m_gcomfacl_linid_padre /></isnull>
                                                     </expr>
                                                     <then>  
+                                                        <println>CASO 2 <cpremovi_codart/></println>
                                                         <set name='m_end'>
                                                             <math.ceiling>
                                                                 <cpremovi_cancon/>
@@ -1125,17 +1185,20 @@
                                                 
                                                 <!-- ========================================================= -->
                                                 <!-- Caso3. Familia del producto NO agrupado + línea padre     -->
-                                                <!-- [NO] cpar_parprel.auxnum1 = 0                             -->
+                                                <!-- [NO] gartfami.agrele = 0           (OLD)                  -->
+                                                <!-- [NO] cpar_parprel.auxnum1 = 0      (NEW)                  -->
                                                 <!-- [NO] gcomfacl.auxnum2 != NULL                             -->
                                                 <!-- No debe respetar lo informado en gcomfacl_datc            -->
                                                 <!-- ========================================================= -->
                                                 <if>
                                                     <expr>
+                                                        <!-- <eq><m_gartfami_agrele/><number>0</number></eq> -->
                                                         <eq><m_parprel_agrupado/><number>0</number></eq>
                                                         <and />
                                                         <isnotnull><m_gcomfacl_linid_padre /></isnotnull>
                                                     </expr>
                                                     <then>
+                                                        <println>CASO 3 <cpremovi_codart/></println>
                                                         <!-- ======================================================= -->
                                                         <!-- 3.0. Obtener elemento a asociar                         -->
                                                         <!-- ======================================================= -->
@@ -1245,11 +1308,39 @@
                                                 </gt>
                                                 <and />
                                                 <eq>
+                                                    <!-- <m_gartfami_agrele/> -->
                                                     <m_parprel_agrupado/>
                                                     <number>2</number>
                                                 </eq>
                                             </expr>
                                             <then>
+                                                
+                                                <println>SQL-TABLE LINEAS ASOCIADAS - CANT <cpremovi_codart/></println>
+                                                <print.sql>
+                                                    <select prefix='m_related_datc_'>
+                                                        <columns>
+                                                            relation_datc.cinmelem,
+                                                            relation_datc.cant,
+                                                            gcomfacl_datc.codpre,
+                                                            gcomfacl_datc.codpar,
+                                                            gcomfacl.impnet,
+                                                            relation_datc.porcen
+                                                        </columns>
+                                                        <from table='gcomfacl'>
+                                                            <join table='gcomfacl_datc'>
+                                                                <on>gcomfacl.linid = gcomfacl_datc.linid</on>
+                                                                <join table='crp_relation_elemen_datc' alias = 'relation_datc'>
+                                                                    <on>gcomfacl_datc.linid = relation_datc.linid</on>
+                                                                    <on>gcomfacl_datc.rowid = relation_datc.datcontid</on>
+                                                                </join>
+                                                            </join>
+                                                        </from>
+                                                        <where>
+                                                            gcomfacl.linid = <cpremovi_linid/>
+                                                            AND relation_datc.cant != 0
+                                                        </where>
+                                                    </select>
+                                                </print.sql>
                                                 <!-- ======================================================== -->
                                                 <!-- Caso4.1. Existe datos contables y se divide por cantidad -->
                                                 <!-- [SI] Existen datos contables mayor a 1                   -->
@@ -1280,7 +1371,9 @@
                                                             AND relation_datc.cant != 0
                                                         </where>
                                                     </select>
-                                                    <do>
+                                                    <do> 
+                                                        <println>ITERADO</println>
+
                                                         <!-- CALCULO DEL IMPORTE -->
                                                         <set name='m_imp_calc' >
                                                             <div>
@@ -1290,14 +1383,16 @@
                                                                 100
                                                             </div>
                                                         </set>
+                                                        
+                                                        <println>IMPORTE CALCULADO <m_imp_calc/> </println>
 
                                                         <set name='cpremovi_linid'>0</set>
                                                         <set name='cpremovi_empcode'><capuntes_empcode /></set>
-                                                        <set name='cpremovi_cancon'><m_related_datc_cant/></set>
+                                                        <set name='cpremovi_cancon'><m_related_datc_cant/></set> <!-- obtener la cantidad -->
                                                         <set name='cpremovi_estado'>A</set>
-                                                        <set name='cpremovi_import'><m_imp_calc/></set>
-                                                        <set name='cpremovi_codpre'><m_related_datc_codpre /></set>
-                                                        <set name='cpremovi_codpar'><m_related_datc_codpar /></set>
+                                                        <set name='cpremovi_import'><m_imp_calc/></set> <!-- calcular el importe -->
+                                                        <set name='cpremovi_codpre'><m_related_datc_codpre /></set> <!-- Obtener el presupuesto del dato contable -->
+                                                        <set name='cpremovi_codpar'><m_related_datc_codpar /></set> <!-- Obtener la partida del dato contable -->
                                                         <set name='cpremovi_fecdoc'><capuntes_fecval /></set>
                                                         <set name='cpremovi_feccon'><capuntes_fecha /></set>
                                                         <set name='cpremovi_codcon'><capuntes_codcon /></set>
@@ -1319,8 +1414,9 @@
                                                         <!-- ======================================================= -->
                                                         <set name='crp_related_cominv_loteid'><capuntes_loteid /></set>
                                                         <set name='crp_related_cominv_linid'><m_gcomfacl_linid /></set>
+                                                        <!-- <set name='crp_related_cominv_linori'><m_gcomfacl_linid_padre /></set> --> <!-- NULL / 0 -->
                                                         <set name='crp_related_cominv_cparpremovi'><cpremovi_linid /></set>
-                                                        <set name='crp_related_cominv_cinmelem'><m_related_datc_cinmelem /></set>
+                                                        <set name='crp_related_cominv_cinmelem'><m_related_datc_cinmelem /></set> <!-- ID DEL ELEMENTO SELECCIONADO -->
                                                         
                                                         <insert table='crp_related_cominv' prefix='crp_related_cominv_' />
                                                         
@@ -1331,6 +1427,33 @@
                                                         <include code='iges_con_contab' name='after_cpar_premovi' />
                                                     </do>
                                                 </foreach>
+                                                
+                                                <println>SQL-TABLE LINEAS ASOCIADAS - IMPORT <cpremovi_codart/></println>
+                                                <print.sql>
+                                                    <select>
+                                                        <columns>
+                                                            relation_datc.cinmelem,
+                                                            relation_datc.import,
+                                                            gcomfacl_datc.codpre,
+                                                            gcomfacl_datc.codpar,
+                                                            gcomfacl.canfac,
+                                                            relation_datc.porcen
+                                                        </columns>
+                                                        <from table='gcomfacl'>
+                                                            <join table='gcomfacl_datc'>
+                                                                <on>gcomfacl.linid = gcomfacl_datc.linid</on>
+                                                                <join table='crp_relation_elemen_datc' alias = 'relation_datc'>
+                                                                    <on>gcomfacl_datc.linid = relation_datc.linid</on>
+                                                                    <on>gcomfacl_datc.rowid = relation_datc.datcontid</on>
+                                                                </join>
+                                                            </join>
+                                                        </from>
+                                                        <where>
+                                                            gcomfacl.linid = <cpremovi_linid/>
+                                                            AND relation_datc.import != 0
+                                                        </where>
+                                                    </select>
+                                                </print.sql>
 
                                                 <!-- ======================================================== -->
                                                 <!-- Caso4.2. Existe datos contables y se divide por importe -->
@@ -1363,6 +1486,7 @@
                                                         </where>
                                                     </select>
                                                     <do>
+                                                        <println>ITERADO</println>
 
                                                         <!-- CALCULO DE CANTIDAD -->
                                                         <set name='m_cant_calc' >
@@ -1374,13 +1498,15 @@
                                                             </div>
                                                         </set>
 
+                                                        <println>CANTIDAD CALCULADA <m_cant_calc/> </println>
+
                                                         <set name='cpremovi_linid'>0</set>
                                                         <set name='cpremovi_empcode'><capuntes_empcode /></set>
-                                                        <set name='cpremovi_cancon'><m_cant_calc/></set>
+                                                        <set name='cpremovi_cancon'><m_cant_calc/></set> <!-- obtener la cantidad -->
                                                         <set name='cpremovi_estado'>A</set>
-                                                        <set name='cpremovi_import'><m_related_datc_import/></set>
-                                                        <set name='cpremovi_codpre'><m_related_datc_codpre /></set>
-                                                        <set name='cpremovi_codpar'><m_related_datc_codpar /></set>
+                                                        <set name='cpremovi_import'><m_related_datc_import/></set> <!-- calcular el importe -->
+                                                        <set name='cpremovi_codpre'><m_related_datc_codpre /></set> <!-- Obtener el presupuesto del dato contable -->
+                                                        <set name='cpremovi_codpar'><m_related_datc_codpar /></set> <!-- Obtener la partida del dato contable -->
                                                         <set name='cpremovi_fecdoc'><capuntes_fecval /></set>
                                                         <set name='cpremovi_feccon'><capuntes_fecha /></set>
                                                         <set name='cpremovi_codcon'><capuntes_codcon /></set>
@@ -1402,8 +1528,9 @@
                                                         <!-- ======================================================= -->
                                                         <set name='crp_related_cominv_loteid'><capuntes_loteid /></set>
                                                         <set name='crp_related_cominv_linid'><m_gcomfacl_linid /></set>
+                                                        <!-- <set name='crp_related_cominv_linori'><m_gcomfacl_linid_padre /></set> --> <!-- NULL / 0 -->
                                                         <set name='crp_related_cominv_cparpremovi'><cpremovi_linid /></set>
-                                                        <set name='crp_related_cominv_cinmelem'><m_related_datc_cinmelem /></set>
+                                                        <set name='crp_related_cominv_cinmelem'><m_related_datc_cinmelem /></set> <!-- ID DEL ELEMENTO SELECCIONADO -->
 
                                                         <insert table='crp_related_cominv' prefix='crp_related_cominv_' />
 

@@ -50,11 +50,42 @@
  **/
 function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento, pIntCantidad, pFloatImporte) { 
     try {
-        Ax.db.beginWork(); 
+        Ax.db.beginWork();
 
-        // TODO: Validar que cantidad e importe, ambos no sean mayores a cero
+        // ===============================================================
+        // Se valida que cantidad e importe, solo uno sea informado
+        // ===============================================================
         if ( (pIntCantidad == 0 && pFloatImporte == 0) || (pIntCantidad > 0 && pFloatImporte > 0) ) {
             throw `Los campos CANTIDAD e IMPORTE, solo uno de ellos debe ser diferente de cero`;
+        }
+        
+        // TODO: Validar que si se informa cantidad o impote, solo se ingrese el valor informado
+        var mObjCantImporte = Ax.db.executeQuery(`
+            <select first='1'>
+                <columns>
+                    datcontid,
+                    linid,
+                    cant,
+                    import
+                </columns>
+                <from table='crp_relation_elemen_datc'/>
+                    <where>
+                        datcontid = ?
+                        AND linid = ?
+                    </where>
+            </select>
+        `, pIntDatContId, pIntLineaId).toOne();
+        
+        if(mObjCantImporte.cant == 0) {
+            if (pIntCantidad > 0) {
+                throw 'Solo ingresar importes';
+            }
+        }
+
+        if(mObjCantImporte.import == 0) {
+            if (pFloatImporte > 0) {
+                throw 'Solo ingresar cantidades';
+            }  
         }
 
         // TODO: Validar que la cantidad e importe no supere a lo informado en la factura
@@ -74,6 +105,11 @@ function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento
                 <group>1, 2</group>
             </select>
         `, pIntDatContId, pIntLineaId).toOne();
+        
+        if(mObjRelacionElemen.linid == null) {
+            mObjRelacionElemen.cant = 0;
+            mObjRelacionElemen.import = 0;
+        }
 
         // Se calcula el acumulado de cantidad e importe
         var mIntCantAcumulado = mObjRelacionElemen.cant + pIntCantidad;
@@ -125,3 +161,64 @@ function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento
         throw new Ax.ext.Exception("ERROR: [${error}]", {error});
     }
 }
+
+
+
+
+<call>
+   <args>
+      <arg>${docser}</arg>
+      <arg>${feccon}</arg>
+   </args>
+<![CDATA[
+<xsql-script>
+    <args>
+        <arg name='p_docori' type='string'/>
+        <arg name='p_feccon' type='date'/>
+    </args>
+
+    <body>
+    
+        <select prefix='gvenalbh_'>
+            <columns>
+                MIN(fecmov) + 3 fecha
+            </columns>
+            <from table='gvenalbh' />
+            <where>
+                docori = <p_docori/>
+            </where>
+        </select>   
+    
+        <if>
+            <expr>
+                <isnotnull><gvenalbh_fecha/></isnotnull>
+            </expr>
+            <then>
+                <exception code='GENAPUNTES'  message='No se puede descontabilizar ya que existe Re-Facturación asociada a factura [{0}].'>
+                    <arg><p_docori /></arg>
+                </exception>
+            </then>
+        </if>
+        
+        <set name='m_date_max'>
+            <add>
+                <p_feccon /><date.units type='d'>3</date.units>
+            </add>
+        </set>
+        
+        <if>
+            <expr>
+                <gt><date.current /><m_date_max/></gt>
+            </expr>
+            <then>
+                <exception code='DIFSOCI' message='No se puede descontabilizar ya que ha pasado más de 72 horas de generarse los documentos de Re-Facturación.'/>
+            </then>
+        </if>
+
+    </body>
+</xsql-script>
+]]>
+</call>
+
+
+solo para reembolzables
