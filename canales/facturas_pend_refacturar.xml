@@ -119,3 +119,438 @@
         AND $0
     </where>
 </select>
+
+
+
+
+
+
+
+<!--     SELECT EN DESARROLLO - SCRIPT PRINCIPAL CANAL      -->
+<!-- SEGUNDO DESARROLLO DE CANAL -->
+<select intotemp='@tmp_gcomfac_pend'>
+    <columns>
+        gcomfach.cabid
+    </columns>
+    <from table='gcomfach'>
+    </from>
+    <where>
+        NOT exists (SELECT gvenalbl.cabid 
+                     FROM gvenalbl 
+                    WHERE gvenalbl.cabori = gcomfach.cabid 
+                      AND gvenalbl.tabori = 'gcomfach')
+    </where>
+    <!-- <group>
+        1
+    </group> -->
+</select>
+
+<union intotemp = '@tmp_gcomalbh_reem'>
+    <select>
+        <columns>
+            gcomfacl.cabori cabid,
+            gcomfach.cabid idgcomfach
+        </columns>
+        <from table='gcomfach'>
+            <join table='@tmp_gcomfac_pend' alias='gcomfac_pend'>
+                <on>gcomfach.cabid = gcomfac_pend.cabid</on>
+                <join table='gcomfacl'>
+                    <on>gcomfac_pend.cabid = gcomfacl.cabid</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomfacl.tabori = 'gcommovh'
+        </where>
+    </select>
+
+    <select>
+        <columns>
+            gcomalbl.cabid,
+            gcomfach.cabid idgcomfach
+        </columns>
+        <from table='gcomfach'>
+            <join table='@tmp_gcomfac_pend' alias='gcomfac_pend'>
+                <on>gcomfach.cabid = gcomfac_pend.cabid</on>
+                <join table='gcomalbl'>
+                    <on>gcomfac_pend.cabid = gcomalbl.cabori</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomalbl.tabori = 'gcomfach'
+        </where>
+    </select>
+
+    <select>
+        <columns>
+            gcomalbl.cabid,
+            gcomfach.cabid idgcomfach
+        </columns>
+        <from table='gcomfach'>
+            <join table='@tmp_gcomfac_pend' alias='gcomfac_pend'>
+                <on>gcomfach.cabid = gcomfac_pend.cabid</on>
+                <join table='gcomalbl'>
+                    <on>gcomfac_pend.cabid = gcomalbl.cabori</on>
+                    <join table='gcomfacl'>
+                        <on>gcomalbl.linori = gcomfacl.linid</on>
+                    </join>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomalbl.tabori = 'gcomfach'
+        </where>
+    </select>
+</union>
+
+<select intotemp='@tmp_gcompedh_reem'>
+    <columns>
+        gcompedh.cabid,
+        gcomalbh_reem.idgcomfach
+    </columns>
+    <from table='gcomalbh'>
+        <join table='@tmp_gcomalbh_reem' alias='gcomalbh_reem'>
+            <on>gcomalbh.cabid = gcomalbh_reem.cabid</on>
+            <join table='gcomalbl'>
+                <on>gcomalbh_reem.cabid = gcomalbl.cabid</on>
+                <join table='gcompedh'>
+                    <on>gcomalbl.cabori = gcompedh.cabid</on>
+                </join>
+            </join>
+        </join>
+    </from>
+    <where>
+        gcomalbl.tabori = 'gcompedh'
+    </where>
+    <!-- <group>
+        1
+    </group> -->
+</select>
+
+<union intotemp='@tmp_gcomsolh_reem'>
+    <select>
+        <columns>
+            gcomsoll_dist.cabsol cabid,
+            gcompedh_reem.idgcomfach
+        </columns>
+        <from table='gcompedh'>
+            <join table='@tmp_gcompedh_reem' alias='gcompedh_reem'>
+                <on>gcompedh.cabid = gcompedh_reem.cabid</on>
+                <join table='gcomsoll_dist'>
+                    <on>gcompedh_reem.cabid = gcomsoll_dist.cabid</on>
+                    <!-- <join table='gcompedh'>
+                        <on>gcomalbl.cabori = gcompedh.cabid</on>
+                    </join> -->
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomsoll_dist.tabname = 'gcompedh'
+        </where>
+    </select>
+
+    <select>
+        <columns>
+            gcompedl_lnk.lnk_cabori cabid,
+            gcompedh_reem.idgcomfach
+        </columns>
+        <from table='gcompedh'>
+            <join table='@tmp_gcompedh_reem' alias='gcompedh_reem'>
+                <on>gcompedh.cabid = gcompedh_reem.cabid</on>
+                <join table='gcompedl'>
+                    <on>gcompedh_reem.cabid = gcompedl.cabid</on>
+                    <join table='gcompedl_lnk'>
+                        <on>gcompedl.linid = gcompedl_lnk.linid</on>
+                    </join>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcompedl_lnk.lnk_tabori = 'gcomsolh'
+        </where>
+    </select>
+</union>
+
+<select intotemp='@tmp_gcomfach_pend_refac'>
+    <columns>
+        gcomsolh_reem.idgcomfach
+    </columns>
+    <from table='gcomsolh'>
+        <join table='@tmp_gcomsolh_reem' alias='gcomsolh_reem'>
+            <on>gcomsolh.cabid = gcomsolh_reem.cabid</on>
+            <join table='gcomsoll'>
+                <on>gcomsolh_reem.cabid = gcomsoll.cabid</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        gcomsoll.auxnum4 = 1
+    </where>
+    <group>
+        1
+    </group>
+</select>
+
+
+<select>
+    <columns>
+        gcomfach.docser,
+        gcomfach.depart,
+        gcomfach.tipdoc,
+        gcomfach.fecha
+        <!-- COUNT(*) numero -->
+    </columns>
+    <from table='gcomfach'>
+        <join table='@tmp_gcomfach_pend_refac' alias='gcomfach_pend_refac'>
+            <on>gcomfach.cabid = gcomfach_pend_refac.idgcomfach</on>
+        </join>
+    </from>
+    <where>
+        1=1
+    </where>
+    <!-- <group>
+        1, 2, 3
+    </group> -->
+</select>
+
+<!-- NUM DE FACTURAS 10 -->
+
+<!-- TABS GCOMPEDH -> GCOMSOLH -->
+<!-- 
+    gcomsolh.cabid IN (SELECT gcomsoll_dist.cabsol
+                     FROM gcomsoll_dist
+                    WHERE gcomsoll_dist.cabid   = ${cabid}
+                      AND gcomsoll_dist.tabname = 'gcompedh')
+ -->
+
+ <!-- 
+    gcomsolh.cabid IN (SELECT gcompedl_lnk.lnk_cabori
+                     FROM gcompedl_lnk, gcompedl
+                    WHERE gcompedl_lnk.linid      = gcompedl.linid
+                      AND gcompedl.cabid          = ${cabid}
+                      AND gcompedl_lnk.lnk_tabori = 'gcomsolh')
+ -->
+
+
+
+
+
+<!-- 14928 -->
+
+
+<!-- 13429 -->
+<!-- 14426 -->
+
+<!-- TABS GCOMALBH -> GCOMPEDH -->
+<!-- 
+    gcompedh.cabid IN (SELECT gcomalbl.cabori
+                     FROM gcomalbl
+                    WHERE gcomalbl.cabid = ${nvl(cabid, 0)}
+                      AND gcomalbl.tabori = 'gcompedh')
+ -->
+
+
+
+<!-- TABS GCOMFACH -> GCOMALBH -->
+
+<!-- 
+    gcomalbh.cabid IN (SELECT gcomfacl.cabori
+                     FROM gcomfacl
+                    WHERE gcomfacl.cabid  = ${cabid} 
+                      AND gcomfacl.tabori = 'gcommovh')
+ -->
+
+<!-- 
+    gcomalbh.cabid IN (SELECT gcomalbl.cabid 
+                     FROM gcomalbl 
+                    WHERE gcomalbl.cabori = ${cabid} 
+                      AND gcomalbl.tabori = 'gcomfach')
+ -->
+
+ <!-- 
+    gcomalbh.cabid IN (SELECT DISTINCT gcomalbl.cabid 
+                     FROM gcomalbl, gcomfacl 
+                    WHERE gcomfacl.diff_date_exec IS NOT NULL 
+                      AND gcomalbl.cabori = ${cabid}
+                      AND gcomalbl.tabori = 'gcomfach'
+                      AND gcomalbl.linori = gcomfacl.linid)
+  -->
+
+
+<!-- SEGUNDO REPORTE -->
+<select intotemp='@tmp_gcomfac_pend'>
+    <columns>
+        gcomfach.cabid
+    </columns>
+    <from table='gcomfach'>
+    </from>
+    <where>
+        NOT exists (SELECT gvenalbl.cabid 
+                     FROM gvenalbl 
+                    WHERE gvenalbl.cabori = gcomfach.cabid 
+                      AND gvenalbl.tabori = 'gcomfach')
+    </where>
+</select>
+
+<union intotemp = '@tmp_gcomalbh_reem'>
+    <select>
+        <columns>
+            gcomfacl.cabori cabid,
+            gcomfach.cabid idgcomfach
+        </columns>
+        <from table='gcomfach'>
+            <join table='@tmp_gcomfac_pend' alias='gcomfac_pend'>
+                <on>gcomfach.cabid = gcomfac_pend.cabid</on>
+                <join table='gcomfacl'>
+                    <on>gcomfac_pend.cabid = gcomfacl.cabid</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomfacl.tabori = 'gcommovh'
+        </where>
+    </select>
+
+    <select>
+        <columns>
+            gcomalbl.cabid,
+            gcomfach.cabid idgcomfach
+        </columns>
+        <from table='gcomfach'>
+            <join table='@tmp_gcomfac_pend' alias='gcomfac_pend'>
+                <on>gcomfach.cabid = gcomfac_pend.cabid</on>
+                <join table='gcomalbl'>
+                    <on>gcomfac_pend.cabid = gcomalbl.cabori</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomalbl.tabori = 'gcomfach'
+        </where>
+    </select>
+
+    <select>
+        <columns>
+            gcomalbl.cabid,
+            gcomfach.cabid idgcomfach
+        </columns>
+        <from table='gcomfach'>
+            <join table='@tmp_gcomfac_pend' alias='gcomfac_pend'>
+                <on>gcomfach.cabid = gcomfac_pend.cabid</on>
+                <join table='gcomalbl'>
+                    <on>gcomfac_pend.cabid = gcomalbl.cabori</on>
+                    <join table='gcomfacl'>
+                        <on>gcomalbl.linori = gcomfacl.linid</on>
+                    </join>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomalbl.tabori = 'gcomfach'
+        </where>
+    </select>
+</union>
+
+<select intotemp='@tmp_gcompedh_reem'>
+    <columns>
+        gcompedh.cabid,
+        gcomalbh_reem.idgcomfach
+    </columns>
+    <from table='gcomalbh'>
+        <join table='@tmp_gcomalbh_reem' alias='gcomalbh_reem'>
+            <on>gcomalbh.cabid = gcomalbh_reem.cabid</on>
+            <join table='gcomalbl'>
+                <on>gcomalbh_reem.cabid = gcomalbl.cabid</on>
+                <join table='gcompedh'>
+                    <on>gcomalbl.cabori = gcompedh.cabid</on>
+                </join>
+            </join>
+        </join>
+    </from>
+    <where>
+        gcomalbl.tabori = 'gcompedh'
+    </where>
+</select>
+
+<union intotemp='@tmp_gcomsolh_reem'>
+    <select>
+        <columns>
+            gcomsoll_dist.cabsol cabid,
+            gcompedh_reem.idgcomfach
+        </columns>
+        <from table='gcompedh'>
+            <join table='@tmp_gcompedh_reem' alias='gcompedh_reem'>
+                <on>gcompedh.cabid = gcompedh_reem.cabid</on>
+                <join table='gcomsoll_dist'>
+                    <on>gcompedh_reem.cabid = gcomsoll_dist.cabid</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcomsoll_dist.tabname = 'gcompedh'
+        </where>
+    </select>
+
+    <select>
+        <columns>
+            gcompedl_lnk.lnk_cabori cabid,
+            gcompedh_reem.idgcomfach
+        </columns>
+        <from table='gcompedh'>
+            <join table='@tmp_gcompedh_reem' alias='gcompedh_reem'>
+                <on>gcompedh.cabid = gcompedh_reem.cabid</on>
+                <join table='gcompedl'>
+                    <on>gcompedh_reem.cabid = gcompedl.cabid</on>
+                    <join table='gcompedl_lnk'>
+                        <on>gcompedl.linid = gcompedl_lnk.linid</on>
+                    </join>
+                </join>
+            </join>
+        </from>
+        <where>
+            gcompedl_lnk.lnk_tabori = 'gcomsolh'
+        </where>
+    </select>
+</union>
+
+<select intotemp='@tmp_gcomfach_pend_refac'>
+    <columns>
+        gcomsolh_reem.idgcomfach
+    </columns>
+    <from table='gcomsolh'>
+        <join table='@tmp_gcomsolh_reem' alias='gcomsolh_reem'>
+            <on>gcomsolh.cabid = gcomsolh_reem.cabid</on>
+            <join table='gcomsoll'>
+                <on>gcomsolh_reem.cabid = gcomsoll.cabid</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        gcomsoll.auxnum4 = 1
+    </where>
+    <group>
+        1
+    </group>
+</select>
+
+
+<select>
+    <columns>
+        gcomfach.depart,
+        gcomfach.tipdoc,
+        gcomfach.fecha,
+        COUNT(*) numero
+    </columns>
+    <from table='gcomfach'>
+        <join table='@tmp_gcomfach_pend_refac' alias='gcomfach_pend_refac'>
+            <on>gcomfach.cabid = gcomfach_pend_refac.idgcomfach</on>
+        </join>
+    </from>
+    <where>
+        1=1
+    </where>
+    <group>
+        1, 2, 3
+    </group>
+</select>
