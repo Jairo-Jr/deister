@@ -1,60 +1,61 @@
-SELECT 
-        
+<!-- 
+    tabla:  garticul
+    metodo: geanmovl_val
+ -->
+
+<!-- SENTENCIA DE AUTOCOMPLETAR -->
+<select>
+    <columns>
         UNIQUE garticul.codigo, '[' || TRIM(garticul.codigo) || '] ' || NVL(garticul.nomart, '')
-    
-  FROM garticul
-      ,garticul_wh_catalg_v
-      ,garticul_ext      ,crp_tipo_producto
- WHERE 
-       garticul.codigo = garticul_wh_catalg_v.codart AND 
-       garticul_wh_catalg_v.valcat = ${valcat} AND 
-       (garticul_wh_catalg_v.codpro IS NULL OR garticul_wh_catalg_v.codpro = ${tercer}) AND 
-       (garticul_wh_catalg_v.codalm IS NULL OR garticul_wh_catalg_v.codalm = ${almori}) AND 
-       (garticul_wh_catalg_v.prov_fecbaj IS NULL OR garticul_wh_catalg_v.prov_fecbaj > ${fecha}) AND 
-       (garticul_wh_catalg_v.alm_fecbaj  IS NULL OR garticul_wh_catalg_v.alm_fecbaj  > ${fecha}) AND 
-       garticul.codigo = garticul_ext.codigo AND 
-       garticul_ext.tipo_producto = crp_tipo_producto.codigo
- AND 
-         (UPPER (garticul.codigo) LIKE UPPER ('%${q}%') OR
+    </columns>
+    <from table='garticul'>
+        <join table='garticul_wh_catalg_v'>
+            <on>garticul.codigo = garticul_wh_catalg_v.codart</on>
+            <on>garticul_wh_catalg_v.valcat = ${valcat}</on>
+            <on>(garticul_wh_catalg_v.codpro IS NULL OR garticul_wh_catalg_v.codpro = ${tercer})</on>
+            <on>(garticul_wh_catalg_v.codalm IS NULL OR garticul_wh_catalg_v.codalm = ${almori})</on>
+            <on>(garticul_wh_catalg_v.prov_fecbaj IS NULL OR garticul_wh_catalg_v.prov_fecbaj &gt; ${fecha})</on>
+            <on>(garticul_wh_catalg_v.alm_fecbaj  IS NULL OR garticul_wh_catalg_v.alm_fecbaj  &gt; ${fecha})</on>
+        </join>
+        <join table='garticul_ext'>
+            <on>garticul.codigo = garticul_ext.codigo</on>
+            <join table='crp_tipo_producto'>
+                <on>garticul_ext.tipo_producto = crp_tipo_producto.codigo</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        (UPPER (garticul.codigo) LIKE UPPER ('%${q}%') OR
           UPPER (garticul.nomart) LIKE UPPER ('%${q}%'))
-             
+        
         AND garticul.estado NOT IN ('B', 'P')
         AND garticul.grpemp IN (SELECT holcode FROM choldinl WHERE empcode = ${empcode})
-        AND (NVL(garticul.fecbaj, ${fecha}) >= ${fecha})
+        AND (NVL(garticul.fecbaj, ${fecha}) &gt;= ${fecha})
         AND garticul.codigo IN (SELECT codart
                                   FROM garticul_estges_v a
-                                 WHERE NVL(a.tabname, ${tabname} )     = ${tabname}
-                                   AND NVL(a.tipdoc,  ${tipdoc}  )     = ${tipdoc}
-                                   AND NVL(a.fecini,  ${fecha}   ) <= ${fecha}
-                                   AND NVL(a.fecfin,  ${fecha}   ) >= ${fecha})
-        AND crp_tipo_producto.indfarmalog IN (SELECT CASE WHEN ${tipdoc} IN ('APDI', 'APD2', 'AJDI', 'AJD2') THEN 'FARMA'
-                                                          WHEN ${tipdoc} IN ('AJPL', 'AJNL') THEN 'LOG'
-                                                          ELSE '0'
-                                                     END from wic_dual)
+                                 WHERE NVL(a.tabname, ${tabname})  = ${tabname}
+                                   AND NVL(a.tipdoc,  ${tipdoc} )  = ${tipdoc}
+                                   AND NVL(a.fecini,  ${fecha}  ) &lt;= ${fecha}
+                                   AND NVL(a.fecfin,  ${fecha}  ) &gt;= ${fecha})
+        
+        AND NVL(crp_tipo_producto.indfarmalog, 'C') IN (SELECT CASE WHEN ${tipdoc} IN ('APDI', 'APD2', 'AJDI', 'AJD2') THEN 'FARMA'
+                                                                    WHEN ${tipdoc} IN ('AJPL', 'AJNL') THEN 'LOG'
+                                                                    ELSE NVL(crp_tipo_producto.indfarmalog, 'C')
+                                                                    END 
+                                                          FROM wic_dual)
+    </where>
+</select>
 
 
 
-
-
-
+<!-- SENTENCIA DE VERIFICACION -->
 
 
                                                      
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-                                                     SELECT 
+SELECT 
         garticul.codigo, garticul.nomart, garticul.stock, garticul.lotes,
 
         CASE WHEN garticul.desvar = 'V' THEN garticul.nomart
@@ -162,10 +163,20 @@ SELECT
                                    AND NVL(a.tipdoc,  ${tipdoc}  )     = ${tipdoc}
                                    AND NVL(a.fecini,  ${fecha}   ) <= ${fecha}
                                    AND NVL(a.fecfin,  ${fecha}   ) >= ${fecha})
-        AND crp_tipo_producto.indfarmalog IN (SELECT CASE WHEN ${tipdoc} IN ('APDI', 'APD2', 'AJDI', 'AJD2') THEN 'FARMA'
+        AND NVL(crp_tipo_producto.indfarmalog, 'C') IN (SELECT CASE WHEN ${tipdoc} IN ('APDI', 'APD2', 'AJDI', 'AJD2') THEN 'FARMA'
                                                           WHEN ${tipdoc} IN ('AJPL', 'AJNL') THEN 'LOG'
-                                                          ELSE '0'
+                                                          ELSE NVL(crp_tipo_producto.indfarmalog, 'C')
                                                      END from wic_dual)
+
+
+
+
+
+
+
+
+
+
 
 
 
