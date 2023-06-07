@@ -1,0 +1,20 @@
+<table name='crp_related_fact_elemen'>
+
+   <!-- COLUMNS -->
+   <column name='id'            type='serial'   required='y' />
+   <column name='linid'         type='integer' />
+   <column name='cinmelem'      type='integer' />
+   <column name='cinmcomp'      type='integer' />
+   <column name='auxnum1'       type='integer' />
+   <column name='auxnum2'       type='integer' />
+   <column name='auxnum3'       type='integer' />
+   
+   <!-- INDEXES -->
+   <index name='i_crp_related_fact_elemen1' columns='linid' />
+   <index name='i_crp_related_fact_elemen2' columns='cinmelem' />
+   <index name='i_crp_related_fact_elemen3' columns='cinmcomp' />
+   
+   <!-- PRIMARY KEY -->
+   <primary name='p_crp_related_fact_elemen' columns='id' />
+
+</table>
