@@ -24,9 +24,9 @@
  * -----------------------------------------------------------------------------
  * 
  * 
- *  JS:  Name Function
+ *  JS:  crp_traspaso_partida
  * 
- *  Version     : Version
+ *  Version     : 1.0
  *  Date        : 17-02-2022
  *  Description : Describe lo que hace la funcion
  * 
@@ -47,15 +47,36 @@
 function crp_traspaso_partida(pData, pField) {
     
     try { 
-        Ax.db.beginWork(); 
+        Ax.db.beginWork();
 
-        var mStrCodpar    = Ax.context.field.codpar;
-        var mStrCodpre    = Ax.context.data.codpre;
-        var mStrEmpcode   = Ax.context.data.empcode;
-        var mStrEstado    = Ax.context.data.estado;
-        var mIntLinid     = Ax.context.data.linid;
-        var mStrTabori    = Ax.context.data.tabori;
-        var mIntSeqnoComp = Ax.context.data.auxfec1;
+        // ===============================================================
+        // Data del formulario
+        // mData {
+        //          codpre      Presupuesto
+        //          empcode     Empresa
+        //          estado      Estado
+        //          linid       Id. gasto
+        //          tabori      Origen
+        //          auxfec1     Id. componente
+        //       }
+        // ===============================================================
+        var mData = Ax.util.js.object.assign({}, pData);
+
+        // ===============================================================
+        // Data del modal
+        // mField {
+        //          codpar      Codigo de la partida
+        //       }
+        // ===============================================================
+        var mField = Ax.util.js.object.assign({}, pField);
+
+        var mStrCodpar    = mField.codpar;
+        var mStrCodpre    = mData.codpre;
+        var mStrEmpcode   = mData.empcode;
+        var mStrEstado    = mData.estado;
+        var mIntLinid     = mData.linid;
+        var mStrTabori    = mData.tabori;
+        var mIntSeqnoComp = mData.auxfec1;
         
         if (mStrTabori == "gcomfach" && mStrEstado == 'A'){
         
@@ -68,7 +89,8 @@ function crp_traspaso_partida(pData, pField) {
             `, mStrCodpre, mStrCodpar, mStrEmpcode);
             
             if (mStrEstado != 'AC'){
-                throw new Ax.ext.Exception(`El estado de la partida a trasferir [${mStrCodpar}] se encuentra bloqueada.`);
+                // throw new Ax.ext.Exception(`El estado de la partida a trasferir [${mStrCodpar}] se encuentra bloqueada.`);
+                throw `El estado de la partida a trasferir [${mStrCodpar}] se encuentra bloqueada.`;
             }
         
             var mStrUserCode = Ax.ext.user.getCode();
@@ -125,7 +147,8 @@ function crp_traspaso_partida(pData, pField) {
                 }
             );     
         }else if (mStrTabori == "gcomfach" && mStrEstado != 'A'){
-            throw new Ax.ext.Exception('El registro debe tener estado Aplicado[A]');
+            // throw new Ax.ext.Exception('El registro debe tener estado Aplicado[A]');
+            throw `El registro debe tener estado Aplicado[A]`;
         }
 
         Ax.db.commitWork();
@@ -134,9 +157,8 @@ function crp_traspaso_partida(pData, pField) {
         
         var mStrMensajeError = `${error.message || error}`;
         
-        throw `Error: [${mStrMensajeError}]`;
+        // throw `Error: [${mStrMensajeError}]`;
+        throw new Ax.ext.Exception("Error: [${error}].",{error : mStrMensajeError});
     }
-    
-    
 
 }
