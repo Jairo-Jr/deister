@@ -44,14 +44,14 @@
  * 
  * 
  **/
-function crp_traspaso_partida(pData, pField) {
+function crp_traspaso_partida(pObjData, pObjField) {
     
     try { 
         Ax.db.beginWork();
 
         // ===============================================================
-        // Data del formulario
-        // mData {
+        // Data proveniente del formulario
+        // mObjData {
         //          codpre      Presupuesto
         //          empcode     Empresa
         //          estado      Estado
@@ -60,23 +60,23 @@ function crp_traspaso_partida(pData, pField) {
         //          auxfec1     Id. componente
         //       }
         // ===============================================================
-        var mData = Ax.util.js.object.assign({}, pData);
+        var mObjData = Ax.util.js.object.assign({}, pObjData);
 
         // ===============================================================
-        // Data del modal
-        // mField {
+        // Data proveniente del modal
+        // mObjField {
         //          codpar      Codigo de la partida
         //       }
         // ===============================================================
-        var mField = Ax.util.js.object.assign({}, pField);
+        var mObjField = Ax.util.js.object.assign({}, pObjField);
 
-        var mStrCodpar    = mField.codpar;
-        var mStrCodpre    = mData.codpre;
-        var mStrEmpcode   = mData.empcode;
-        var mStrEstado    = mData.estado;
-        var mIntLinid     = mData.linid;
-        var mStrTabori    = mData.tabori;
-        var mIntSeqnoComp = mData.auxfec1;
+        var mStrCodpar    = mObjField.codpar;   // Partida
+        var mStrCodpre    = mObjData.codpre;    // Presupuesto
+        var mStrEmpcode   = mObjData.empcode;   // Empresa
+        var mStrEstado    = mObjData.estado;    // Estado
+        var mIntLinid     = mObjData.linid;     // Id. gasto
+        var mStrTabori    = mObjData.tabori;    // Origen
+        var mIntSeqnoComp = mObjData.auxfec1;   // Id. componente
         
         if (mStrTabori == "gcomfach" && mStrEstado == 'A'){
         
