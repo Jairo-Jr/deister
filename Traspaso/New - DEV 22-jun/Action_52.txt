@@ -1,0 +1,23 @@
+<script>
+    /**
+     * Ax.context.data
+     *              {
+     *                  codpre      Presupuesto
+     *                  empcode     Empresa
+     *                  estado      Estado
+     *                  linid       Id. gasto
+     *                  tabori      Origen
+     *                  auxfec1     Id. componente
+     *              }
+     */
+     
+    /**
+     * Ax.context.field
+     *              {
+     *                  codpar      Codigo de la partida
+     *                  codele      Codigo del elemento
+     *              }
+     */
+    Ax.db.call("crp_traspaso_partida", Ax.context.data, Ax.context.field);
+    
+</script>

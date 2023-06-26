@@ -26,22 +26,30 @@
  * 
  *  JS:  crp_traspaso_partida
  * 
- *  Version     : 1.0
- *  Date        : 17-02-2022
- *  Description : Describe lo que hace la funcion
- * 
- * 
- *  LOCAL FUNCTIONS:
- *  ==================
+ *  Version     : 1.1
+ *  Date        : 21-06-2023
+ *  Description : Función que realiza el traspaso de Ingresos y gastos (cpar_premovi) 
+ *                y su Componente (cinmcomp) asociado hacia una Partida de inversión (cpar_parprel) 
+ *                y Elemento (cinmelem) determinada respectivamente.
  * 
  * 
  *  CALLED FROM:
  *  ==================
- * 
+ *                [OBJ] cpar_premovi - ACTION_52
  * 
  *  PARAMETERS:
  *  ==================
+ *                @param    {object}    pObjData    Object information
+ *                                                  String      codpre      Codigo del presupuesto
+ *                                                  String      empcode     Empresa
+ *                                                  String      estado      Estado
+ *                                                  Integer     linid       Identificador del ingreso y gasto
+ *                                                  String      tabori      Tabla de origen
+ *                                                  Integer     auxfec1     Identificador del componente
  * 
+ *                @param    {object}    pObjField   Object information
+ *                                                  String      codpar      Codigo de la partida de destino
+ *                                                  String      codele      Codigo del elemento de destino
  * 
  **/
 function crp_traspaso_partida(pObjData, pObjField) {
@@ -61,16 +69,19 @@ function crp_traspaso_partida(pObjData, pObjField) {
         //       }
         // ===============================================================
         var mObjData = Ax.util.js.object.assign({}, pObjData);
-
+        console.log('mObjData', mObjData);
         // ===============================================================
         // Data proveniente del modal
         // mObjField {
         //          codpar      Codigo de la partida
+        //          codele      Codigo del elemento
         //       }
         // ===============================================================
         var mObjField = Ax.util.js.object.assign({}, pObjField);
-
-        var mStrNewCodpar   = mObjField.codpar;   // Partida
+        console.log('mObjField', mObjField);
+        var mStrNewCodpar   = mObjField.codpar;   // Partida destino
+        var mStrNewElement  = mObjField.codele;   // Elemento destino
+        
         var mStrCodpre      = mObjData.codpre;    // Presupuesto
         var mStrEmpcode     = mObjData.empcode;   // Empresa
         var mStrEstado      = mObjData.estado;    // Estado
@@ -79,18 +90,18 @@ function crp_traspaso_partida(pObjData, pObjField) {
         var mIntSeqnoComp   = mObjData.auxfec1;   // Id. componente
         
         if (mStrTabori == "gcomfach" && mStrEstado == 'A'){
-        
+
             var mStrEstado = Ax.db.executeGet(`
                 SELECT cpar_parprel.estado
-                FROM cpar_parprel
-                WHERE codpre  = ?
-                AND codpar  = ?
-                AND empcode = ?
+                  FROM cpar_parprel
+                 WHERE codpre  = ?
+                   AND codpar  = ?
+                   AND empcode = ?
             `, mStrCodpre, mStrNewCodpar, mStrEmpcode);
             
             if (mStrEstado != 'AC'){
                 // throw new Ax.ext.Exception(`El estado de la partida a trasferir [${mStrNewCodpar}] se encuentra bloqueada.`);
-                throw `El estado de la partida a trasferir [${mStrNewCodpar}] se encuentra bloqueada.`;
+                throw `El estado de la partida de destino [${mStrNewCodpar}] no se encuentra Activa.`;
             }
         
             var mStrUserCode = Ax.ext.user.getCode();
@@ -124,19 +135,22 @@ function crp_traspaso_partida(pObjData, pObjField) {
              **/
             var mObjCinmelem = Ax.db.executeQuery(`
                 SELECT cinmelem.codinm,
-                    cinmelem.codele
-                FROM cinmelem
-                WHERE cinmelem.codpre  = ?
-                AND cinmelem.codpar  = ?
-                AND cinmelem.empcode = ?
-            `,mStrCodpre, mStrNewCodpar, mStrEmpcode).toOne();
-            
+                       cinmelem.empcode,
+                       cinmelem.codele
+                  FROM cinmelem
+                 WHERE cinmelem.codpre  = ?
+                   AND cinmelem.codpar  = ?
+                   AND cinmelem.empcode = ?
+                   AND cinmelem.codele  = ?
+            `,mStrCodpre, mStrNewCodpar, mStrEmpcode, mStrNewElement).toOne();
+            console.log('new element', mObjCinmelem);
             /**
              * Se actualiza en el componente el nuevo bien y elemento relacionado
              * al presupuesto original y a la nueva partida
              **/
             Ax.db.update('cinmcomp', 
                 {
+                    empcode      : mObjCinmelem.empcode,
                     codinm       : mObjCinmelem.codinm,
                     codele       : mObjCinmelem.codele,
                     user_updated : mStrUserCode,
@@ -145,18 +159,20 @@ function crp_traspaso_partida(pObjData, pObjField) {
                 {
                     seqno : mIntSeqnoComp 
                 }
-            );     
+            );
+            
+            Ax.db.commitWork();
         }else if (mStrTabori == "gcomfach" && mStrEstado != 'A'){
-            // throw new Ax.ext.Exception('El registro debe tener estado Aplicado[A]');
-            throw `El registro debe tener estado Aplicado[A]`;
+            // throw new Ax.ext.Exception('El registro debe tener estado Aplicado');
+            throw `El registro debe tener estado Aplicado`;
         } else {
             throw `Solo es posible realizar traspaso para aquellos con origen gcomfach y estado Aplicado`;
         }
 
-        Ax.db.commitWork();
+        
     } catch (error) { 
         Ax.db.rollbackWork();
-        
+        console.log(error);
         var mStrMensajeError = `${error.message || error}`;
         
         // throw `Error: [${mStrMensajeError}]`;
@@ -164,3 +180,14 @@ function crp_traspaso_partida(pObjData, pObjField) {
     }
 
 }
+
+
+/**
+ * METODO DESTINO ORIGINAL: codpar_empcode_codpre_estlinV
+ */
+
+
+
+
+
+
