@@ -1,0 +1,301 @@
+<!--
+    Helper para artículos de líneas de facturas de compras
+-->
+
+<!--
+    SENTENCIA DE AUTOCOMPLETAR (Original)
+-->
+
+<select>
+    <columns>
+        UNIQUE garticul.codigo, '[' || <trim>garticul.codigo</trim> || '] ' || <nvl>garticul.nomart, <whitespace/></nvl> || ${tipdoc}
+    </columns>
+    <from table= 'garticul'>
+        <join table='garticul_catalg_v' alias='y0'>
+            <on>garticul.codigo = y0.codart</on>
+            <on>y0.valcat = ${valcat}</on>
+            <on>y0.artpro = ${artpro}</on>
+            <on>(y0.codcat IS NULL OR y0.codcat = ${codcat})</on>
+            <on>(y0.codpro IS NULL OR y0.codpro = ${tercer})</on>
+            <on>(y0.grpemp IS NULL OR y0.grpemp IN (SELECT holcode from choldinl WHERE empcode = ${empcode}))</on>
+            <on>(y0.cat_fecbaj IS NULL OR y0.cat_fecbaj  &gt; ${fecha})</on>
+            <on>(y0.cat_fecini IS NULL OR ${fecha} BETWEEN y0.cat_fecini AND y0.cat_fecfin)</on>
+        </join>
+    </from>
+    <where>
+        (UPPER (garticul.codigo) LIKE UPPER ('%${q}%') OR
+        UPPER (garticul.nomart) LIKE UPPER ('%${q}%') OR
+
+        EXISTS(SELECT gartiean.codean FROM gartiean
+        WHERE gartiean.codart = garticul.codigo
+        AND gartiean.codean LIKE UPPER ('${q}%')) OR
+
+        EXISTS(SELECT x.codpro FROM gartprov x
+        WHERE x.codart = garticul.codigo
+        AND x.codpro = ${tercer}
+        AND x.refpro LIKE UPPER ('${q}%')))
+
+        AND garticul.estado NOT IN ('B', 'P')
+        AND garticul.grpemp IN (SELECT holcode FROM choldinl WHERE empcode = ${empcode})
+        AND (fecbaj IS NULL OR garticul.fecbaj &gt; ${fecha})
+        AND garticul.codigo IN (SELECT codart
+        FROM garticul_estges_v a
+        WHERE <nvl>a.tabname, ${tabname} </nvl>     = ${tabname}
+        AND <nvl>a.tipdoc,  ${tipdoc}  </nvl>     = ${tipdoc}
+        AND <nvl>a.fecini,  ${fecha}   </nvl> &lt;= ${fecha}
+        AND <nvl>a.fecfin,  ${fecha}   </nvl> &gt;= ${fecha})
+    </where>
+</select>
+
+<!--
+    SENTENCIA DE AUTOCOMPLETAR EN QBE (Original)
+-->
+
+<select>
+    <columns>
+        UNIQUE garticul.codigo, '[' || <trim>garticul.codigo</trim> || '] ' || <nvl>garticul.nomart, <whitespace/></nvl>
+    </columns>
+    <from table= 'garticul'>
+        <join table='garticul_catalg_v' alias='y0'>
+            <on>garticul.codigo = y0.codart</on>
+        </join>
+    </from>
+    <where>
+        (UPPER (garticul.codigo) LIKE UPPER ('%${q}%') OR
+        UPPER (garticul.nomart) LIKE UPPER ('%${q}%') OR
+
+        EXISTS(SELECT gartiean.codean FROM gartiean
+        WHERE gartiean.codart = garticul.codigo
+        AND gartiean.codean LIKE UPPER ('${q}%')) OR
+
+        EXISTS(SELECT x.codpro FROM gartprov x
+        WHERE x.codart = garticul.codigo
+        AND x.refpro LIKE UPPER ('${q}%')))
+
+        AND garticul.estado != 'B'
+    </where>
+</select>
+
+<!--
+    SENTENCIA DE VERIFICACIÓN (Original)
+-->
+
+<select>
+    <columns>
+        garticul.codigo, garticul.nomart, garticul.lotes,
+
+        CASE WHEN garticul.desvar = 'V' THEN garticul.nomart
+        ELSE NULL
+        END desvar,
+
+        '0' varlog,
+        '0' numlot,
+
+        gart_unidefs_get_udmcom(garticul.codigo,
+        '0',
+        ${delega},
+        NULL,
+        ${tercer},
+        ${tabname},
+        ${tipdoc},
+        ${fecha}) udmcom,
+
+        gart_unidefs_get_udmpre(garticul.codigo,
+        '0',
+        ${delega},
+        NULL,
+        ${tercer},
+        ${tabname},
+        ${tipdoc},
+        ${fecha}) udmpre,
+
+        garticul.desvar                  tipdes,
+        garticul.docfoot,
+
+        0                                canfac,
+        0                                canabo,
+        0                                canpre,
+        0                                impnet,
+        <cast type='decimal'>NULL</cast> preiva,
+        <cast type='decimal'>NULL</cast> pretar,
+        <cast type='decimal'>NULL</cast> dtotar,
+        <cast type='integer'>NULL</cast> linori
+    </columns>
+    <from table= 'garticul'>
+        <join table='garticul_catalg_v' alias='y0'>
+            <on>garticul.codigo = y0.codart</on>
+            <on>y0.valcat = ${valcat}</on>
+            <on>y0.artpro = ${artpro}</on>
+            <on>(y0.codcat IS NULL OR y0.codcat = ${codcat})</on>
+            <on>(y0.codpro IS NULL OR y0.codpro = ${tercer})</on>
+            <on>(y0.grpemp IS NULL OR y0.grpemp IN (SELECT holcode from choldinl WHERE empcode = ${empcode}))</on>
+            <on>(y0.cat_fecbaj IS NULL OR y0.cat_fecbaj  &gt; ${fecha})</on>
+            <on>(y0.cat_fecini IS NULL OR ${fecha} BETWEEN y0.cat_fecini AND y0.cat_fecfin)</on>
+        </join>
+    </from>
+    <where>
+        garticul.codigo = ${q}
+        AND garticul.estado NOT IN ('B', 'P')
+        AND garticul.grpemp IN (SELECT holcode FROM choldinl
+        WHERE empcode = ${empcode})
+        AND (garticul.fecbaj IS NULL OR garticul.fecbaj &gt; ${fecha})
+        AND garticul.codigo IN (SELECT codart
+        FROM garticul_estges_v a
+        WHERE <nvl>a.tabname, ${tabname} </nvl>     = ${tabname}
+        AND <nvl>a.tipdoc,  ${tipdoc}  </nvl>     = ${tipdoc}
+        AND <nvl>a.fecini,  ${fecha}   </nvl> &lt;= ${fecha}
+        AND <nvl>a.fecfin,  ${fecha}   </nvl> &gt;= ${fecha})
+    </where>
+</select>
+
+<!-- ************ 28-06-2023 ************* -->
+<!-- PENDIENTE DE VALIDAR CON NUEVA LOGICA -->
+<!-- Cambio para articulos del tipo NOTA DE CREDITO -->
+
+<!--
+    SENTENCIA DE AUTOCOMPLETAR (Original)
+-->
+<select>
+<columns>
+    UNIQUE g.codigo, '[' || TRIM(g.codigo) || '] ' || NVL(g.nomart, '')
+</columns>
+<from table= 'garticul' alias='g'>
+    <join table='garticul_catalg_v' alias='y'>
+        <on>g.codigo = y.codart</on>
+        <on>y.valcat = ${valcat}</on>
+        <on>y.artpro = ${artpro}</on>
+        <on>(y.codcat IS NULL OR y.codcat = ${codcat})</on>
+        <on>(y.codpro IS NULL OR y.codpro = ${tercer})</on>
+        <on>(y.grpemp IS NULL OR y.grpemp IN (SELECT holcode from choldinl WHERE empcode = ${empcode}))</on>
+        <on>(y.cat_fecbaj IS NULL OR y.cat_fecbaj  &gt; ${fecha})</on>
+        <on>(y.cat_fecini IS NULL OR ${fecha} BETWEEN y.cat_fecini AND y.cat_fecfin)</on>
+    </join>
+    <join table='garticul_ext' alias='ge'>
+        <on>g.artid = ge.artid</on>
+        <on>g.codigo = ge.codigo</on>
+    </join>
+</from>
+<where>
+    (UPPER (g.codigo) LIKE UPPER ('%${q}%') OR
+    UPPER (g.nomart) LIKE UPPER ('%${q}%') OR
+    EXISTS(SELECT gt.codean FROM gartiean gt WHERE gt.codart = g.codigo AND gt.codean LIKE UPPER ('${q}%')) OR
+    EXISTS(SELECT x.codpro FROM gartprov x WHERE x.codart = g.codigo AND x.codpro = ${tercer} AND x.refpro LIKE UPPER ('${q}%')))
+    AND g.estado NOT IN ('B', 'P')
+    AND g.grpemp IN (SELECT holcode FROM choldinl WHERE empcode = ${empcode})
+    AND (fecbaj IS NULL OR g.fecbaj &gt; ${fecha})
+    AND g.codigo IN (SELECT codart FROM garticul_estges_v a
+    WHERE NVL(a.tabname, ${tabname})= ${tabname}
+    AND NVL(a.tipdoc, ${tipdoc}) = ${tipdoc}
+    AND NVL(a.fecini, ${fecha}) &lt;= ${fecha}
+    AND NVL(a.fecfin, ${fecha}) &gt;= ${fecha})
+    AND EXISTS (SELECT * FROM wic_dual WHERE ${tipdoc} != 'NCDE' OR (ge.tipo_producto = '0022' AND g.estado = 'A' AND g.estges = 'AC'))
+</where>
+</select>
+
+<!--
+    FFAR    0010882
+    NCDE    0057608
+-->
+
+<!--
+    SENTENCIA DE AUTOCOMPLETAR EN QBE (Original)
+-->
+<select>
+    <columns>
+        UNIQUE garticul.codigo, '[' || <trim>garticul.codigo</trim> || '] ' || <nvl>garticul.nomart, <whitespace/></nvl>
+    </columns>
+    <from table= 'garticul'>
+        <join table='garticul_catalg_v' alias='y0'>
+            <on>garticul.codigo = y0.codart</on>
+        </join>
+        <join table='garticul_ext' alias='gart_ext'>
+            <on>garticul.artid = gart_ext.artid</on>
+            <on>garticul.codigo = gart_ext.codigo</on>
+        </join>
+    </from>
+    <where>
+        (UPPER (garticul.codigo) LIKE UPPER ('%${q}%') OR
+        UPPER (garticul.nomart) LIKE UPPER ('%${q}%') OR
+
+        EXISTS(SELECT gartiean.codean FROM gartiean
+        WHERE gartiean.codart = garticul.codigo
+        AND gartiean.codean LIKE UPPER ('${q}%')) OR
+
+        EXISTS(SELECT x.codpro FROM gartprov x
+        WHERE x.codart = garticul.codigo
+        AND x.refpro LIKE UPPER ('${q}%')))
+
+        AND garticul.estado != 'B'
+        AND EXISTS (SELECT * FROM wic_dual WHERE ${tipdoc} != 'NCDE' OR (gart_ext.tipo_producto = '0022' AND garticul.estado = 'A' AND garticul.estges = 'AC'))
+    </where>
+</select>
+
+<!--
+    SENTENCIA DE VERIFICACIÓN (Original)
+-->
+<select>
+    <columns>
+        garticul.codigo, garticul.nomart, garticul.lotes,
+        CASE WHEN garticul.desvar = 'V' THEN garticul.nomart
+        ELSE NULL
+        END desvar,
+        '0' varlog,
+        '0' numlot,
+        gart_unidefs_get_udmcom(garticul.codigo,
+        '0',
+        ${delega},
+        NULL,
+        ${tercer},
+        ${tabname},
+        ${tipdoc},
+        ${fecha}) udmcom,
+        gart_unidefs_get_udmpre(garticul.codigo,
+        '0',
+        ${delega},
+        NULL,
+        ${tercer},
+        ${tabname},
+        ${tipdoc},
+        ${fecha}) udmpre,
+        garticul.desvar                  tipdes,
+        garticul.docfoot,
+        0                                canfac,
+        0                                canabo,
+        0                                canpre,
+        0                                impnet,
+        <cast type='decimal'>NULL</cast> preiva,
+        <cast type='decimal'>NULL</cast> pretar,
+        <cast type='decimal'>NULL</cast> dtotar,
+        <cast type='integer'>NULL</cast> linori
+    </columns>
+    <from table= 'garticul'>
+        <join table='garticul_catalg_v' alias='y0'>
+            <on>garticul.codigo = y0.codart</on>
+            <on>y0.valcat = ${valcat}</on>
+            <on>y0.artpro = ${artpro}</on>
+            <on>(y0.codcat IS NULL OR y0.codcat = ${codcat})</on>
+            <on>(y0.codpro IS NULL OR y0.codpro = ${tercer})</on>
+            <on>(y0.grpemp IS NULL OR y0.grpemp IN (SELECT holcode from choldinl WHERE empcode = ${empcode}))</on>
+            <on>(y0.cat_fecbaj IS NULL OR y0.cat_fecbaj  &gt; ${fecha})</on>
+            <on>(y0.cat_fecini IS NULL OR ${fecha} BETWEEN y0.cat_fecini AND y0.cat_fecfin)</on>
+        </join>
+        <join table='garticul_ext' alias='gart_ext'>
+            <on>garticul.artid = gart_ext.artid</on>
+            <on>garticul.codigo = gart_ext.codigo</on>
+        </join>
+    </from>
+    <where>
+        garticul.codigo = ${q}
+        AND garticul.estado NOT IN ('B', 'P')
+        AND garticul.grpemp IN (SELECT holcode FROM choldinl
+        WHERE empcode = ${empcode})
+        AND (garticul.fecbaj IS NULL OR garticul.fecbaj &gt; ${fecha})
+        AND garticul.codigo IN (SELECT codart
+        FROM garticul_estges_v a
+        WHERE <nvl>a.tabname, ${tabname} </nvl>     = ${tabname}
+        AND <nvl>a.tipdoc,  ${tipdoc}  </nvl>     = ${tipdoc}
+        AND <nvl>a.fecini,  ${fecha}   </nvl> &lt;= ${fecha}
+        AND <nvl>a.fecfin,  ${fecha}   </nvl> &gt;= ${fecha})
+        AND EXISTS (SELECT * FROM wic_dual WHERE ${tipdoc} != 'NCDE' OR (gart_ext.tipo_producto = '0022' AND garticul.estado = 'A' AND garticul.estges = 'AC'))
+    </where>
+</select>

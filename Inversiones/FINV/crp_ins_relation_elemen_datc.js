@@ -164,6 +164,7 @@ function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento
 
 
 
+/*
 
 <call>
    <args>
@@ -222,3 +223,5 @@ function crp_ins_relation_elemen_datc(pIntLineaId, pIntDatContId, pIntIdElemento
 
 
 solo para reembolzables
+
+*/
