@@ -8,6 +8,25 @@
     <group>1</group>
 </select>
 
+        <!-- Agrupa Elementos -->
+<select intotemp='@tmp_cinmelem_agrup'>
+<columns>
+    cinmelem.empcode,
+    cinmelem.codpre,
+    cinmelem.codpar,
+
+    MAX(cinmelem.seqno) seqno
+</columns>
+<from table='cinmelem'/>
+<where>
+    cinmelem.empcode    IS NOT NULL
+    AND cinmelem.codpre IS NOT NULL
+    AND cinmelem.codpar IS NOT NULL
+</where>
+<group>1,2,3</group>
+</select>
+
+
 <select>
 <columns>
     cpar_parpreh.empcode,       cempresa.empname,
@@ -114,42 +133,49 @@
         </join>
 
         <!-- Elementos -->
-        <join type='left' table="cinmelem">
-            <on>cpar_parprel.empcode = cinmelem.empcode</on>
-            <on>cpar_parprel.codpre = cinmelem.codpre</on>
-            <on>cpar_parprel.codpar = cinmelem.codpar</on>
+        <join type='left' table='@tmp_cinmelem_agrup' alias="cinmelem_agrup">
+            <on>cpar_parprel.empcode = cinmelem_agrup.empcode</on>
+            <on>cpar_parprel.codpre = cinmelem_agrup.codpre</on>
+            <on>cpar_parprel.codpar = cinmelem_agrup.codpar</on>
 
-            <!-- Equipos y maquinas -->
-            <join type="left" table="cinmelem_ppe">
-                <on>cinmelem.empcode = cinmelem_ppe.ppe_empcode</on>
-                <on>cinmelem.codinm  = cinmelem_ppe.ppe_codinm</on>
-                <on>cinmelem.codele  = cinmelem_ppe.ppe_codele</on>
-            </join>
+            <join table='cinmelem'>
+                <on>cinmelem_agrup.seqno = cinmelem.seqno</on>
 
-            <!-- Amortizacion Fiscal -->
-            <join type='left' table='cinmctas'>
-                <on>cinmelem.codcta  = cinmctas.codigo</on>
-            </join>
+                <!-- Equipos y maquinas -->
+                <join type="left" table="cinmelem_ppe">
+                    <on>cinmelem.empcode = cinmelem_ppe.ppe_empcode</on>
+                    <on>cinmelem.codinm  = cinmelem_ppe.ppe_codinm</on>
+                    <on>cinmelem.codele  = cinmelem_ppe.ppe_codele</on>
+                </join>
 
-            <!-- Localizacion fisica -->
-            <join type='left' table='cinmlopr'>
-                <on>cinmelem.locpri  = cinmlopr.codigo</on>
-            </join>
+                <!-- Amortizacion Fiscal -->
+                <join type='left' table='cinmctas'>
+                    <on>cinmelem.codcta  = cinmctas.codigo</on>
+                </join>
 
-            <!-- Elementos Inmovilizado -->
-            <join type='left' table='cinmtras_det'>
-                <on>cinmelem.seqno  = cinmtras_det.det_seqno</on>
+                <!-- Localizacion fisica -->
+                <join type='left' table='cinmlopr'>
+                    <on>cinmelem.locpri  = cinmlopr.codigo</on>
+                </join>
 
-                <!-- Traspaso Elemento -->
-                <join type='left' table='cinmtras_pcs'>
-                    <on>cinmtras_det.pcs_seqno  = cinmtras_pcs.pcs_seqno</on>
+                <!-- Elementos Inmovilizado -->
+                <join type='left' table='cinmtras_det'>
+                    <on>cinmelem.seqno  = cinmtras_det.det_seqno</on>
 
-                    <!-- Asiento Activo Fijo -->
-                    <join type="left" table="@tmp_asiento_activofijo" alias='asiento_activofijo'>
-                        <on>cinmtras_pcs.pcs_loteid = asiento_activofijo.ref</on>
+                    <!-- Traspaso Elemento -->
+                    <join type='left' table='cinmtras_pcs'>
+                        <on>cinmtras_det.pcs_seqno  = cinmtras_pcs.pcs_seqno</on>
+
+                        <!-- Asiento Activo Fijo -->
+                        <join type="left" table="@tmp_asiento_activofijo" alias='asiento_activofijo'>
+                            <on>cinmtras_pcs.pcs_loteid = asiento_activofijo.ref</on>
+                        </join>
                     </join>
                 </join>
+
             </join>
+
+
         </join>
     </join>
 
@@ -167,5 +193,8 @@
 <where>
     cpar_premovi.estado != 'P'
     AND cpar_premovi.natura  = 'G'
+
+    AND cpar_premovi.codpar = '1.02'
+    AND cpar_premovi.codpre = 'RE-2022.07'
 </where>
 </select>

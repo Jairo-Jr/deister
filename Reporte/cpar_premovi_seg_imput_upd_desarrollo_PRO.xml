@@ -1,0 +1,132 @@
+<select>
+    <columns>
+        cpar_parpreh.empcode,       cempresa.empname,
+        cpar_premovi.codpre,        cpar_parpreh.nompre,
+        cpar_premovi.codpar,        cpar_parprel.nompar,
+        cinmelem.locpri,            cinmlopr.nomloc,
+        cpar_parprel.seccio,        cseccion.nomsec,
+        cpar_parpreh.fecinip,       cpar_parpreh.fecfinp,
+        cpar_premovi.feccon,
+        YEAR(cpar_premovi.feccon) || LPAD(MONTH(cpar_premovi.feccon), 2, '0') <alias name='periodo' />,
+        cpar_premovi.tabori,        cpar_premovi.fecdoc,
+        gcomfach.refter,
+        cpar_premovi.auxchr1,       cpar_premovi.docser,
+        ctercero.cif,               ctercero.nombre,      cpar_premovi.tercer,
+        cpar_premovi.inggas,
+
+        cpar_premovi.natura,        cpar_premovi.contra, ccuentas.nombre AS nomcta,
+        cpar_premovi.codart,        cpar_premovi.nomart,  cpar_premovi.varlog, cpar_premovi.cancon,
+        cpar_premovi.unidad,
+
+        <!--Precio Unitario-->
+        CASE WHEN cpar_premovi.cancon = 0 THEN  cpar_premovi.import
+        ELSE ROUND(NVL(cpar_premovi.import,0) / NVL(cpar_premovi.cancon,1),2)
+        END preuni,
+        CASE WHEN cpar_premovi.inggas = 'I' THEN -cpar_premovi.import ELSE +cpar_premovi.import END <alias name='import' />,
+
+        CASE WHEN cpar_premovi.inggas = 'I' THEN - cpar_premovi.totimp ELSE + cpar_premovi.totimp END <alias name='totimp' />,
+        cpar_premovi.codcon,        cpar_premovi.concep,
+        cpar_premovi.fectra,
+
+        cpar_premovi.apteid,        cpar_premovi.auxchr2,
+
+        cpar_premovi.auxchr3,
+        cpar_premovi.auxchr4,       cpar_premovi.auxchr5,
+        cpar_premovi.auxfec1,
+
+        cpar_premovi.auxfec2,       cpar_parprel.ctainv,
+        cpar_premovi.auxnum1,       cpar_premovi.auxnum2,
+        cpar_premovi.auxnum3,
+        <!--Datos del pedido-->
+        cpar_premovi_ext.soltip,    cpar_premovi_ext.soldoc,
+        cpar_premovi_ext.solfec,    cpar_premovi_ext.soldes,
+        cpar_premovi_ext.solusr,    cpar_premovi_ext.solid,
+        cpar_premovi_ext.pedtip,    cpar_premovi_ext.peddoc,
+        cpar_premovi_ext.pedfec,    cpar_premovi_ext.peddes,
+
+        <!--Datos del albarán-->
+        cpar_premovi_ext.albtip,    cpar_premovi_ext.albdoc,
+        cpar_premovi_ext.albfec,    cpar_premovi_ext.albdet,
+
+        cpar_premovi_ext.pedusr,    cpar_premovi_ext.pedid,
+        cpar_premovi_ext.auxchr1 extchr1,   cpar_premovi_ext.auxchr2 extchr2,
+        cpar_premovi_ext.auxchr3 extchr3,   cpar_premovi_ext.auxchr4 extchr4,
+        cpar_premovi_ext.auxchr5 extchr5,   cpar_premovi_ext.auxfec1 extfec1,
+        cpar_premovi_ext.auxfec2 extfec2,   cpar_premovi_ext.auxnum1 extnum1,
+        cpar_premovi_ext.auxnum2 extnum2,   cpar_premovi_ext.auxnum3 extnum3,
+
+        capuntes.loteid, crp_asiento_activofijo.nro_asien_ch,
+
+        cpar_premovi_ext.seqno,     cpar_premovi_ext.linref,
+        cpar_premovi.linid,
+        cinmctas.ccinmo,
+        cinmelem.codele, cinmelem.nomele,
+        cinmelem_ppe.ppe_marca,
+        cinmelem_ppe.ppe_modelo,
+        cinmelem_ppe.ppe_numser,
+        cpar_parpreh.coment,
+        cpar_premovi.estado
+    </columns>
+    <from table="cpar_premovi">
+        <join table="cpar_parpreh">
+            <on>cpar_premovi.empcode = cpar_parpreh.empcode</on>
+            <on>cpar_premovi.codpre  = cpar_parpreh.codpre</on>
+        </join>
+        <join table="cpar_parprel">
+            <on>cpar_premovi.empcode = cpar_parprel.empcode</on>
+            <on>cpar_premovi.codpre  = cpar_parprel.codpre </on>
+            <on>cpar_premovi.codpar  = cpar_parprel.codpar </on>
+            <join type='left' table='cinmelem'>
+                <on>cpar_parprel.empcode = cinmelem.empcode</on>
+                <on>cpar_parprel.codpre  = cinmelem.codpre</on>
+                <on>cpar_parprel.codpar  = cinmelem.codpar</on>
+                <join type="left" table="cinmelem_ppe">
+                    <on>cinmelem.empcode = cinmelem_ppe.ppe_empcode</on>
+                    <on>cinmelem.codinm  = cinmelem_ppe.ppe_codinm</on>
+                    <on>cinmelem.codele  = cinmelem_ppe.ppe_codele</on>
+                </join>
+                <join type='left' table='cinmtras_det'>
+                    <on>cinmelem.seqno  = cinmtras_det.det_seqno</on>
+                    <join type='left' table='cinmtras_pcs'>
+                        <on>cinmtras_det.pcs_seqno  = cinmtras_pcs.pcs_seqno</on>
+                        <join type='left' table='capuntes'>
+                            <on>cinmtras_pcs.pcs_loteid  = capuntes.loteid</on>
+                            <join type='left' table='crp_asiento_activofijo'>
+                                <on>capuntes.loteid  = crp_asiento_activofijo.ref</on>
+                            </join>
+                        </join>
+                    </join>
+                </join>
+                <join type='left' table='cinmctas'>
+                    <on>cinmelem.codcta  = cinmctas.codigo</on>
+                </join>
+                <join type='left' table='cinmlopr'>
+                    <on>cinmelem.locpri  = cinmlopr.codigo</on>
+                </join>
+            </join>
+            <join type='left' table='cseccion'>
+                <on>cpar_parprel.seccio = cseccion.codigo</on>
+            </join>
+        </join>
+        <join table="cempresa">
+            <on>cpar_parpreh.empcode = cempresa.empcode</on>
+            <join type="left" table="ccuentas">
+                <on>cempresa.placon     = ccuentas.placon</on>
+                <on>cpar_premovi.contra = ccuentas.codigo</on>
+            </join>
+        </join>
+        <join type="left" table="ctercero">
+            <on>cpar_premovi.tercer  = ctercero.codigo</on>
+        </join>
+        <join type="left" table="gcomfach">
+            <on>cpar_premovi.docser = gcomfach.docser</on>
+        </join>
+        <join type='left' table='cpar_premovi_ext'>
+            <on>cpar_premovi_ext.linref = cpar_premovi.linid</on>
+        </join>
+    </from>
+    <where>
+        cpar_premovi.estado != 'P'
+        AND cpar_premovi.natura  = 'G'
+    </where>
+</select>
