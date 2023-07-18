@@ -1,11 +1,9 @@
 function crp_reporte_elemento_bienes_permanentes() {
 
-    // let mSqlCond = Ax.context.property.COND;
-    let mSqlCond = "cinmelem.seqno = 6813";
+    let mSqlCond = Ax.context.property.COND;
 
     let mTmpTableFacturaComponente = Ax.db.getTempTableName(`tmp_factura_componente`);
     Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableFacturaComponente}`);
-
     Ax.db.execute(`
             <select intotemp='${mTmpTableFacturaComponente}'>
                 <columns>
@@ -27,9 +25,10 @@ function crp_reporte_elemento_bienes_permanentes() {
     Ax.db.execute(`
             <select intotemp='${mTmpTableCinmamorxAnyo}'>
                 <columns>
-                    cinmelem.empcode,
-                    cinmelem.codinm,
-                    cinmelem.codele,
+                    cinmcomp.empcode,
+                    cinmcomp.codinm,
+                    cinmcomp.codele,
+                    cinmcomp.codcom,
                     SUM(CASE WHEN cinmamor.fecfin &lt;= '31-12-2022' THEN cinmamor.import
                         ELSE 0
                     END) meinvcom,
@@ -37,24 +36,19 @@ function crp_reporte_elemento_bienes_permanentes() {
                         ELSE 0
                     END) mainvcom
                 </columns>
-                <from table='cinmelem'>
-                    <join table='cinmcomp'>
-                        <on>cinmelem.empcode = cinmcomp.empcode</on>
-                        <on>cinmelem.codinm = cinmcomp.codinm</on>
-                        <on>cinmelem.codele = cinmcomp.codele</on>
-                        <join table='cinmamor'>
-                            <on>cinmcomp.empcode = cinmamor.empcode</on>
-                            <on>cinmcomp.codinm = cinmamor.codinm</on>
-                            <on>cinmcomp.codele = cinmamor.codele</on>
-                            <on>cinmcomp.codcom = cinmamor.codcom</on>
-                        </join>
+                <from table='cinmcomp'>
+                    <join table='cinmamor'>
+                        <on>cinmcomp.empcode = cinmamor.empcode</on>
+                        <on>cinmcomp.codinm = cinmamor.codinm</on>
+                        <on>cinmcomp.codele = cinmamor.codele</on>
+                        <on>cinmcomp.codcom = cinmamor.codcom</on>
                     </join>
                 </from>
                 <where>
                     cinmamor.estado = 'C'
                 </where>
                 <group>
-                    1, 2, 3
+                    1, 2, 3, 4
                 </group>
             </select>
         `);
@@ -65,9 +59,10 @@ function crp_reporte_elemento_bienes_permanentes() {
     Ax.db.execute(`
             <select intotemp='${mTmpTableCinmamorxMeses}'>
                 <columns>
-                    cinmelem.empcode,
-                    cinmelem.codinm,
-                    cinmelem.codele,
+                    cinmamor.empcode,
+                    cinmamor.codinm,
+                    cinmamor.codele,
+                    cinmamor.codcom,
                     cperiodo.ejerci,
                     cperiodo.codigo,
                     cperiodo.nomper,
@@ -81,30 +76,18 @@ function crp_reporte_elemento_bienes_permanentes() {
                             ELSE 0
                         END)                                                    <alias name='depre_trib' />
                 </columns>
-
-                <from table='cinmelem'>
-                    <join table='cinmcomp'>
-                        <on>cinmelem.empcode = cinmcomp.empcode</on>
-                        <on>cinmelem.codinm = cinmcomp.codinm</on>
-                        <on>cinmelem.codele = cinmcomp.codele</on>
-                        <join table='cinmamor'>
-                            <on>cinmcomp.empcode = cinmamor.empcode</on>
-                            <on>cinmcomp.codinm = cinmamor.codinm</on>
-                            <on>cinmcomp.codele = cinmamor.codele</on>
-                            <on>cinmcomp.codcom = cinmamor.codcom</on>
-                            <join table='cperiodo'>
-                                <on>cinmamor.empcode = cperiodo.empcode</on>
-                                <on>cinmamor.fecfin BETWEEN cperiodo.fecini AND cperiodo.fecfin</on>
-                                <on>cperiodo.ejerci = 2023</on>
-                            </join>
-                        </join>
+                <from table='cinmamor'>
+                    <join table='cperiodo'>
+                        <on>cinmamor.empcode = cperiodo.empcode</on>
+                        <on>cinmamor.fecfin BETWEEN cperiodo.fecini AND cperiodo.fecfin</on>
+                        <on>cperiodo.ejerci = 2023</on>
                     </join>
                 </from>
                 <group>
-                    1, 2, 3, 4, 5, 6
+                    1, 2, 3, 4, 5, 6, 7
                 </group>
                 <order>
-                    5
+                    6
                 </order>
             </select>
         `);
@@ -262,23 +245,19 @@ function crp_reporte_elemento_bienes_permanentes() {
                                     <on>${mTmpTableFacturaComponente}.depart = gdeparta.depart</on>
                                 </join>
                             </join>
-
-                            
-                            
+                            <join type='left' table='${mTmpTableCinmamorxAnyo}'>
+                                <on>cinmcomp.empcode = ${mTmpTableCinmamorxAnyo}.empcode</on>
+                                <on>cinmcomp.codinm = ${mTmpTableCinmamorxAnyo}.codinm</on>
+                                <on>cinmcomp.codele = ${mTmpTableCinmamorxAnyo}.codele</on>
+                                <on>cinmcomp.codcom = ${mTmpTableCinmamorxAnyo}.codcom</on>
+                            </join>
+                            <join type='left' table='${mTmpTableCinmamorxMeses}'>
+                                <on>cinmcomp.empcode = ${mTmpTableCinmamorxMeses}.empcode</on>
+                                <on>cinmcomp.codinm = ${mTmpTableCinmamorxMeses}.codinm</on>
+                                <on>cinmcomp.codele = ${mTmpTableCinmamorxMeses}.codele</on>
+                                <on>cinmcomp.codcom = ${mTmpTableCinmamorxMeses}.codcom</on>
+                            </join>
                         </join>
-
-                        <join type='left' table='${mTmpTableCinmamorxAnyo}'>
-                            <on>cinmelem.empcode = ${mTmpTableCinmamorxAnyo}.empcode</on>
-                            <on>cinmelem.codinm = ${mTmpTableCinmamorxAnyo}.codinm</on>
-                            <on>cinmelem.codele = ${mTmpTableCinmamorxAnyo}.codele</on>
-                        </join>
-
-                        <join type='left' table='${mTmpTableCinmamorxMeses}'>
-                            <on>cinmelem.empcode = ${mTmpTableCinmamorxMeses}.empcode</on>
-                            <on>cinmelem.codinm = ${mTmpTableCinmamorxMeses}.codinm</on>
-                            <on>cinmelem.codele = ${mTmpTableCinmamorxMeses}.codele</on>
-                        </join>
-
                         <join type='left' table='cpar_parpreh'>
                             <on>cinmelem.codpre = cpar_parpreh.codpre</on>
                         </join>
@@ -296,60 +275,58 @@ function crp_reporte_elemento_bienes_permanentes() {
             </select>
         `);
 
-    return mRsReporteComponentes;
+    let mRsPivot = mRsReporteComponentes.pivot(options => {
+        options.setPivotColumnNames(['codigo', 'codigo1', 'codigo2']);
+        options.setMeasureColumnNames(['amortizado', 'pendiente', 'depre_trib']);
+    });
 
-    // let mRsPivot = mRsReporteComponentes.pivot(options => {
-    //     options.setPivotColumnNames(['codigo', 'codigo1', 'codigo2']);
-    //     options.setMeasureColumnNames(['amortizado', 'pendiente', 'depre_trib']);
-    // });
+    console.log(mRsPivot);
 
-    // console.log(mRsPivot);
+    let rs = new Ax.rs.Reader().memory(options => {
+        options.setColumnNames([
+            'codcom', 'nomcom', 'auxchr1', 'unidad', 'codcta', 'descri',
+            'ccamor', 'noamor', 'ctaori', 'ccdota', 'nodota', 'locpri',
+            'nomloc', 'locsub', 'nomlug', 'ppe_codres', 'nomres', 'depart',
+            'nomdep', 'codinm', 'nominm', 'fecha', 'fecbaj', 'motivo',
+            'tercer', 'nombre', 'cif', 'jusser', 'docser', 'fecfac',
+            'numfac', 'fecini', 'vufina', 'vutri', 'pdfina', 'pdtrib',
+            'ppe_marca', 'ppe_modelo', 'ppe_numser', 'ppe_label_id', 'ccinmo', 'noinmo',
+            'codpre', 'nompre', 'nro_contrato_arr', 'fecha_contrato_arr', 'nro_cuotas_arr', 'monto_total_arr',
+            'libro_af', 'meinvcom', 'mainvcom', 'acucom', 'codgru', 'nomgru',
+            'codfis', 'nomfis', 'fecha', 'numser', 'cinmoch', 'camorch',
+            'cdotach', 'imp_mejoras', 'imp_ret_baj', 'imp_otros_ajus', 'netcom', 'estcom',
+            'c1', 'c13', 'c25', 'c2', 'c14', 'c26',
+            'c3', 'c15', 'c27', 'c4', 'c16', 'c28',
+            'c5', 'c17', 'c29', 'c6', 'c18', 'c30',
+            'c7', 'c19', 'c31', 'c8', 'c20', 'c32',
+            'c9', 'c21', 'c33', 'c10', 'c22', 'c34',
+            'c11', 'c23', 'c35', 'c12', 'c24', 'c36', 'c37', 'c38', 'c39'
+        ]);
+        options.setColumnTypes([
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.INTEGER, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.DATE, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.DATE,
+            Ax.sql.Types.CHAR, Ax.sql.Types.DATE, Ax.sql.Types.INTEGER, Ax.sql.Types.INTEGER, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.DATE, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
+            Ax.sql.Types.CHAR, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.CHAR,
+            Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
+            Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
+            Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
+            Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
+            Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
+            Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE
+        ]);
+    });
 
-    // let rs = new Ax.rs.Reader().memory(options => {
-    //     options.setColumnNames([
-    //         'codcom', 'nomcom', 'auxchr1', 'unidad', 'codcta', 'descri',
-    //         'ccamor', 'noamor', 'ctaori', 'ccdota', 'nodota', 'locpri',
-    //         'nomloc', 'locsub', 'nomlug', 'ppe_codres', 'nomres', 'depart',
-    //         'nomdep', 'codinm', 'nominm', 'fecha', 'fecbaj', 'motivo',
-    //         'tercer', 'nombre', 'cif', 'jusser', 'docser', 'fecfac',
-    //         'numfac', 'fecini', 'vufina', 'vutri', 'pdfina', 'pdtrib',
-    //         'ppe_marca', 'ppe_modelo', 'ppe_numser', 'ppe_label_id', 'ccinmo', 'noinmo',
-    //         'codpre', 'nompre', 'nro_contrato_arr', 'fecha_contrato_arr', 'nro_cuotas_arr', 'monto_total_arr',
-    //         'libro_af', 'meinvcom', 'mainvcom', 'acucom', 'codgru', 'nomgru',
-    //         'codfis', 'nomfis', 'fecha', 'numser', 'cinmoch', 'camorch',
-    //         'cdotach', 'imp_mejoras', 'imp_ret_baj', 'imp_otros_ajus', 'netcom', 'estcom',
-    //         'c1', 'c13', 'c25', 'c2', 'c14', 'c26',
-    //         'c3', 'c15', 'c27', 'c4', 'c16', 'c28',
-    //         'c5', 'c17', 'c29', 'c6', 'c18', 'c30',
-    //         'c7', 'c19', 'c31', 'c8', 'c20', 'c32',
-    //         'c9', 'c21', 'c33', 'c10', 'c22', 'c34',
-    //         'c11', 'c23', 'c35', 'c12', 'c24', 'c36'
-    //     ]);
-    //     options.setColumnTypes([
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.INTEGER, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.DATE, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.DATE,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.DATE, Ax.sql.Types.INTEGER, Ax.sql.Types.INTEGER, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.DATE, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.CHAR, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.CHAR,
-    //         Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
-    //         Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
-    //         Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
-    //         Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
-    //         Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE,
-    //         Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE, Ax.sql.Types.DOUBLE
-    //     ]);
-    // });
+    for (let mRowPivot of mRsPivot) {
+        rs.rows().add(mRowPivot);
+    }
 
-    // for (let mRowPivot of mRsPivot) {
-    //     rs.rows().add(mRowPivot);
-    // }
-
-    // return rs;
+    return rs;
 
 }

@@ -3,9 +3,45 @@
  * @param pIntNumRemesa
  */
 function crp_pago_proveedores(pIntNumRemesa) {
+    function __getNumCorrelativo(pStrLocalDate) {
+
+        // Numero de registros existentes
+        var mIntNumRegistros = Ax.db.executeGet(`
+            <select>
+                <columns>
+                    COUNT(*)
+                </columns>
+                <from table='csopmagn'/>
+                <where>
+                    file_proc = 'crp_pago_proveedores'
+                    AND date_created BETWEEN '${pStrLocalDate} 00:00:00' AND '${pStrLocalDate} 23:59:59'
+                </where>
+            </select>
+        `);
+        var mIntCorrelativo = mIntNumRegistros + 1;
+        console.log('Cantidad Reg:', mIntCorrelativo);
+        if(mIntCorrelativo > 999) {
+            throw 'Limite alcanzado por archivos generados, [999]';
+        }
+
+        const mStrCodigo = mIntCorrelativo.toString();
+        const mStrCodRelleno = '0'.repeat(3 - mStrCodigo.length);
+        const cadenaCompletada = mStrCodRelleno.concat(mStrCodigo);
+
+        return cadenaCompletada;
+    }
 
     // Variables de entrada
     var mIntNumrem = Ax.context.variable.NUMREM;
+    // var mIntNumrem = pIntNumRemesa;
+
+    var date = new Ax.util.Date().toLocalDate();
+    var mStrLocalDate = date.toString();
+    var mArrayDate = date.toString().split('-');
+
+    var mStrYear  = mArrayDate[0];
+    var mStrMonth = mArrayDate[1];
+    var mStrDay   = mArrayDate[2];
 
     // Obtencion de pagos a proveedores
     var mRsPagoProveedores = Ax.db.executeQuery(`
@@ -28,9 +64,14 @@ function crp_pago_proveedores(pIntNumRemesa) {
             </select>
     `);
 
+    // Generación del correlativo
+    var mStrCorrelativo = __getNumCorrelativo(mStrLocalDate);
+
+    console.log('Correlativo:', mStrCorrelativo);
+
     // Variables para Repositorio de Soportes Magnéticos
     var mStrFileProc = 'crp_pago_proveedores';
-    var mStrFileName = 'pago';
+    var mStrFileName = 'RCP' + mStrYear + mStrMonth + mStrDay + mStrCorrelativo;
     var mStrFileMemo = "PAGO PROVEEDORES - SEMT";
     var mStrFileArgs = 'Numero remesa.: ' + mIntNumrem;
     var mStrFileType = 'application/zip';
