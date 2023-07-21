@@ -81,7 +81,7 @@ function crp_reporte_elemento_bienes_permanentes() {
                             ELSE 0
                         END)                                                    <alias name='depre_trib' />
                 </columns>
-
+            
                 <from table='cinmelem'>
                     <join table='cinmcomp'>
                         <on>cinmelem.empcode = cinmcomp.empcode</on>
@@ -112,42 +112,52 @@ function crp_reporte_elemento_bienes_permanentes() {
     let mRsReporteComponentes = Ax.db.executeQuery(`
             <select>
                 <columns>
-                    cinmcomp.codcom,
-                    cinmcomp.nomcom,
-                    cinmcomp.auxchr1,
-                    cinmcomp.unidad,
-                    cinmcomp.codcta,
+                    cinmelem.codele,
+                    cinmelem.nomele,
+                    cinmelem.auxchr1,
+                    <!-- cinmcomp.unidad, -->
+                    cinmelem.codcta,
                     cinmctas.descri,
                     cinmctas.ccamor,
                     ccuentas2.nombre                                            <alias name='noamor' />, 
                     crp_chv_mapcta1.ctaori,
                     cinmctas.ccdota,
                     ccuentas3.nombre                                            <alias name='nodota' />,
-                    cinmcomp.locpri,
+                    cinmelem.locpri,
                     cinmlopr.nomloc,
-                    cinmcomp.locsub,
+                    cinmelem.locsub,
                     cinmlosu.nomlug,
                     cinmelem_ppe.ppe_codres,
                     cper_empleado.nomemp||' '|| cper_empleado.apeemp nomres,
-                    ${mTmpTableFacturaComponente}.depart,
-                    gdeparta.nomdep,
-                    cinmcomp.codinm,
+            
+                    <!-- ${mTmpTableFacturaComponente}.depart, -->
+                    <!-- gdeparta.nomdep, -->
+            
+                    cinmelem.codinm,
                     cinmhead.nominm,
-                    YEAR(cinmcomp.fecha) || LPAD(MONTH(cinmcomp.fecha), 2, '0') <alias name='fecha' />,
-                    cinmcomp.fecbaj,
-                    cinmcomp.motivo, 
-                    cinmcomp.tercer,
-                    ctercero.nombre,
-                    ctercero.cif,
-                    cinmcomp.jusser,
-                    cinmcomp.docser,
-                    cinmcomp.fecfac,
-                    cinmcomp.numfac,
-                    cinmcomp.fecini,  
+                    <!-- YEAR(cinmcomp.fecha) || LPAD(MONTH(cinmcomp.fecha), 2, '0') <alias name='fecha' />, -->
+                    <!-- cinmcomp.fecbaj, -->
+                    <!-- cinmcomp.motivo, -->
+                    <!-- cinmcomp.tercer, -->
+            
+                    <!-- ctercero.nombre,
+                    ctercero.cif, -->
+            
+                    <!-- cinmcomp.jusser, -->
+                    <!-- cinmcomp.docser, -->
+                    <!-- cinmcomp.fecfac, -->
+                    <!-- cinmcomp.numfac, -->
+                    <!-- cinmcomp.fecini, -->
                     cinmftab.numeje                                             <alias name='vufina' />,
-                    cinmcval.numeje                                             <alias name='vutri' />,
+            
+                    <!-- Num Años -->
+                    cinmeval.numeje                                             <alias name='vutri' />,
+            
                     cinmftab.porcen                                             <alias name='pdfina' />,
-                    cinmcval.porcen                                             <alias name='pdtrib' />,        
+            
+                    <!-- Porcen. Amortizacion -->
+                    cinmeval.porcen                                             <alias name='pdtrib' />,        
+            
                     cinmelem_ppe.ppe_marca,
                     cinmelem_ppe.ppe_modelo,
                     cinmelem_ppe.ppe_numser,
@@ -161,52 +171,127 @@ function crp_reporte_elemento_bienes_permanentes() {
                     ''                                                          <alias name='Nro_Cuotas_Arr'/>,
                     ''                                                          <alias name='Monto_Total_Arr'/>,
                     ''                                                          <alias name='Libro_AF'/>,
-                    ${mTmpTableCinmamorxAnyo}.meinvcom,
-                    ${mTmpTableCinmamorxAnyo}.mainvcom,
-                    cinmcval.acucom,
-                    cinmcomp.codgru,
+                    @tmp_cinmamor_x_anyo.meinvcom,
+                    @tmp_cinmamor_x_anyo.mainvcom,
+                    cinmeval.acuele,
+                    cinmelem.codgru,
                     cinmfgrp.nomgru,
-                    cinmcomp.codfis,
+                    cinmelem.codfis,
                     cinmftab.nomfis,    
-                    cinmcomp.fecha,
-                    cinmcomp.numser,
+                    <!-- cinmcomp.fecha, -->
+                    <!-- cinmcomp.numser, -->
                     crp_chv_mapcta1.ctaori                                      <alias name='cinmoch'/>,
                     crp_chv_mapcta2.ctaori                                      <alias name='camorch'/>,     
                     crp_chv_mapcta3.ctaori                                      <alias name='cdotach'/>,
-                    CASE WHEN cinmcomp.tipcom = 'M' THEN cinmcval.invcom
+                    CASE WHEN cinmcomp.tipcom = 'M' THEN cinmeval.invele
                         ELSE 0
                         END                                                    <alias name='Imp_Mejoras'/>,
-                    CASE WHEN cinmcomp.tipcom = 'B' THEN cinmcval.invcom
+                    CASE WHEN cinmcomp.tipcom = 'B' THEN cinmeval.invele
                         ELSE 0   
                     END                                                         <alias name='Imp_Ret_Baj'/>,
-                    CASE WHEN cinmcomp.tipcom = 'J' THEN cinmcval.invcom
+                    CASE WHEN cinmcomp.tipcom = 'J' THEN cinmeval.invele
                         ELSE 0
                     END                                                         <alias name='Imp_Otros_Ajus'/>,
-                    cinmcval.netcom,
+                    cinmeval.netele,
                     cinmhead.estcom,
-                    ${mTmpTableCinmamorxMeses}.codigo,
-                    ${mTmpTableCinmamorxMeses}.codigo codigo1,
-                    ${mTmpTableCinmamorxMeses}.codigo codigo2,
-                    ${mTmpTableCinmamorxMeses}.amortizado,
-                    ${mTmpTableCinmamorxMeses}.pendiente,
-                    ${mTmpTableCinmamorxMeses}.depre_trib
+                    @tmp_cinmamor_x_meses.codigo,
+                    @tmp_cinmamor_x_meses.codigo codigo1,
+                    @tmp_cinmamor_x_meses.codigo codigo2,
+                    @tmp_cinmamor_x_meses.amortizado,
+                    @tmp_cinmamor_x_meses.pendiente,
+                    @tmp_cinmamor_x_meses.depre_trib
                 </columns>
                 <from table='cinmhead'>
+            
+                    <!-- Elemento -->
                     <join table='cinmelem'>
                         <on>cinmhead.empcode = cinmelem.empcode</on>
                         <on>cinmhead.codinm = cinmelem.codinm</on>
+            
+                        <!-- Valor del Elemento -->
+                        <join type='left' table='cinmeval'>
+                            <on>cinmelem.empcode = cinmeval.empcode</on>
+                            <on>cinmelem.codinm = cinmeval.codinm</on>
+                            <on>cinmelem.codele = cinmeval.codele</on>
+                        </join>
+            
+                        <!-- Empresa -->
+                        <join table='cempresa'>
+                            <on>cinmelem.empcode = cempresa.empcode</on>
+                            <on>cinmelem.codcta  = cinmctas.codigo</on>
+            
+                            <!-- Cuenta de Amortizaciones -->
+                            <join type='left' table='cinmctas'>
+                                <on>cempresa.placon  = cinmctas.placon</on>
+                                <join type='left' table='ccuentas' alias='ccuentas1'>
+                                    <on>cinmctas.placon = ccuentas1.placon</on>
+                                    <on>cinmctas.ccinmo = ccuentas1.codigo</on>
+                                </join>
+                                <join type='left' table='ccuentas' alias='ccuentas2'>
+                                    <on>cinmctas.placon = ccuentas2.placon</on>
+                                    <on>cinmctas.ccamor = ccuentas2.codigo</on>
+                                </join>
+                                <join type='left' table='ccuentas' alias='ccuentas3'>
+                                    <on>cinmctas.placon = ccuentas3.placon</on>
+                                    <on>cinmctas.ccdota = ccuentas3.codigo</on>
+                                </join>
+                                <join type='left' table='crp_chv_mapcta' alias='crp_chv_mapcta1'>
+                                    <on>cinmctas.ccinmo = crp_chv_mapcta1.cuenta</on>
+                                </join>
+                                <join type='left' table='crp_chv_mapcta' alias='crp_chv_mapcta2'>
+                                    <on>cinmctas.ccamor = crp_chv_mapcta2.cuenta</on>
+                                </join>
+                                <join type='left' table='crp_chv_mapcta' alias='crp_chv_mapcta3'>
+                                    <on>cinmctas.ccdota = crp_chv_mapcta3.cuenta</on>
+                                </join>
+                            </join>
+                        </join>
+            
+                        <!-- Grupo Fiscal de Depreciasion -->
+                        <join type='left' table='cinmfgrp'>
+                            <on>cinmelem.codgru = cinmfgrp.codigo</on>
+                        </join>
+            
+                        <!-- Tbl. Amortizacion Fiscal -->
+                        <join type='left' table='cinmftab'>
+                            <on>cinmelem.codgru = cinmftab.codgrp</on>
+                            <on>cinmelem.codfis = cinmftab.codigo</on>
+                        </join>
+            
+                        <!-- Localizacion Fiscal -->
+                        <join type='left' table='cinmlopr'>
+                            <on>cinmelem.locpri = cinmlopr.codigo</on>
+                        </join>
+            
+                        <!-- Sub. Localizacion -->
+                        <join type='left' table='cinmlosu'>
+                            <on>cinmelem.locsub = cinmlosu.codigo</on>
+                        </join>
+            
+                        <!-- Equipos y Maquinas -->
+                        <join type="left" table="cinmelem_ppe">
+                            <on>cinmelem.empcode = cinmelem_ppe.ppe_empcode</on>
+                            <on>cinmelem.codinm = cinmelem_ppe.ppe_codinm</on>
+                            <on>cinmelem.codele = cinmelem_ppe.ppe_codele</on>
+                            <join type='left' table='cper_empleado'>
+                                <on>cinmelem_ppe.ppe_codres = cper_empleado.codigo</on>
+                            </join>
+                        </join>
+            
                         <join table='cinmcomp'>
                             <on>cinmelem.empcode = cinmcomp.empcode</on>
                             <on>cinmelem.codinm = cinmcomp.codinm</on>
                             <on>cinmelem.codele = cinmcomp.codele</on>
-                            <join table='cinmcval'>
+            
+                            <!-- <join table='cinmcval'>
                                 <on>cinmcomp.empcode = cinmcval.empcode</on>
                                 <on>cinmcomp.codinm = cinmcval.codinm</on>
                                 <on>cinmcomp.codele = cinmcval.codele</on>
                                 <on>cinmcomp.codcom = cinmcval.codcom</on>
                                 <on>cinmcomp.numhis = cinmcomp.numhis</on>
-                            </join>
-                            <join table='cempresa'>
+                            </join> -->
+            
+                            <!-- <join table='cempresa'>
                                 <on>cinmcomp.empcode = cempresa.empcode</on>
                                 <on>cinmcomp.codcta  = cinmctas.codigo</on>
                                 <join type='left' table='cinmctas'>
@@ -233,52 +318,58 @@ function crp_reporte_elemento_bienes_permanentes() {
                                         <on>cinmctas.ccdota = crp_chv_mapcta3.cuenta</on>
                                     </join>
                                 </join>
-                            </join>
-                            <join type='left' table='ctercero'>
+                            </join> -->
+            
+                            <!-- <join type='left' table='ctercero'>
                                 <on>cinmcomp.tercer = ctercero.codigo</on>
-                            </join>
-                            <join type='left' table='cinmfgrp'>
+                            </join> -->
+            
+                            <!-- <join type='left' table='cinmfgrp'>
                                 <on>cinmcomp.codgru = cinmfgrp.codigo</on>
-                            </join>
-                            <join type='left' table='cinmftab'>
+                            </join> -->
+            
+                            <!-- <join type='left' table='cinmftab'>
                                 <on>cinmcomp.codgru = cinmftab.codgrp</on>
                                 <on>cinmcomp.codfis = cinmftab.codigo</on>
-                            </join>        
-                            <join type='left' table='cinmlopr'>
+                            </join> -->
+            
+                            <!-- <join type='left' table='cinmlopr'>
                                 <on>cinmcomp.locpri = cinmlopr.codigo</on>
-                            </join>
-                            <join type='left' table='cinmlosu'>
+                            </join> -->
+            
+                            <!-- <join type='left' table='cinmlosu'>
                                 <on>cinmcomp.locsub = cinmlosu.codigo</on>
-                            </join>
-                            <join type="left" table="cinmelem_ppe">
+                            </join> -->
+            
+                            <!-- <join type="left" table="cinmelem_ppe">
                                 <on>cinmcomp.seqno = cinmelem_ppe.ppe_seqno_compon</on>
                                 <join type='left' table='cper_empleado'>
                                     <on>cinmelem_ppe.ppe_codres = cper_empleado.codigo</on>
                                 </join>
-                            </join>
-                            <join type='left' table='${mTmpTableFacturaComponente}'>
+                            </join> -->
+                            <!-- <join type='left' table='${mTmpTableFacturaComponente}'>
                                 <on>cinmcomp.seqno = ${mTmpTableFacturaComponente}.seqno</on>
                                 <join type='left' table='gdeparta'>
                                     <on>${mTmpTableFacturaComponente}.depart = gdeparta.depart</on>
                                 </join>
-                            </join>
-
+                            </join> -->
+            
                             
                             
                         </join>
-
-                        <join type='left' table='${mTmpTableCinmamorxAnyo}'>
-                            <on>cinmelem.empcode = ${mTmpTableCinmamorxAnyo}.empcode</on>
-                            <on>cinmelem.codinm = ${mTmpTableCinmamorxAnyo}.codinm</on>
-                            <on>cinmelem.codele = ${mTmpTableCinmamorxAnyo}.codele</on>
+            
+                        <join type='left' table='@tmp_cinmamor_x_anyo'>
+                            <on>cinmelem.empcode = @tmp_cinmamor_x_anyo.empcode</on>
+                            <on>cinmelem.codinm = @tmp_cinmamor_x_anyo.codinm</on>
+                            <on>cinmelem.codele = @tmp_cinmamor_x_anyo.codele</on>
                         </join>
-
-                        <join type='left' table='${mTmpTableCinmamorxMeses}'>
-                            <on>cinmelem.empcode = ${mTmpTableCinmamorxMeses}.empcode</on>
-                            <on>cinmelem.codinm = ${mTmpTableCinmamorxMeses}.codinm</on>
-                            <on>cinmelem.codele = ${mTmpTableCinmamorxMeses}.codele</on>
+            
+                        <join type='left' table='@tmp_cinmamor_x_meses'>
+                            <on>cinmelem.empcode = @tmp_cinmamor_x_meses.empcode</on>
+                            <on>cinmelem.codinm = @tmp_cinmamor_x_meses.codinm</on>
+                            <on>cinmelem.codele = @tmp_cinmamor_x_meses.codele</on>
                         </join>
-
+            
                         <join type='left' table='cpar_parpreh'>
                             <on>cinmelem.codpre = cpar_parpreh.codpre</on>
                         </join>
@@ -288,10 +379,10 @@ function crp_reporte_elemento_bienes_permanentes() {
                     </join>
                 </from>
                 <where>
-                    ${mSqlCond}
+                    cinmelem.seqno = 6813
                 </where>
                 <order>
-                    1, 67
+                    1, 48
                 </order>
             </select>
         `);

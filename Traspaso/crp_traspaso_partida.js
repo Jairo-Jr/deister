@@ -26,8 +26,8 @@
  *
  *  JS:  crp_traspaso_partida
  *
- *  Version     : 1.1
- *  Date        : 21-06-2023
+ *  Version     : 1.2
+ *  Date        : 27-06-2023
  *  Description : Función que realiza el traspaso de Ingresos y gastos (cpar_premovi)
  *                y su Componente (cinmcomp) asociado hacia una Partida de inversión (cpar_parprel)
  *                y Elemento (cinmelem) determinada respectivamente.
@@ -69,7 +69,7 @@ function crp_traspaso_partida(pObjData, pObjField) {
         //       }
         // ===============================================================
         var mObjData = Ax.util.js.object.assign({}, pObjData);
-        console.log('mObjData', mObjData);
+
         // ===============================================================
         // Data proveniente del modal
         // mObjField {
@@ -78,7 +78,7 @@ function crp_traspaso_partida(pObjData, pObjField) {
         //       }
         // ===============================================================
         var mObjField = Ax.util.js.object.assign({}, pObjField);
-        console.log('mObjField', mObjField);
+
         var mStrNewCodpar   = mObjField.codpar;   // Partida destino
         var mStrNewElement  = mObjField.codele;   // Elemento destino
 
@@ -89,7 +89,7 @@ function crp_traspaso_partida(pObjData, pObjField) {
         var mStrTabori      = mObjData.tabori;    // Origen
         var mIntSeqnoComp   = mObjData.auxfec1;   // Id. componente
 
-        if (mStrTabori == "gcomfach" && mStrEstado == 'A'){
+        if ((mStrTabori == "gcomfach" || mStrTabori == "cpar_premovi") && mStrEstado == 'A'){
 
             var mStrEstado = Ax.db.executeGet(`
                 SELECT cpar_parprel.estado
@@ -100,7 +100,6 @@ function crp_traspaso_partida(pObjData, pObjField) {
             `, mStrCodpre, mStrNewCodpar, mStrEmpcode);
 
             if (mStrEstado != 'AC'){
-                // throw new Ax.ext.Exception(`El estado de la partida a trasferir [${mStrNewCodpar}] se encuentra bloqueada.`);
                 throw `El estado de la partida de destino [${mStrNewCodpar}] no se encuentra Activa.`;
             }
 
@@ -143,7 +142,7 @@ function crp_traspaso_partida(pObjData, pObjField) {
                    AND cinmelem.empcode = ?
                    AND cinmelem.codele  = ?
             `,mStrCodpre, mStrNewCodpar, mStrEmpcode, mStrNewElement).toOne();
-            console.log('new element', mObjCinmelem);
+
             /**
              * Se actualiza en el componente el nuevo bien y elemento relacionado
              * al presupuesto original y a la nueva partida
@@ -162,20 +161,18 @@ function crp_traspaso_partida(pObjData, pObjField) {
             );
 
             Ax.db.commitWork();
-        }else if (mStrTabori == "gcomfach" && mStrEstado != 'A'){
-            // throw new Ax.ext.Exception('El registro debe tener estado Aplicado');
+        }else if ((mStrTabori == "gcomfach" || mStrTabori == "cpar_premovi") && mStrEstado != 'A'){
             throw `El registro debe tener estado Aplicado`;
         } else {
-            throw `Solo es posible realizar traspaso para aquellos con origen gcomfach y estado Aplicado`;
+            throw `Solo es posible realizar traspaso para aquellos con origen gcomfach/cpar_premovi y estado Aplicado`;
         }
 
 
     } catch (error) {
         Ax.db.rollbackWork();
-        console.log(error);
+
         var mStrMensajeError = `${error.message || error}`;
 
-        // throw `Error: [${mStrMensajeError}]`;
         throw new Ax.ext.Exception("Error: [${error}].",{error : mStrMensajeError});
     }
 

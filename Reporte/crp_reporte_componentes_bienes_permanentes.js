@@ -1,4 +1,4 @@
-function crp_reporte_elemento_bienes_permanentes() {
+function crp_reporte_componente_bienes_permanentes() {
 
     let mSqlCond = Ax.context.property.COND;
 
