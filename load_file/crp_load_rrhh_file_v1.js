@@ -761,7 +761,7 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
                 mObjCefecto.estcon     = 'N';
                 mObjCefecto.det_agrupa = mIntNumOrden++;
                 
-                Ax.db.insert("cefecges_det", mObjCefecto); 
+                Ax.db.insert("cefecges_det", mObjCefecto);
                 
                
                 mBcPcsImpdiv = Ax.math.bc.add(mBcPcsImpdiv, mObjCefecto.det_impdiv);
@@ -1086,3 +1086,12 @@ function crp_load_rrhh_file(pIntFileId, pStrCRC, pStrProc, pStrTipProc, pIntFile
         throw `[ERROR]: ${mStrMessageError}`;
     }
 }
+
+
+
+
+
+
+
+
+cefecges_pcs.moneda == null && cefecges_pcs.pcs_totimp && cefecges_pcs.ctafin == 1
