@@ -1,42 +1,72 @@
-<!-- Agrupado de autorizacion QS -->
+<!-- Agrupado de cpar_premovi_ext (Dat. Complemento de Ingreso Gasto) -->
+<select intotemp='@tmp_cpar_premovi_ext_sinv'>
+    <columns>
+        cpar_parpreh.codpre,
+        cpar_parprel.codpar,
+        cpar_premovi_ext.soldoc
+    </columns>
+    <from table='cpar_parpreh'>
+        <join table='cpar_parprel'>
+            <on>cpar_parpreh.empcode = cpar_parprel.empcode</on>
+            <on>cpar_parpreh.codpre  = cpar_parprel.codpre</on>
+
+            <join table='cpar_premovi'>
+                <on>cpar_parprel.empcode = cpar_premovi.empcode</on>
+                <on>cpar_parprel.codpre = cpar_premovi.codpre</on>
+                <on>cpar_premovi.codpar IN (cpar_parprel.codpar, cpar_parprel.paract)</on>
+
+                <join table='cpar_premovi_ext'>
+                    <on>cpar_premovi.linid = cpar_premovi_ext.linref</on>
+                </join>
+
+            </join>
+        </join>
+    </from>
+    <where>
+        cpar_premovi.estado != 'P'
+        AND cpar_premovi.natura  = 'G'
+    </where>
+</select>
+
+        <!-- Agrupado de autorizacion QS -->
 <union intotemp='@tmp_gcomalbh_aut_qs'>
-    <!-- 1 CONDICION -->
-    <select>
-        <columns>
-            gcomfach.cabid,
-            MAX(gcomalbh.auxchr1) aut_qs
-        </columns>
-        <from table='gcomfach'>
-            <join table='gcomfacl'>
-                <on>gcomfach.cabid = gcomfacl.cabid</on>
-                <on>gcomfacl.tabori = 'gcommovh'</on>
+<!-- 1 CONDICION -->
+<select>
+    <columns>
+        gcomfach.cabid,
+        MAX(gcomalbh.auxchr1) aut_qs
+    </columns>
+    <from table='gcomfach'>
+        <join table='gcomfacl'>
+            <on>gcomfach.cabid = gcomfacl.cabid</on>
+            <on>gcomfacl.tabori = 'gcommovh'</on>
 
-                <join table='gcomalbh'>
-                    <on>gcomfacl.cabori = gcomalbh.cabid</on>
-                </join>
+            <join table='gcomalbh'>
+                <on>gcomfacl.cabori = gcomalbh.cabid</on>
             </join>
-        </from>
-        <group>1</group>
-    </select>
+        </join>
+    </from>
+    <group>1</group>
+</select>
 
-    <!-- 2 CONDICION -->
-    <select>
-        <columns>
-            gcomfach.cabid,
-            MAX(gcomalbh.auxchr1) aut_qs
-        </columns>
-        <from table='gcomfach'>
-            <join table='gcomalbl'>
-                <on>gcomfach.cabid = gcomalbl.cabori</on>
-                <on>gcomalbl.tabori = 'gcomfach'</on>
+<!-- 2 CONDICION -->
+<select>
+    <columns>
+        gcomfach.cabid,
+        MAX(gcomalbh.auxchr1) aut_qs
+    </columns>
+    <from table='gcomfach'>
+        <join table='gcomalbl'>
+            <on>gcomfach.cabid = gcomalbl.cabori</on>
+            <on>gcomalbl.tabori = 'gcomfach'</on>
 
-                <join table='gcomalbh'>
-                    <on>gcomalbl.cabid = gcomalbh.cabid</on>
-                </join>
+            <join table='gcomalbh'>
+                <on>gcomalbl.cabid = gcomalbh.cabid</on>
             </join>
-        </from>
-        <group>1</group>
-    </select>
+        </join>
+    </from>
+    <group>1</group>
+</select>
 </union>
 
 
@@ -57,19 +87,14 @@
     cpar_premovi.codpre,        cpar_parpreh.nompre,
     cpar_premovi.codpar,        cpar_parprel.nompar,
 
-    <!-- Localizacion -->
-    <!-- cpar_parpreh.auxchr3 locpri,        -->
-    CASE WHEN cinmelem_ppe.ppe_codloc IS NOT NULL THEN cinmelem_ppe.ppe_codloc
-    WHEN cpar_parpreh.auxchr3 IS NOT NULL THEN cpar_parpreh.auxchr3
-    ELSE ''
-    END locpri,
+
+
+    <!-- Localizacion (Inversion) -->
+    cpar_parpreh.auxchr3 locpri,
 
     <!-- Desc. Localizacion -->
-    CASE WHEN sub_loca_cinmcomp.nomlug IS NOT NULL THEN sub_loca_cinmcomp.nomlug
-    WHEN cinmlosu.nomlug IS NOT NULL THEN cinmlosu.nomlug
-    ELSE ''
-    END nomloc,
-    <!-- cinmlosu.nomlug nomloc, -->
+    cinmlosu.nomlug nomloc,
+
     <!-- cinmelem.locpri,            cinmlopr.nomloc, -->
 
     cpar_parprel.seccio,        cseccion.nomsec,
@@ -79,7 +104,6 @@
     cpar_premovi.fecdoc,
 
     <!-- Factura Proveedor -->
-    <!-- gcomfach.refter, -->
     CASE WHEN gcomfach.refter IS NOT NULL THEN gcomfach.refter
     ELSE cpar_premovi.docser
     END refter,
@@ -137,14 +161,12 @@
     cpar_premovi.auxchr3,
 
     <!-- Num. Asiento Chavin -->
-    <!-- cpar_premovi.auxchr4, -->
     CASE WHEN crp_chv_xdocpro.nro_asien_ch  IS NOT NULL THEN crp_chv_xdocpro.nro_asien_ch
     WHEN cpar_premovi.auxchr4          IS NOT NULL THEN cpar_premovi.auxchr4
     ELSE ''
     END auxchr4,
 
     <!-- Autorizacion QS -->
-    <!-- cpar_premovi.auxchr5, -->
     CASE WHEN gcompedh.refter        IS NOT NULL THEN gcompedh.refter
     WHEN gcomalbh.auxchr1       IS NOT NULL THEN gcomalbh.auxchr1
     WHEN gcomalbh_aut_qs.aut_qs IS NOT NULL THEN gcomalbh_aut_qs.aut_qs
@@ -152,7 +174,8 @@
     ELSE ''
     END auxchr5,
 
-    cpar_premovi.auxfec1,
+    <!-- Componente -->
+    cinmcomp.codcom,
 
     cpar_premovi.auxfec2,       cpar_parprel.ctainv,
     cpar_premovi.auxnum1,       cpar_premovi.auxnum2,
@@ -175,12 +198,30 @@
     cpar_premovi_ext.auxfec2 extfec2,   cpar_premovi_ext.auxnum1 extnum1,
     cpar_premovi_ext.auxnum2 extnum2,   cpar_premovi_ext.auxnum3 extnum3,
 
-    cinmtras_pcs.pcs_loteid loteid,
+    <!-- Asiento alta Axional -->
+    <!-- cinmtras_pcs.pcs_loteid loteid, -->
+    CASE WHEN cpar_premovi.estado != 'T' THEN NULL
+    ELSE cinmtras_pcs.pcs_loteid
+    END     loteid,
 
     cpar_premovi_ext.seqno,     cpar_premovi_ext.linref,
     cpar_premovi.linid,
-    cinmctas.ccinmo,
+
+    <!-- Cuenta Inmovilizado -->
+    <!-- cinmctas.ccinmo, -->
+    CASE WHEN cpar_premovi.estado != 'T' THEN ''
+    ELSE cinmctas.ccinmo
+    END     ccinmo,
+
     cinmelem.codele, cinmelem.nomele,
+
+    <!-- Localizacion (Activo) -->
+    cinmelem_ppe.ppe_codloc ppe_loc_act,
+    <!-- Descripcion Localizacion -->
+    sub_loca_cinmcomp.nomlug,
+
+    <!-- Etiqueta -->
+    cinmelem_ppe.ppe_label_id,
     cinmelem_ppe.ppe_marca,
     cinmelem_ppe.ppe_modelo,
     cinmelem_ppe.ppe_numser,
@@ -208,30 +249,15 @@
 
                 <!-- Elemento -->
                 <join table="cinmelem">
-                    <!-- cinmelem.empcode = '${empcode}' AND cinmelem.codinm = '${codinm}' AND cinmelem.codele = '${codele}' -->
 
                     <on>cinmcomp.empcode = cinmelem.empcode</on>
                     <on>cinmcomp.codinm = cinmelem.codinm</on>
                     <on>cinmcomp.codele = cinmelem.codele</on>
 
-                    <!-- Equipos y maquinas -->
-                    <!-- <join type="left" table="cinmelem_ppe">
-                        <on>cinmelem.empcode = cinmelem_ppe.ppe_empcode</on>
-                        <on>cinmelem.codinm  = cinmelem_ppe.ppe_codinm</on>
-                        <on>cinmelem.codele  = cinmelem_ppe.ppe_codele</on>
-                    </join> -->
-
                     <!-- Amortizacion Fiscal -->
                     <join type='left' table='cinmctas'>
                         <on>cinmelem.codcta  = cinmctas.codigo</on>
                     </join>
-
-                    <!-- Localizacion fisica -->
-                    <!-- <join type='left' table='cinmlopr'>
-                        <on>cinmelem.locpri  = cinmlopr.codigo</on>
-                    </join> -->
-
-
 
                     <!-- Elementos Inmovilizado -->
                     <join type='left' table='cinmtras_det'>
@@ -375,12 +401,12 @@
 <where>
     cpar_premovi.estado != 'P'
     AND cpar_premovi.natura  = 'G'
-    <!-- AND cpar_premovi.feccon BETWEEN $FECINI AND $FECFIN
-    AND $0 -->
+    AND NOT EXISTS (SELECT * FROM @tmp_cpar_premovi_ext_sinv tmp_ext_sinv
+    WHERE tmp_ext_sinv.codpre = cpar_parpreh.codpre
+    AND tmp_ext_sinv.codpar = cpar_parprel.codpar
+    AND tmp_ext_sinv.soldoc = cpar_premovi.docser)
+    AND cpar_premovi.feccon BETWEEN $FECINI AND $FECFIN
+    AND $0
 </where>
 </select>
 
-
-        <!-- TOTAL: 331 -->
-
-        <!-- crp_asient_xdocpr -->
