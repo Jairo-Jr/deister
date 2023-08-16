@@ -1,14 +1,57 @@
+/**
+ *  Copyright (c) 1988-PRESENT deister software, All Rights Reserved.
+ *
+ *  All information contained herein is, and remains the property of deister software.
+ *  The intellectual and technical concepts contained herein are proprietary to
+ *  deister software and may be covered by trade secret or copyright law.
+ *  Dissemination of this information or reproduction of this material is strictly
+ *  forbidden unless prior written permission is obtained from deister software.
+ *  Access to the source code contained herein is hereby forbidden to anyone except
+ *  current deister software employees, managers or contractors who have executed
+ *  Confidentiality and Non-disclosure' agreements explicitly covering such access.
+ *  The notice above does not evidence any actual or intended publication
+ *  for disclosure of this source code, which includes information that is confidential
+ *  and/or proprietary, and is a trade secret, of deister software
+ *
+ *  ANY REPRODUCTION, MODIFICATION, DISTRIBUTION, PUBLIC  PERFORMANCE,
+ *  OR PUBLIC DISPLAY OF OR THROUGH USE  OF THIS  SOURCE CODE  WITHOUT THE
+ *  EXPRESS WRITTEN CONSENT OF COMPANY IS STRICTLY PROHIBITED, AND IN VIOLATION
+ *  OF APPLICABLE LAWS AND INTERNATIONAL TREATIES.THE RECEIPT OR POSSESSION OF
+ *  THIS SOURCE CODE AND/OR RELATED INFORMATION DOES NOT CONVEY OR IMPLY ANY
+ *  RIGHTS TO REPRODUCE, DISCLOSE OR DISTRIBUTE ITS CONTENTS, OR TO MANUFACTURE,
+ *  USE, OR SELL ANYTHING THAT IT MAY DESCRIBE, IN WHOLE OR IN PART.
+ *
+ * -----------------------------------------------------------------------------
+ *
+ *  JS:  crp_send_email_res_coact
+ *  Version     : v1.1
+ *  Date        : 26-07-2023
+ *  Description : Envía por email información con la resolución coactiva al proveedor.
+ *
+ *  CALLED FROM:
+ *  ==================
+ *      Obj: crp_embargo_telematico_respuesta              A través de la acción 'ACTION_81'
+ *
+ *  PARAMETERS:
+ *  ==================
+ *                @param    {integer}   pIntIdFile      Identificador del fichero de respuesta de SUNAT
+ *
+ *                @param    {object}    pObjField       Objeto con informacion de field
+ *                                                      String      codpar      Codigo de la partida de destino
+ *                                                      String      codele      Codigo del elemento de destino
+ *
+ **/
 function crp_send_email_res_coact(pObjData, pObjField) {
 
     /**
      * LOCAL FUNCTION: __addRowHtml
      *
-     * Description: Función local que construye el HTML que se enviará por email
+     * Description: Función local que construye filas a la tabla que formara parte cuerpo del email.
      *
      * PARAMETERS:
-     *      @param  {string}        pStrHtmlTable       Tabla HTML
-     *      @param  {Date}          pDateToday          Fecha actual
-     *      @param  {string}        pStrTitle           Titulo del mensaje
+     *      @param  {string}        pStrRowHtml       Row HTML
+     *      @param  {Object}        pObjPagoOBS       Datos del efecto observado
+     *      @param  {Object}        pObjData          Datos del formulario
      */
     function __addRowHtml(pStrRowHtml, pObjPagoOBS, pObjData) {
         var mStrRow = `
@@ -33,9 +76,10 @@ function crp_send_email_res_coact(pObjData, pObjField) {
      * Description: Función local que construye el HTML que se enviará por email
      *
      * PARAMETERS:
-     *      @param  {string}        pStrHtmlTable       Tabla HTML
-     *      @param  {Date}          pDateToday          Fecha actual
-     *      @param  {string}        pStrTitle           Titulo del mensaje
+     *      @param  {string}        pStrRowHtml             Row HTML
+     *      @param  {string}        mStrTratoTercer         Forma de trato al tercer (ccontac.tratam)
+     *      @param  {string}        mStrApellidoTercer      Apellido del tercer (ccontac.apelli)
+     *      @param  {integer}       mIntImportPagar         Importe a pagar (emitido por SUNAT)
      */
     function __getBodyMensaje(pStrRowHtml, mStrTratoTercer, mStrApellidoTercer, mIntImportPagar) {
 
@@ -156,9 +200,17 @@ function crp_send_email_res_coact(pObjData, pObjField) {
     }
 
     /**
+     * LOCAL FUNCTION: __sendEmail
      *
+     * Description: Función local que envia email al proveedor (tercer)
+     *
+     * PARAMETERS:
+     *      @param  {string}        pStrRowHtml             Row HTML
+     *      @param  {string}        mStrTratoTercer         Forma de trato al tercer (ccontac.tratam)
+     *      @param  {string}        mStrApellidoTercer      Apellido del tercer (ccontac.apelli)
+     *      @param  {integer}       mIntImportPagar         Importe a pagar (emitido por SUNAT)
      */
-    function __sendEmail(pObjData, mObjDataContacto, pObjDetalleEmail, pStrBodyHtml) {
+    function __sendEmail(pStrEmailTercer, pObjField, pStrBodyHtml) {
 
         /**
          * Definicion de credenciales del usuario remitente
@@ -169,9 +221,18 @@ function crp_send_email_res_coact(pObjData, pObjField) {
         var m_mail = new Ax.mail.MailerMessage();
 
         m_mail.from('no-reply@crp.com.pe');     // De
-        m_mail.to('jairo.huallpa@deister.pe');  // Para
+        m_mail.to(pStrEmailTercer);  // Para
+        // m_mail.to('jairo.huallpa@deister.pe');  // Para
 
-        var mStrAsunto = 'RESOLUCIÓN COACTIVA SUNAT POR S/ ' + pObjData.import_pagar + ' (' + pObjData.razon + ')';
+        if (pObjField.mailcc != null) {
+            m_mail.cc(pObjField.mailcc);
+        }
+        if (pObjField.mailbcc != null) {
+            m_mail.bcc(pObjField.mailbcc);
+        }
+
+
+        var mStrAsunto = pObjField.mailsubject;
 
 
         m_mail.subject(mStrAsunto);
@@ -185,10 +246,39 @@ function crp_send_email_res_coact(pObjData, pObjField) {
         m_mailer.send(m_mail);
     }
 
+    /**
+     * mObjData {
+     *      file_seqno      Identificador del archivo respuesta SUNAT
+     *      ruc_tercer      RUC del proveedor (tercero)
+     *      import_pagar    Importe a pagar (emitido por SUNAT en la RC)
+     *      desc_estado     Estado del pago (emitido por SUNAT en la respuesta)
+     *      res_coactiva    Resolucion Coactiva (emitido por SUNAT)
+     *      codigo          Identificador de la linea
+     *  }
+     */
+    var mObjData = Ax.util.js.object.assign({}, pObjData);
+
+    /**
+     * mObjField {
+     *      mailsubject     Asunto del email
+     *      mailcc          Copia del email
+     *      mailbcc         Copia oculta del email
+     *  }
+     */
+    var mObjField = Ax.util.js.object.assign({}, pObjField);
+
     var mStrRowHtml = '';
     var mStrBodyHtml = '';
     var mStrTratoTercer = '';
-    var mStrApellidoTercer = ''
+    var mStrApellidoTercer = '';
+    var mStrEmailTercer = '';
+
+    /**
+     * Se valida la existencia de resolucion coactiva para enviar email
+     */
+    if (mObjData.res_coactiva == null || mObjData.import_pagar == null) {
+        throw 'Debe existir Resolución coactiva e importe para enviar email.';
+    }
 
     /**
      * Se obtiene los efectos relacionados a la gestion de cartera
@@ -231,8 +321,8 @@ function crp_send_email_res_coact(pObjData, pObjField) {
                 cefecges_det.pcs_seqno = (SELECT seqno_pobs FROM crp_embargo_telematico_respuesta WHERE file_seqno = ?)
             </where>
         </select>
-    `,pObjData.file_seqno);
-    // `,pObjData.file_seqno).toJSONArray();
+    `,mObjData.file_seqno);
+    // `,mObjData.file_seqno).toJSONArray();
 
     console.log(mArrEfectosOBS);
 
@@ -242,36 +332,41 @@ function crp_send_email_res_coact(pObjData, pObjField) {
     mArrEfectosOBS.forEach(mPagoOBS => {
         // console.log('Pago:', mPagoOBS);
 
-        if(mPagoOBS.cif == pObjData.ruc_tercer) {
+        if(mPagoOBS.cif == mObjData.ruc_tercer) {
 
             console.log('Pago-Tercer:', mPagoOBS);
 
             mStrTratoTercer = mPagoOBS.tratam;
             mStrApellidoTercer = mPagoOBS.apelli;
+            mStrEmailTercer = mPagoOBS.email;
 
             /**
              * Pago observado correspondiente al proveedor,
              * se agrega una fila a la tabla
              */
-            mStrRowHtml = __addRowHtml(mStrRowHtml, mPagoOBS, pObjData);
+            mStrRowHtml = __addRowHtml(mStrRowHtml, mPagoOBS, mObjData);
         }
     });
 
     /**
      * Se construye el cuerpo del mensaje
      */
-    mStrBodyHtml = __getBodyMensaje(mStrRowHtml, mStrTratoTercer, mStrApellidoTercer, pObjData.import_pagar);
+    mStrBodyHtml = __getBodyMensaje(mStrRowHtml, mStrTratoTercer, mStrApellidoTercer, mObjData.import_pagar);
 
     /**
      * Envio de email
      */
-    __sendEmail(pObjData, '', '', mStrBodyHtml);
+    __sendEmail(mStrEmailTercer, mObjField, mStrBodyHtml);
 
     /**
      * Se marca al detalle que fue enviado el email
      */
+    Ax.db.execute(`
+        UPDATE crp_registro_semt SET auxnum1 = 1 WHERE codigo = ${mObjData.codigo}
+    `);
 
 }
+
 
 var pObjData = {
     file_seqno: 15,
@@ -284,3 +379,10 @@ var pObjData = {
 };
 var pObjField = '';
 crp_send_email_res_coact(pObjData, pObjField);
+
+
+
+CASE WHEN ccontact.email1 IS NOT NULL THEN ccontact.email1
+WHEN ccontact.email2 IS NOT NULL THEN ccontact.email2
+ELSE 'jairo.huallpa@deister.pe'
+END email

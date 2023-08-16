@@ -1,10 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
+  <head>
+    <style>
+      label {
+        font-size: 16px;
+      }
+
+      h1, h4{
+        font-size: 16px;
+        color: #00B2A9;
+        text-transform: uppercase;
+        font-weight: 300;
+        text-align: center;
+        padding-top: 13px;
+        font-weight:bold;
+      }
+
+      h4 {
+        font-size: 14px;
+
+      }
+
+      p  {
+        font-size: 16px;
+        font-color:#000;
+        margin-top: 0;
+      }
+
+      table{
+        width:100%;
+        table-layout: fixed;
+      }
+
+      .tbl-header{
+        background-color: rgba(255,255,255,0.3);
+        display: flex;
+      }
+      .tbl-content{
+        height:90%;
+        overflow-x:auto;
+        margin-top: 0px;
+        border: 1px solid rgba(255,255,255,0.3);
+      }
+      th{
+        padding: 20px 3px;
+        font-weight: 500;
+        font-size: 12px;
+        color: #4A4A49;
+        text-transform: uppercase;
+      }
+
+      th.title, td.title{
+        width: 20%;
+      }
+
+      th.borderhd, td.borderhd{
+        border-bottom: solid 1px #EFF0F1;
+        font-weight:bold;
+      }
+
+      td{
+        padding: 3px;
+        text-align: left;
+        vertical-align:middle;
+        font-weight: 300;
+        font-size: 12px;
+        color: #4A4A49;
+        word-wrap: break-word;
+        border-bottom: solid 1px #EFF0F1;
+        border-top: solid 1px #fff;
+      }
+
+      .tb-format{
+        margin: 0px 100px 0px 100px;
+        /*border: 1px solid #000000;*/
+      }
+
+      .center {
+        text-align:center;
+      }
+
+      .col-left, th .col-left{
+        text-align: left;
+      }
+
+      .col-right, th  .col-right{
+        text-align: right;
+      }
+    </style>
+    <meta charset="UTF-8">
+    <title>$Title$</title>
+  </head>
+  <body style="background-color: #fff; font-family: 'Roboto', sans-serif; padding: 10px;">
+  <label>Estimado(a) Sr. Jairo, buenas tardes.</label>
+  <p>Hemos recibido la Resolución Coactiva de SUNAT por S/ 5050.00 del siguiente pago. Por ello, por favor nos indica si se lo aplicamos en su pago o ustedes lo estarían regularizando.</p>
+  <div class="tbl-header">
+    <table cellspacing="0" border="0" class="tb-format">
+      <thead>
+      <tr>
+        <th class="borderhd col-left">RUC Proveedor</th>
+        <th class="borderhd col-left">Razón Social Proveedor</th>
+        <th class="borderhd col-left">Documento</th>
+        <th class="borderhd col-left">Fecha de vencimiento</th>
+        <th class="borderhd col-left">Fecha de la Factura</th>
+        <th class="borderhd col-left">Monto a Pagar</th>
+        <th class="borderhd col-left">Estado del Registro</th>
+        <th class="borderhd col-left">Nro. Res. Coactiva</th>
+      </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-left">20514302473</td>
+          <td class="col-left">ACCORD HEALTHCARE S.A.C.</td>
+          <td class="col-left">F001-0014319</td>
+          <td class="col-left">2023-07-26</td>
+          <td class="col-left">2023-03-23</td>
+          <td class="col-left">2070.00</td>
+          <td class="col-left">Tiene deuda.</td>
+          <td class="col-left">RC654987321</td>
+        </tr>
+        <tr>
+          <td class="col-left">20514302473</td>
+          <td class="col-left">ACCORD HEALTHCARE S.A.C.</td>
+          <td class="col-left">F001-0014319</td>
+          <td class="col-left">2023-07-26</td>
+          <td class="col-left">2023-03-23</td>
+          <td class="col-left">2070.00</td>
+          <td class="col-left">Tiene deuda.</td>
+          <td class="col-left">RC654987321</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  </body>
 </html>
