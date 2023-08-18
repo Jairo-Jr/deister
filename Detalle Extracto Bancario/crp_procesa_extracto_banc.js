@@ -1,23 +1,27 @@
-function crp_procesa_extracto_banc(pIntFileId) {
+function crp_procesa_extracto_banc(pIntFileId, pObjField) {
 
     /**
+     * LOCAL FUNCTION: __setDetalleExtractoLine
      *
+     * Función local que registra la linea del fichero
      */
-    function setDetalleExtractoLine(pIntFileId, mRowFile) {
+    function __setDetalleExtractoLine(pIntFileId, mRowFile, pBoolEfectoValid) {
 
         Ax.db.insert('crp_det_extrac_banc_line', {
             file_seqno:     pIntFileId,
             tipo_doc:       mRowFile['Document Type'],
             docser:         mRowFile['Document'],
-            fecha:          mRowFile['fecha'],
-            import:         mRowFile['Amount']
+            fecha:          mRowFile['Date'],
+            import:         mRowFile['Amount'],
+            tercero:        mRowFile['Provider'],
+            auxnum1:        pBoolEfectoValid ? 1 : 0
         });
     }
 
     /**
      * LOCAL FUNCTION: __setGestionEfectos
      *
-     * Función local que crea gestion de cartera de efectos
+     * Función local que crea gestion de cartera de efectos.
      */
     function __setGestionEfectos(pObjGestion) {
 
@@ -29,20 +33,21 @@ function crp_procesa_extracto_banc(pIntFileId) {
     /**
      * LOCAL FUNCTION: __setEfectosToGestion
      *
-     * Función local que crea gestion de cartera de efectos
+     * Función local que registra los efectos a la gestion.
      */
     function __setEfectosToGestion(pIntIdGestion, pArrEfectos) {
 
-        var mObjCefecto = {};
-        var mIntNumOrden = 1;
-        var mBcPcsImpdiv        = 0;        // Importe de divisas
-        var mBcPcsTotimp        = 0;        // Importe total
+        var mObjCefecto     = {};
+        var mIntNumOrden    = 1;
+        var mBcPcsImpdiv    = 0;        // Importe de divisas
+        var mBcPcsTotimp    = 0;        // Importe total
 
         /**
-         * Recorrido de los efectos POBS
+         * Recorrido de los efectos
          */
         pArrEfectos.forEach(mIdEfecto => {
 
+            console.log('ID EFECTO', mIdEfecto);
             /**
              * Captura de datos del efecto
              */
@@ -117,7 +122,7 @@ function crp_procesa_extracto_banc(pIntFileId) {
             Ax.db.execute(`
                 UPDATE cefecges_pcs
                 SET pcs_impdiv = ${mBcPcsImpdiv},
-                    pcs_totimp = 0
+                    pcs_totimp = ${mBcPcsTotimp}
                 WHERE pcs_seqno = ?
             `, pIntIdGestion);
         });
@@ -143,22 +148,44 @@ function crp_procesa_extracto_banc(pIntFileId) {
             /**
              * Se cierra la gestion de efectos
              */
+            console.log('Antes de cerrar la gestion', pIntIdGestion);
             Ax.db.call("cefecges_estado_ava", pIntIdGestion, 0);
+            // Ax.db.call("cefecges_estado_ava", Ax.context.adapter.pcs_seqno, 0);
         }
 
         return pIntIdGestion;
 
     }
 
-    var mArrPOBS = [];
-    var mArrPAUS = [];
-    var mIntIdGestionPOBS = 0;
-    var mIntIdGestionPAUS = 0;
-    var mIntNumEnvio;
+    /**
+     * mObjField {
+     *      ext_banc_clase     Tipo de accion [P: Pago]/[C: Cobro]
+     *      ext_banc_cuenta    Codigo de cuenta financiera
+     *  }
+     */
+    var mObjField     = Ax.util.js.object.assign({}, pObjField);
+    var mStrClase     = mObjField.ext_banc_clase;
+    var mStrCodCuenta = mObjField.ext_banc_cuenta;
+
+    var mArrayAccion = {'C': 'CTES', 'P': 'PTES'};
+    var mArrIdEfectos = [];
+    var mIntIdGestion = 0;
+    var mStrAccion = mArrayAccion[mStrClase];
+
+    /**
+     * Variables de control
+     */
+    var mBoolEfectoValid = false;
+    var mIntTotalReg = 0;
+    var mIntProcesados = 0;
+
+    console.log('ARRAY:', mArrayAccion);
+    console.log('OBJFIELD:', mObjField);
+    console.log('CLASE:', mStrClase);
+    console.log('ACCION:', mStrAccion);
 
     try {
         Ax.db.beginWork();
-
         // Busqueda de archivo segun el fileId
         let mObjBlobData = Ax.db.executeQuery(`
             <select>
@@ -193,174 +220,93 @@ function crp_procesa_extracto_banc(pIntFileId) {
             options.setCharset("ISO-8859-15");
 
             // Definición de tipo de datos a columnas
-            // options.setColumnType("Numero de Comprobante",  Ax.sql.Types.CHAR);
+            options.setColumnType("Provider",  Ax.sql.Types.CHAR);
             // options.setColumnType("Serie de Comprobante",  Ax.sql.Types.CHAR);
 
         })
         console.log(mRsFichero);
-        /**
-         * Efectos - Pagos
-         */
-        // var mObjRemesas = Ax.db.executeQuery(`
-        //     <select>
-        //         <columns>
-        //             ctercero.cif,
-        //             cefectos.docser,
-        //             cefectos.numero
-        //         </columns>
-        //         <from table='cremesas'>
-        //             <join table='cefecges_pcs'>
-        //                 <on>cremesas.numrem = cefecges_pcs.pcs_numrem</on>
-        //                 <on>cremesas.accion = cefecges_pcs.pcs_accion</on>
-        //                 <join table='cefecges_det'>
-        //                     <on>cefecges_pcs.pcs_seqno = cefecges_det.pcs_seqno</on>
-        //                     <join table='cefectos'>
-        //                         <on>cefecges_det.det_numero = cefectos.numero</on>
-        //                         <join type='left' table='ctercero'>
-        //                             <on>cefectos.tercer = ctercero.codigo</on>
-        //                         </join>
-        //                     </join>
-        //                 </join>
-        //             </join>
-
-        //         </from>
-        //         <where>
-        //             cremesas.jusser = ?
-        //         </where>
-        //     </select>
-        // `, pStrFileName).toJSONArray();
 
         mRsFichero.forEach(mRowFile => {
+            var mStrDocser      = mRowFile['Document'];
+            var mFloatImporte   = mRowFile['Amount'];
+            var mStrProveedor   = mRowFile['Provider'];
+
+            mIntTotalReg++;
+
+            /**
+             * Busqueda de efectos por:
+             *  - docser
+             *  - import
+             *  - tercer
+             */
+            var mIntIdEfecto = Ax.db.executeGet(`
+                <select>
+                    <columns>
+                        cefectos.numero
+                    </columns>
+                    <from table='cefectos'>
+                        <join table='ctercero'>
+                            <on>cefectos.tercer = ctercero.codigo</on>
+                        </join>
+                    </from>
+                    <where>
+                        cefectos.estado = 'PE'
+                        AND cefectos.docser = ?
+                        AND cefectos.import = ?
+                        AND cefectos.tercer = ?
+                    </where>
+                </select>
+            `, mStrDocser, mFloatImporte, mStrProveedor);
+
+            if (mIntIdEfecto != null) {
+                mArrIdEfectos.push(mIntIdEfecto);
+                mBoolEfectoValid = true;
+                mIntProcesados++;
+            }
+
             console.log(mRowFile);
-            setDetalleExtractoLine(pIntFileId, mRowFile);
-            // mIntNumEnvio = mRowFile['Column_0'];
+            __setDetalleExtractoLine(pIntFileId, mRowFile, mBoolEfectoValid);
 
-            // var mStrFecReg = mRowFile['Column_5'];
-            // mStrFecReg = mStrFecReg.replaceAll('/', '-');
-
-            // var mStrCodCal = Ax.db.executeGet(`SELECT codcal
-            //     FROM cremesas, cempresa
-            //     WHERE cremesas.empcode = cempresa.empcode AND
-            //     jusser = (SELECT file_name FROM crp_embargo_telematico_respuesta WHERE file_seqno = ?)`, pIntFileId);
-
-
-            // var date_1 = new Ax.util.Date(mStrFecReg);
-            // var date_2 = new Ax.util.Date(Ax.db.executeGet(`SELECT ccalendah_add_business_days('${mStrCodCal}','${date_1.format('dd-MM-YYYY')}', 5)   FROM wic_dual`));
-
-            // date_2 = date_2.addHour(date_1.format('HH')).addMinute(date_1.format('mm')).addSecond(date_1.format('ss'))
-
-            // /**
-            //  * Registro de respaldo de la data del fichero
-            //  */
-            // Ax.db.insert('crp_registro_semt', {
-            //     file_seqno:     pIntFileId,
-            //     nmr_envio:      mRowFile['Column_0'],
-            //     nmr_operacion:  mRowFile['Column_1'],
-            //     ruc_crp:        mRowFile['Column_2'],
-            //     ruc_tercer:     mRowFile['Column_3'],
-            //     razon:          mRowFile['Column_4'],
-            //     // fec_registro:   mRowFile['Column_5'],
-            //     fec_registro:   date_1,
-            //     monto_pagar:    parseFloat(mRowFile['Column_6']),
-            //     estado_reg:     mRowFile['Column_7'],
-            //     desc_estado:    mRowFile['Column_8'],
-            //     fec_limite:     date_2,
-            //     res_coactiva:   mRowFile['Column_9'],
-            //     observado:      mRowFile['Column_7'] == 1 ? 0 : 1
-            // });
-
-            // /**
-            //  * Actualiza el numero de operacion
-            //  */
-            // mObjRemesas.forEach(mObjRemesa => {
-
-            //     if(mObjRemesa.cif == mRowFile['Column_3']){
-
-            //         /**
-            //          * Registro del numero de operacion en el efecto
-            //         */
-            //         var resUpd = Ax.db.execute(`UPDATE cefectos SET auxnum1 = ${mRowFile['Column_1']}
-            //                         WHERE numero = ${mObjRemesa.numero}
-            //                         AND auxnum1 IS NULL`);
-
-            //         /**
-            //          * Tiene deuda - Agrupa Gestion con esatdo POBS
-            //          */
-            //         // if(resUpd.count == 1 && mRowFile['Column_7'] == 1) {
-            //         if(mRowFile['Column_7'] == 1) {
-            //             mArrPOBS.push(mObjRemesa.numero)
-            //         }
-
-            //         /**
-            //          * No tiene deuda - Agrupa Gestion con esatdo PAUS
-            //          */
-            //         // if(resUpd.count == 1 && mRowFile['Column_7'] == 0) {
-            //         if(mRowFile['Column_7'] == 0) {
-            //             mArrPAUS.push(mObjRemesa.numero)
-            //         }
-            //     }
-            // });
+            mBoolEfectoValid = false;
 
         });
 
+        console.log('Array Efectos', mArrIdEfectos);
         /**
-         * Gestion para POBS
+         * Desarrollo de la gestion de cartera de efectos
          */
 
-        // if(mArrPOBS.length > 0) {
-        //     var pObjPOBS = {
-        //         pcs_empcode : '125',              // Código de empresa.
-        //         pcs_proyec  : 'CRP0',             // Código de proyecto.
-        //         pcs_seccio  : '0',                // Sección contable
-        //         pcs_clase   : 'P',                // Clase de cartera
-        //         pcs_accion  : 'POBS',             // Código de acción asociada al proceso
-        //         pcs_moneda  : 'PEN',              // Moneda
-        //         pcs_cambio  : '1',                // Cambio de divisa
-        //         pcs_fecpro  : new Ax.util.Date(), // Fecha del proceso
-        //         pcs_estado  : 'A',                // Estado del proceso
-        //         pcs_tipgen  : 0                   // Tipo de gestion
-        //     };
+        if(mArrIdEfectos.length > 0) {
+            var pObjPOBS = {
+                pcs_empcode : '125',              // Código de empresa.
+                pcs_proyec  : 'CRP0',             // Código de proyecto.
+                pcs_seccio  : '0',                // Sección contable
+                pcs_clase   : mStrClase,          // Clase de cartera
+                pcs_accion  : mStrAccion,         // Código de acción asociada al proceso
+                pcs_moneda  : 'PEN',              // Moneda
+                pcs_cambio  : '1',                // Cambio de divisa
+                pcs_fecpro  : new Ax.util.Date(), // Fecha del proceso
+                pcs_estado  : 'A',                // Estado del proceso
+                pcs_tipgen  : 0,                  // Tipo de gestion
+                pcs_ctafin  : mStrCodCuenta       // Cuenta financiera
+            };
 
-        //     /**
-        //      * Crea la gestion POBS
-        //     */
-        //     mIntIdGestionPOBS = __setGestionEfectos(pObjPOBS);
+            /**
+             * Crea la gestion POBS
+             */
+            mIntIdGestion = __setGestionEfectos(pObjPOBS);
 
-        //     /**
-        //      * Añade efectos a la gestion
-        //     */
-        //     mIntIdGestionPOBS = __setEfectosToGestion(mIntIdGestionPOBS, mArrPOBS);
-        // }
+            console.log('ID GESTION: ', mIntIdGestion);
+
+            /**
+             * Añade efectos a la gestion
+             */
+            mIntIdGestion = __setEfectosToGestion(mIntIdGestion, mArrIdEfectos);
+        }
 
 
 
-        /**
-         * Crea Gestion para PAUS
-         */
 
-        // if (mArrPAUS.length > 0) {
-        //     var pObjPAUS = {
-        //         pcs_empcode : '125',              // Código de empresa.
-        //         pcs_proyec  : 'CRP0',             // Código de proyecto.
-        //         pcs_seccio  : '0',                // Sección contable
-        //         pcs_clase   : 'P',                // Clase de cartera
-        //         pcs_accion  : 'PAUS',             // Código de acción asociada al proceso
-        //         pcs_moneda  : 'PEN',              // Moneda
-        //         pcs_cambio  : '1',                // Cambio de divisa
-        //         pcs_fecpro  : new Ax.util.Date(), // Fecha del proceso
-        //         pcs_estado  : 'A',                // Estado del proceso
-        //         pcs_tipgen  : 0                   // Tipo de gestion
-        //     };
-
-        //     /**
-        //      * Crea la gestion PACS
-        //     */
-        //     mIntIdGestionPAUS = __setGestionEfectos(pObjPAUS);
-
-        //     /**
-        //      * Añade efectos a la gestion
-        //     */
-        //     mIntIdGestionPAUS = __setEfectosToGestion(mIntIdGestionPAUS, mArrPAUS);
 
         // }
         /**
@@ -368,42 +314,38 @@ function crp_procesa_extracto_banc(pIntFileId) {
          */
         // Ax.db.execute(`
         //         UPDATE crp_embargo_telematico_respuesta
-        //         SET file_memo = 'Gestion de POBS [${mIntIdGestionPOBS}] - Gestion de PAUS [${mIntIdGestionPAUS}]',
+        //         SET file_memo = 'Gestion de POBS [${mIntIdGestion}] - Gestion de PAUS [${mIntIdGestionPAUS}]',
         //             file_status = 'C'
         //         WHERE file_seqno = ?
         //     `, pIntFileId);
 
-        // Ax.db.update(`crp_embargo_telematico_respuesta`,
-        //     {
-        //         file_status: 'C',
-        //         file_memo: `Gestion de POBS [${mIntIdGestionPOBS}] - Gestion de PAUS [${mIntIdGestionPAUS}]`,
-        //         seqno_pobs: mIntIdGestionPOBS,
-        //         seqno_paus: mIntIdGestionPAUS,
-        //         nmr_envio: mIntNumEnvio
-        //     }, {
-        //         file_seqno: pIntFileId
-        //     }
-        // );
+        Ax.db.update(`crp_detalle_extracto_banc`,
+            {
+                file_status: 'C',
+                file_memo: `Gestion [${mIntIdGestion}] - Procesados ${mIntProcesados}/${mIntTotalReg}`,
+                auxnum1: mIntIdGestion
+            }, {
+                file_seqno: pIntFileId
+            }
+        );
 
         Ax.db.commitWork();
     } catch (error) {
         Ax.db.rollbackWork();
 
-        throw new Ax.ext.Exception(error);
 
-        /*Ax.db.update(`crp_embargo_telematico_respuesta`,
+        Ax.db.update(`crp_detalle_extracto_banc`,
             {
                 file_status: 'E',
                 file_memo: `${error.message || error}`
             }, {
                 file_seqno: pIntFileId
             }
-        );*/
+        );
+
+        throw new Ax.ext.Exception(error);
     }
 
 
     // return pIntFileId;
 }
-
-var pIntFileId = 3;
-crp_procesa_extracto_banc(pIntFileId);
