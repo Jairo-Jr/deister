@@ -1,4 +1,4 @@
-function crp_procesa_extracto_banc(pIntFileId, pObjField) {
+function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
 
     /**
      * LOCAL FUNCTION: __setDetalleExtractoLine
@@ -53,7 +53,7 @@ function crp_procesa_extracto_banc(pIntFileId, pObjField) {
              */
             mObjCefecto = Ax.db.executeQuery(`
                 <select first='1'>
-                    <columns> 
+                    <columns>
                         cefectos.numero, cefectos.clase,
                         cefectos.tercer, cefectos.fecven,
                         CASE WHEN cefectos.clase = 'C' THEN +cefectos.impdiv ELSE -cefectos.impdiv END impdiv,
@@ -61,28 +61,28 @@ function crp_procesa_extracto_banc(pIntFileId, pObjField) {
                         CASE WHEN cefectos.clase = 'C' THEN +cefectos.import ELSE -cefectos.import END import,
                         CASE WHEN cefectos.clase = 'C' THEN +cefectos.impppa ELSE -cefectos.impppa END impppa,
                         cefectos.docser, cefectos.numefe, cefectos.fecha,
-                        cefectos.tipefe, cefectos.estado, cefectos.caduca, 
-                        cefectos.ctafin, cefectos.jusser, 
+                        cefectos.tipefe, cefectos.estado, cefectos.caduca,
+                        cefectos.ctafin, cefectos.jusser,
                         cefectos.tipdoc, cefectos.refban,
-                        cefectos.proyec, 
-                        cefectos.seccio, 
+                        cefectos.proyec,
+                        cefectos.seccio,
                         cefectos.empcode,cefectos.cuenta,
 
 
                         <cast type='integer'>(SELECT COUNT(*)
                             FROM cefecges_pcs g, cefecges_det d
                             WHERE g.pcs_empcode = '001'
-                                AND g.pcs_fecpro >= (SELECT MIN(s.fecini) 
-                                                    FROM cperiodo s 
-                                                    WHERE s.empcode = '001' 
+                                AND g.pcs_fecpro >= (SELECT MIN(s.fecini)
+                                                    FROM cperiodo s
+                                                    WHERE s.empcode = '001'
                                                         AND s.estado  = 'A')
                                 AND g.pcs_seqno   = d.pcs_seqno
                                 AND g.pcs_estado  = 'A'
-                                AND d.det_numero  = cefectos.numero) </cast> <alias name='cefectos_in_gestion' />, 
+                                AND d.det_numero  = cefectos.numero) </cast> <alias name='cefectos_in_gestion' />,
 
-                        CASE WHEN cefectos.clase = 'C' 
-                                THEN +cefectos.impdiv 
-                                ELSE -cefectos.impdiv 
+                        CASE WHEN cefectos.clase = 'C'
+                                THEN +cefectos.impdiv
+                                ELSE -cefectos.impdiv
                         END pcs_totimp
 
                     </columns>
@@ -128,8 +128,8 @@ function crp_procesa_extracto_banc(pIntFileId, pObjField) {
         });
 
         var mIntLineasExist = Ax.db.executeGet(`
-            SELECT COUNT(*) 
-                FROM cefecges_det 
+            SELECT COUNT(*)
+                FROM cefecges_det
                 WHERE pcs_seqno = ?
         `, pIntIdGestion);
 
@@ -253,7 +253,7 @@ function crp_procesa_extracto_banc(pIntFileId, pObjField) {
                         cefectos.estado = 'PE'
                         AND cefectos.docser = ?
                         AND cefectos.import = ?
-                        AND cefectos.tercer = ?
+                        AND ctercero.cif = ?
                     </where>
                 </select>
             `, mStrDocser, mFloatImporte, mStrProveedor);
