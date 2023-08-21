@@ -1,27 +1,31 @@
 function crp_reporte_elemento_bienes_permanentes() {
 
+    /**
+     * OBJ: crp_reporte_por_elemento
+     * */
+
     /** EN DESARROLLO SCRIPT */
-// let mSqlCond = "cinmelem.seqno IN (6813,6811,6790)";
+        // let mSqlCond = "cinmelem.seqno IN (6813,6811,6790)";
     let mSqlCond = "1=1";
 
     let mTmpTableFacturaComponente = Ax.db.getTempTableName(`tmp_factura_componente`);
     Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableFacturaComponente}`);
 
     Ax.db.execute(`
-    <select intotemp='${mTmpTableFacturaComponente}'>
-        <columns>
-            DISTINCT cinmcomp_orig.seqno, gcomfach.depart
-        </columns>
-        <from table='cinmcomp_orig'>
-            <join table='gcomfacl'>
-                <on>cinmcomp_orig.docid = gcomfacl.linid</on>
-                <join table='gcomfach'>
-                    <on>gcomfacl.cabid = gcomfach.cabid</on>
+        <select intotemp='${mTmpTableFacturaComponente}'>
+            <columns>
+                DISTINCT cinmcomp_orig.seqno, gcomfach.depart
+            </columns>
+            <from table='cinmcomp_orig'>
+                <join table='gcomfacl'>
+                    <on>cinmcomp_orig.docid = gcomfacl.linid</on>
+                    <join table='gcomfach'>
+                        <on>gcomfacl.cabid = gcomfach.cabid</on>
+                    </join>
                 </join>
-            </join>
-        </from>
-    </select>
-`);
+            </from>
+        </select>
+    `);
 
     let mTmpTableCinmamorxAnyo = Ax.db.getTempTableName(`tmp_cinmamor_x_anyo`);
     Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCinmamorxAnyo}`);
@@ -456,6 +460,8 @@ function crp_reporte_elemento_bienes_permanentes() {
     for (let mRowPivot of mRsPivot) {
         rs.rows().add(mRowPivot);
     }
+
+    // console.log(rs);
 
     return rs;
 
