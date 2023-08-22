@@ -1,19 +1,68 @@
+/**
+ *  Copyright (c) 1988-PRESENT deister software, All Rights Reserved.
+ *
+ *  All information contained herein is, and remains the property of deister software.
+ *  The intellectual and technical concepts contained herein are proprietary to
+ *  deister software and may be covered by trade secret or copyright law.
+ *  Dissemination of this information or reproduction of this material is strictly
+ *  forbidden unless prior written permission is obtained from deister software.
+ *  Access to the source code contained herein is hereby forbidden to anyone except
+ *  current deister software employees, managers or contractors who have executed
+ *  Confidentiality and Non-disclosure' agreements explicitly covering such access.
+ *  The notice above does not evidence any actual or intended publication
+ *  for disclosure of this source code, which includes information that is confidential
+ *  and/or proprietary, and is a trade secret, of deister software
+ *
+ *  ANY REPRODUCTION, MODIFICATION, DISTRIBUTION, PUBLIC  PERFORMANCE,
+ *  OR PUBLIC DISPLAY OF OR THROUGH USE  OF THIS  SOURCE CODE  WITHOUT THE
+ *  EXPRESS WRITTEN CONSENT OF COMPANY IS STRICTLY PROHIBITED, AND IN VIOLATION
+ *  OF APPLICABLE LAWS AND INTERNATIONAL TREATIES.THE RECEIPT OR POSSESSION OF
+ *  THIS SOURCE CODE AND/OR RELATED INFORMATION DOES NOT CONVEY OR IMPLY ANY
+ *  RIGHTS TO REPRODUCE, DISCLOSE OR DISTRIBUTE ITS CONTENTS, OR TO MANUFACTURE,
+ *  USE, OR SELL ANYTHING THAT IT MAY DESCRIBE, IN WHOLE OR IN PART.
+ *
+ * -----------------------------------------------------------------------------
+ *
+ *  JS:  crp_procesa_det_extracto_banc
+ *  Version     : v1.4
+ *  Date        : 22-08-2023
+ *  Description : Funcion que procesa detalle de extractos bancarios y genera
+ *                gestion sobre cartera de efectos.
+ *
+ *  CALLED FROM:
+ *  ==================
+ *      Obj: crp_detalle_extracto_banc          A través de la acción 'BTN_PROCESS_FILE'
+ *
+ *  PARAMETERS:
+ *  ==================
+ *      @param  {integer}   pIntFileId              Identificador de fichero
+ *      @param  {Object}    pObjField               Datos de entrada field:
+ *                              - ext_banc_clase    Clase de proceso [C/P]
+ *                              - ext_banc_cuenta   Cuenta financiera
+ *
+ **/
 function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
 
     /**
      * LOCAL FUNCTION: __setDetalleExtractoLine
      *
-     * Función local que registra la linea del fichero
+     * Description: Función local que registra la linea del fichero
+     *              en una tabla de respaldo
+     *
+     * PARAMETERS:
+     *      @param  {integer}       pIntFileId              Identificador de fichero
+     *      @param  {Object}        mRowFile                Data con informacion de linea
+     *      @param  {integer}       pBoolEfectoValid        Existencia de efecto
      */
     function __setDetalleExtractoLine(pIntFileId, mRowFile, pBoolEfectoValid) {
 
         Ax.db.insert('crp_det_extrac_banc_line', {
             file_seqno:     pIntFileId,
-            tipo_doc:       mRowFile['Document Type'],
-            docser:         mRowFile['Document'],
-            fecha:          mRowFile['Date'],
-            import:         mRowFile['Amount'],
-            tercero:        mRowFile['Provider'],
+            tipo_doc:       mRowFile['Tipo documento'],
+            docser:         mRowFile['Documento'],
+            fecha:          mRowFile['Fecha'],
+            import:         mRowFile['Importe'],
+            tercero:        mRowFile['Ruc'],
             auxnum1:        pBoolEfectoValid ? 1 : 0
         });
     }
@@ -21,7 +70,10 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
     /**
      * LOCAL FUNCTION: __setGestionEfectos
      *
-     * Función local que crea gestion de cartera de efectos.
+     * Description: Función local que crea gestion de cartera de efectos.
+     *
+     * PARAMETERS:
+     *      @param  {Object}        pObjGestion             Datos de gestion de cartera de efectos
      */
     function __setGestionEfectos(pObjGestion) {
 
@@ -33,7 +85,11 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
     /**
      * LOCAL FUNCTION: __setEfectosToGestion
      *
-     * Función local que registra los efectos a la gestion.
+     * Description: Función local que registra los efectos a la gestion.
+     *
+     * PARAMETERS:
+     *      @param  {integer}       pIntIdGestion           Identificador de la gestion
+     *      @param  {Array}         pArrEfectos             Array con id's de efectos
      */
     function __setEfectosToGestion(pIntIdGestion, pArrEfectos) {
 
@@ -47,13 +103,12 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
          */
         pArrEfectos.forEach(mIdEfecto => {
 
-            console.log('ID EFECTO', mIdEfecto);
             /**
              * Captura de datos del efecto
              */
             mObjCefecto = Ax.db.executeQuery(`
                 <select first='1'>
-                    <columns>
+                    <columns> 
                         cefectos.numero, cefectos.clase,
                         cefectos.tercer, cefectos.fecven,
                         CASE WHEN cefectos.clase = 'C' THEN +cefectos.impdiv ELSE -cefectos.impdiv END impdiv,
@@ -61,28 +116,28 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
                         CASE WHEN cefectos.clase = 'C' THEN +cefectos.import ELSE -cefectos.import END import,
                         CASE WHEN cefectos.clase = 'C' THEN +cefectos.impppa ELSE -cefectos.impppa END impppa,
                         cefectos.docser, cefectos.numefe, cefectos.fecha,
-                        cefectos.tipefe, cefectos.estado, cefectos.caduca,
-                        cefectos.ctafin, cefectos.jusser,
+                        cefectos.tipefe, cefectos.estado, cefectos.caduca, 
+                        cefectos.ctafin, cefectos.jusser, 
                         cefectos.tipdoc, cefectos.refban,
-                        cefectos.proyec,
-                        cefectos.seccio,
+                        cefectos.proyec, 
+                        cefectos.seccio, 
                         cefectos.empcode,cefectos.cuenta,
 
 
                         <cast type='integer'>(SELECT COUNT(*)
                             FROM cefecges_pcs g, cefecges_det d
                             WHERE g.pcs_empcode = '001'
-                                AND g.pcs_fecpro >= (SELECT MIN(s.fecini)
-                                                    FROM cperiodo s
-                                                    WHERE s.empcode = '001'
+                                AND g.pcs_fecpro >= (SELECT MIN(s.fecini) 
+                                                    FROM cperiodo s 
+                                                    WHERE s.empcode = '001' 
                                                         AND s.estado  = 'A')
                                 AND g.pcs_seqno   = d.pcs_seqno
                                 AND g.pcs_estado  = 'A'
-                                AND d.det_numero  = cefectos.numero) </cast> <alias name='cefectos_in_gestion' />,
+                                AND d.det_numero  = cefectos.numero) </cast> <alias name='cefectos_in_gestion' />, 
 
-                        CASE WHEN cefectos.clase = 'C'
-                                THEN +cefectos.impdiv
-                                ELSE -cefectos.impdiv
+                        CASE WHEN cefectos.clase = 'C' 
+                                THEN +cefectos.impdiv 
+                                ELSE -cefectos.impdiv 
                         END pcs_totimp
 
                     </columns>
@@ -128,8 +183,8 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
         });
 
         var mIntLineasExist = Ax.db.executeGet(`
-            SELECT COUNT(*)
-                FROM cefecges_det
+            SELECT COUNT(*) 
+                FROM cefecges_det 
                 WHERE pcs_seqno = ?
         `, pIntIdGestion);
 
@@ -148,14 +203,18 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
             /**
              * Se cierra la gestion de efectos
              */
-            console.log('Antes de cerrar la gestion', pIntIdGestion);
             Ax.db.call("cefecges_estado_ava", pIntIdGestion, 0);
-            // Ax.db.call("cefecges_estado_ava", Ax.context.adapter.pcs_seqno, 0);
         }
 
         return pIntIdGestion;
 
     }
+
+    /**
+     *
+     * DEFINICIÓN DE VARIABLES
+     *
+     */
 
     /**
      * mObjField {
@@ -164,6 +223,7 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
      *  }
      */
     var mObjField     = Ax.util.js.object.assign({}, pObjField);
+
     var mStrClase     = mObjField.ext_banc_clase;
     var mStrCodCuenta = mObjField.ext_banc_cuenta;
 
@@ -179,13 +239,9 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
     var mIntTotalReg = 0;
     var mIntProcesados = 0;
 
-    console.log('ARRAY:', mArrayAccion);
-    console.log('OBJFIELD:', mObjField);
-    console.log('CLASE:', mStrClase);
-    console.log('ACCION:', mStrAccion);
-
     try {
         Ax.db.beginWork();
+
         // Busqueda de archivo segun el fileId
         let mObjBlobData = Ax.db.executeQuery(`
             <select>
@@ -202,12 +258,12 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
         /**
          * Valida el estado del fichero
          */
-        // if(mObjBlobData.file_status != 'P') {
-        //     throw 'Solo es permitido procesar ficheros en estado Pendiente.'
-        // }
+        if(mObjBlobData.file_status != 'P') {
+            throw 'Solo es permitido procesar ficheros en estado Pendiente.'
+        }
 
         /**
-         * SCRIPT PARA LEER ARCHIVOS CSV - TXT
+         * Sentencia para leer archviso CSV - TXT
          */
         var blob = new Ax.sql.Blob();
         blob.setContent(mObjBlobData.file_data);
@@ -220,29 +276,32 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
             options.setCharset("ISO-8859-15");
 
             // Definición de tipo de datos a columnas
-            options.setColumnType("Provider",  Ax.sql.Types.CHAR);
+            options.setColumnType("Ruc",  Ax.sql.Types.CHAR);
             // options.setColumnType("Serie de Comprobante",  Ax.sql.Types.CHAR);
 
         })
-        console.log(mRsFichero);
+
 
         mRsFichero.forEach(mRowFile => {
-            var mStrDocser      = mRowFile['Document'];
-            var mFloatImporte   = mRowFile['Amount'];
-            var mStrProveedor   = mRowFile['Provider'];
+
+            var mStrDocser      = mRowFile['Documento'];
+            var mFloatImporte   = mRowFile['Importe'];
+            var mStrProveedor   = mRowFile['Ruc'];
+            var mStrFechaFact   = mRowFile['Fecha'];
 
             mIntTotalReg++;
 
             /**
              * Busqueda de efectos por:
              *  - docser
-             *  - import
+             *  - fecha
              *  - tercer
              */
-            var mIntIdEfecto = Ax.db.executeGet(`
+            var mIntIdEfecto = Ax.db.executeQuery(`
                 <select>
                     <columns>
-                        cefectos.numero
+                        cefectos.numero,
+                        cefectos.import
                     </columns>
                     <from table='cefectos'>
                         <join table='ctercero'>
@@ -252,26 +311,43 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
                     <where>
                         cefectos.estado = 'PE'
                         AND cefectos.docser = ?
-                        AND cefectos.import = ?
+                        AND cefectos.fecha = ?
                         AND ctercero.cif = ?
                     </where>
                 </select>
-            `, mStrDocser, mFloatImporte, mStrProveedor);
+            `, mStrDocser, mStrFechaFact, mStrProveedor).toOne();
 
-            if (mIntIdEfecto != null) {
-                mArrIdEfectos.push(mIntIdEfecto);
+            if (mIntIdEfecto.numero != null) {
+
+                /**
+                 * Se rescata el id del efecto
+                 */
+                mArrIdEfectos.push(mIntIdEfecto.numero);
                 mBoolEfectoValid = true;
                 mIntProcesados++;
+
+                /**
+                 * Si el importe registrado en el txt es menor que la del efecto encontrado,
+                 * se actualiza su importe local e importe divisa
+                 */
+                if (mFloatImporte < mIntIdEfecto.import) {
+                    Ax.db.update(`cefectos`,
+                        {
+                            import: mFloatImporte,
+                            impdiv: mFloatImporte
+                        }, {
+                            numero: mIntIdEfecto.numero
+                        }
+                    );
+                }
             }
 
-            console.log(mRowFile);
             __setDetalleExtractoLine(pIntFileId, mRowFile, mBoolEfectoValid);
 
             mBoolEfectoValid = false;
 
         });
 
-        console.log('Array Efectos', mArrIdEfectos);
         /**
          * Desarrollo de la gestion de cartera de efectos
          */
@@ -296,29 +372,15 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
              */
             mIntIdGestion = __setGestionEfectos(pObjPOBS);
 
-            console.log('ID GESTION: ', mIntIdGestion);
-
             /**
              * Añade efectos a la gestion
              */
             mIntIdGestion = __setEfectosToGestion(mIntIdGestion, mArrIdEfectos);
         }
 
-
-
-
-
-        // }
         /**
          * Actualiza las notas
          */
-        // Ax.db.execute(`
-        //         UPDATE crp_embargo_telematico_respuesta
-        //         SET file_memo = 'Gestion de POBS [${mIntIdGestion}] - Gestion de PAUS [${mIntIdGestionPAUS}]',
-        //             file_status = 'C'
-        //         WHERE file_seqno = ?
-        //     `, pIntFileId);
-
         Ax.db.update(`crp_detalle_extracto_banc`,
             {
                 file_status: 'C',
@@ -347,5 +409,5 @@ function crp_procesa_det_extracto_banc(pIntFileId, pObjField) {
     }
 
 
-    // return pIntFileId;
+    return pIntFileId;
 }
