@@ -70,52 +70,20 @@ function crp_retroceder_gestion(pObjData) {
     `);
 
     /**
-     * Elimina los detalles
+     * Elimina las líneas registradas producto de la carga de fichero
      */
     Ax.db.execute(`
         DELETE crp_det_extrac_banc_line WHERE file_seqno = ${mIntIdFile}
     `);
 
     /**
-     * Cambia el estado de los efectos observados y aprobados a NS
-     */
-    /*var mArrEfectos = Ax.db.executeCachedQuery(`
-        <select>
-            <columns>
-                cefectos.numero
-            </columns>
-            <from table='cefecges_det'>
-                <join table='cefectos'>
-                    <on>cefecges_det.det_numero = cefectos.numero</on>
-                </join>
-            </from>
-            <where>
-                cefecges_det.pcs_seqno IN (${mIntIdGestion})
-            </where>
-        </select>
-    `).toJSONArray();
-
-    mArrEfectos.forEach(mObjEfecto => {
-        Ax.db.execute(`
-            UPDATE cefectos SET estado = 'PE' WHERE numero = ${mObjEfecto.numero}
-        `);
-    }); */
-
-
-
-
-
-    /**
-     * Elimina la gestion de Autorizados
-     */
-    // Ax.db.execute(`
-    //     DELETE cefecges_pcs WHERE cefecges_pcs.pcs_seqno = ${mIntIdPAUS}
-    // `);
-
-    /**
-     * Actualiza estado, id gestion de observados e id gestion de autorizados
+     * Actualiza campos de la cabecera de la carga de fichero
      */
     Ax.db.execute(`
-        UPDATE crp_detalle_extracto_banc SET file_status = 'P', auxnum1 = 0, file_memo = '' WHERE file_seqno = ${mIntIdFile}
+        UPDATE crp_detalle_extracto_banc 
+            SET file_status = 'P', 
+                auxnum1 = 0, 
+                file_memo = '' 
+            WHERE file_seqno = ${mIntIdFile}
     `);
 }
