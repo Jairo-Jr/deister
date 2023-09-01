@@ -1,0 +1,31 @@
+{
+  "cantid2": 0,
+  "cantid1": 0,
+  "placon": "PE",
+  "diario": "85",
+  "docser": "FINV0000027",
+  "ctaaux": null,
+  "origen": "B",
+  "jusser": "PA",
+  "fecval": null,
+  "haber": 0,
+  "(constant)": 1131829,*
+  "proyec": "CRP0",
+  "dimcode2": "0",
+  "dimcode1": "0",
+  "cuenta": "659320097.00000000",
+  "moneda": "PEN",
+  "empcode": "125",
+  "orden": 1,
+  "contra": null,
+  "cambio": 1.000000,
+  "seccio": null,*
+  "sistem": "A",
+  "debe": 645624.91,
+  "codcon": null,
+  "fecha": "2023-07-14",
+  "concep": "Aut. Replica O/C PACT23 Compra de equipo Medico autorizado por GG para mejorar la oferta medica - ref cotización US-229-2022/GHS-V4 SF:5327465 [ 30-06-2023 SINV0000064 ] [ 30-06-2023 PINV0000050 ]",
+  "divdeb": 645624.91,
+  "codaux": null,
+  "divhab": 0
+}

@@ -39,7 +39,7 @@
  *                @param    {integer}    pIntNumRemesa        Numero de la remesa
  *
  **/
-function crp_transfer_bcp(pIntNumRemesa, pStrMoneda) {
+function crp_transfer_bcp(pIntNumRemesa) {
 
     /**
      * LOCAL FUNCTION: __getFormatData
@@ -206,48 +206,17 @@ function crp_transfer_bcp(pIntNumRemesa, pStrMoneda) {
     }
 
     /**
-     * INICIO DE LA TRANSACCIÓN
-     */
-
-    /**
      * VARIABLES DE ENTRADA
      */
     var mIntNumrem = pIntNumRemesa;
 
     /**
+     * CONSTRUCCION DEL ENCABEZADO
+     */
+    var mStrHeader = __getEstructuraCabecera(mIntNumrem);
+
+    /**
      * CONSTRUCCION DE LOS DETALLES
-     *
-     * **************************************************
-     * Posición/Longitud - Descripción
-     *
-     *      [1/1]        - Tipo registro
-     *      [2/1]        - Tipo cta. abono
-     *                      A >> Cta. ahorros
-     *                      C >> Cta. corriente
-     *                      M >> Cta. maestra
-     *                      B >> Interbancaria
-     *      [3/20]       - Num. Cta. abono
-     *      [23/1]       - Mod. pago
-     *                      1 >> Efectivo
-     *                      2 >> Cheque gerencia
-     *      [24/1]       - Tip. Doc. proveedor
-     *                      1 >> DNI
-     *                      3 >> CE
-     *                      4 >> PAS
-     *                      6 >> RUC
-     *                      7 >> FIC
-     *      [25/12]      - Num. Doc. proveedor
-     *      [37/3]       - Correlativo Doc. proveedor
-     *      [40/75]      - Nom. proveedor
-     *      [115/40]     - Ref. beneficiario
-     *      [155/20]     - Ref. empresa
-     *      [175/4]      - Moneda imp. abonar
-     *                      0001 >> Soles
-     *                      1001 >> Dólare
-     *      [179/17]     - Importe abonar
-     *      [196/1]      - Flag IDC
-     *                      N >> No validar IDC vs cuenta
-     *                      S >> Si validar IDC vs cuenta
      */
     var mStrDetails = '';
     var mArrayTerceros = Ax.db.executeQuery(`
@@ -311,108 +280,41 @@ function crp_transfer_bcp(pIntNumRemesa, pStrMoneda) {
 
     });
 
-    /**
-     * CONSTRUCCION DEL ENCABEZADO
-     */
-    var mStrHeader = __getEstructuraCabecera(mIntNumrem);
-
     var mStrBodyTxt = mStrHeader + mStrDetails;
-
-    console.log(mStrBodyTxt);
 
     /**
      * Creacion del archivo txt
      */
-    // var mFileTxtTramaBCP = new Ax.sql.Blob(`transferBCPSoles.txt`);
-    //     mFileTxtTramaBCP.setContentType("text/plain");
-    //     mFileTxtTramaBCP.setContent(mStrBodyTxt);
+    var mFileTxtTramaBCP = new Ax.sql.Blob(`transferBCPSoles.txt`);
+    mFileTxtTramaBCP.setContentType("text/plain");
+    mFileTxtTramaBCP.setContent(mStrBodyTxt);
 
-    // /**
-    //  * Variables con informacion para la respuesta
-    // */
-    // var mFileProc     = 'crp_transfer_bcp_pen';
-    // var mFileName     = `transferBCPSoles.txt`;
-    // var mFileMemo     = 'Transferencia BCP soles';
-    // var mStrFileArgs  = `Numero de remesa: ${mIntNumrem}`;
-    // var mHashMD5      = new Ax.crypt.Digest("MD5");
-    // var mStrHashTrama = mHashMD5.update(mFileTxtTramaBCP).digest();
+    /**
+     * Variables con informacion para la respuesta
+     */
+    var mFileProc     = 'crp_transfer_bcp_pen';
+    var mFileName     = `transferBCPSoles.txt`;
+    var mFileMemo     = 'Transferencia BCP soles';
+    var mStrFileArgs  = `Numero de remesa: ${mIntNumrem}`;
+    var mHashMD5      = new Ax.crypt.Digest("MD5");
+    var mStrHashTrama = mHashMD5.update(mFileTxtTramaBCP).digest();
 
-    // Ax.db.execute(`DELETE FROM csopmagn WHERE file_md5 = ?`, mStrHashTrama);
+    Ax.db.execute(`DELETE FROM csopmagn WHERE file_md5 = ?`, mStrHashTrama);
 
-    // var mObjInsertCsopmagn = {
-    //     file_proc    : mFileProc,
-    //     file_name    : mFileName,
-    //     file_memo    : mFileMemo,
-    //     file_args    : mStrFileArgs,
-    //     file_type    : 'text/plain',
-    //     file_size    : mFileTxtTramaBCP.length(),
-    //     file_md5     : mStrHashTrama,
-    //     file_data    : mFileTxtTramaBCP,
-    //     user_created : Ax.db.getUser(),
-    //     date_created : new Ax.util.Date(),
-    // };
+    var mObjInsertCsopmagn = {
+        file_proc    : mFileProc,
+        file_name    : mFileName,
+        file_memo    : mFileMemo,
+        file_args    : mStrFileArgs,
+        file_type    : 'text/plain',
+        file_size    : mFileTxtTramaBCP.length(),
+        file_md5     : mStrHashTrama,
+        file_data    : mFileTxtTramaBCP,
+        user_created : Ax.db.getUser(),
+        date_created : new Ax.util.Date(),
+    };
 
-    // var mIntSeqno = Ax.db.insert('csopmagn', mObjInsertCsopmagn).getSerial();
+    var mIntSeqno = Ax.db.insert('csopmagn', mObjInsertCsopmagn).getSerial();
 
-    // return Ax.db.executeQuery(`SELECT * FROM csopmagn WHERE file_seqno = ?`, mIntSeqno);
+    return Ax.db.executeQuery(`SELECT * FROM csopmagn WHERE file_seqno = ?`, mIntSeqno);
 }
-
-
-/*
-
-<select>
-    <columns>
-        '2' <alias name = 'tipo_registro' />,
-        CASE WHEN cterbanc.tipcta = 1 THEN 'C'
-             WHEN cterbanc.tipcta = 2 THEN 'A'
-             WHEN cterbanc.tipcta = 3 THEN 'M'
-             WHEN cterbanc.tipcta = 4 THEN 'M'
-             ELSE CAST(cterbanc.tipcta AS CHAR)
-        END <alias name = 'tipo_cuenta' />,
-        cterbanc.iban <alias name = 'nmr_cuenta'/>,
-        '1' <alias name = 'mod_pago' />,
-        CASE WHEN ctercero.ciftyp = 1 THEN '1'
-             WHEN ctercero.ciftyp = 4 THEN '3'
-             WHEN ctercero.ciftyp = 6 THEN '6'
-             WHEN ctercero.ciftyp = 7 THEN '4'
-             ELSE CAST(ctercero.ciftyp AS CHAR)
-        END <alias name = 'tipo_documento' />,
-        ctercero.cif <alias name = 'num_documento' />,
-        '   ' <alias name = 'correlativo_doc' />,
-        ctercero.nombre <alias name = 'nombre' />,
-        cefectos.docser <alias name = 'referencia_beneficiario' />,
-        NVL(cefectos.refban, cefectos.docser) <alias name = 'referencia_empresa' />,
-        CASE WHEN cefectos.moneda = 'PEN' THEN '0001'
-             WHEN cefectos.moneda = 'USD' THEN '1001'
-             ELSE cefectos.moneda
-        END <alias name = 'moneda' />,
-        ABS(cefecges_det.det_impdiv) <alias name = 'importe_abonar' />,
-        'S' <alias name = 'flag_idc' />
-    </columns>
-    <from table = 'cefecges_pcs'>
-        <join table = 'cefecges_det'>
-            <on>cefecges_pcs.pcs_seqno = cefecges_det.pcs_seqno</on>
-            <join table = 'cefectos'>
-                <on>cefecges_det.det_numero = cefectos.numero</on>
-                <join table = 'ctercero'>
-                    <on>cefectos.codper = ctercero.codigo</on>
-                </join>
-                <join type = 'left' table = 'cterbanc'>
-                    <on>cefectos.codper = cterbanc.codigo</on>
-                    <on>cefectos.numban = cterbanc.numban</on>
-                </join>
-            </join>
-        </join>
-    </from>
-    <where>
-        cefecges_pcs.pcs_numrem = 196
-    </where>
-
-    <!-- <order>1,3,5,6</order> -->
-</select>
-
-
-
-
-
-* */
