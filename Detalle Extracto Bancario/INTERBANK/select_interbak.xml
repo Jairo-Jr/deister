@@ -3,39 +3,52 @@
         '02'                                            <alias name = 'cod_control' />,
         RPAD(TRIM(ctercero.cif), 20,' ')                <alias name = 'cod_beneficiario' />,
         CASE WHEN cefectos.auxchr4 = '01' THEN 'F'
-        WHEN cefectos.auxchr4 = '07' THEN 'C'
-        WHEN cefectos.auxchr4 = '08' THEN 'D'
-        ELSE ' '
-        END                                             <alias name = 'tip_operacion' />,
+             WHEN cefectos.auxchr4 = '07' THEN 'C'
+             WHEN cefectos.auxchr4 = '08' THEN 'D'
+             ELSE ' '
+        END                                             <alias name = 'tipo_operacion' />,
         RPAD(cefectos.docser, 20,' ')                   <alias name = 'num_documento' />,
         TO_CHAR(cefectos.fecven, '%Y%m%d')              <alias name = 'fec_ven_doc' />,
         CASE WHEN cefectos.moneda = 'PEN' THEN '01'
-        WHEN cefectos.moneda = 'USD' THEN '10'
-        ELSE '--'
+             WHEN cefectos.moneda = 'USD' THEN '10'
+             ELSE '--'
         END                                             <alias name = 'moneda_abono' />,
         ABS(cefectos.impdiv)                            <alias name = 'importe' />,
         CASE WHEN cterbanc.codban = 'PE0011' THEN '0'
-        ELSE '1'
+             ELSE '1'
         END                                             <alias name = 'ind_banco' />,
         CASE WHEN cterbanc.codban = 'PE0011' THEN '09'
-        ELSE '99'
-        END                                             <alias name = 'tip_abono' />,
+             ELSE '99'
+        END                                             <alias name = 'tipo_abono' />,
+
         CASE WHEN cterbanc.tipcta = 1 THEN '001'
-        WHEN cterbanc.tipcta = 2 THEN '002'
-        ELSE '--'
-        END <alias name = 'tipo_cuenta' />,
-        cterbanc.iban <alias name = 'nmr_cuenta'/>,
-        '1' <alias name = 'mod_pago' />,
-        CASE WHEN ctercero.ciftyp = 1 THEN '1'
-        WHEN ctercero.ciftyp = 4 THEN '3'
-        WHEN ctercero.ciftyp = 6 THEN '6'
-        WHEN ctercero.ciftyp = 7 THEN '4'
-        ELSE CAST(ctercero.ciftyp AS CHAR)
-        END <alias name = 'tipo_documento' />,
-        '   ' <alias name = 'correlativo_doc' />,
-        ctercero.nombre <alias name = 'nombre' />,
-        NVL(cefectos.refban, cefectos.docser) <alias name = 'referencia_empresa' />,
-        'S' <alias name = 'flag_idc' />
+             WHEN cterbanc.tipcta = 2 THEN '002'
+             ELSE '--'
+        END                                             <alias name = 'tipo_cuenta' />,
+        CASE WHEN cterbanc.moneda = 'PEN' THEN '01'
+             WHEN cterbanc.moneda = 'USD' THEN '10'
+             ELSE '--'
+        END                                             <alias name = 'moneda_cuenta' />,
+        CASE WHEN cterbanc.codban = 'PE0011' THEN SUBSTR(TRIM(cterbanc.iban),1,3)
+             ELSE '000'
+        END                                             <alias name = 'tienda' />,
+        CASE WHEN cterbanc.codban = 'PE0011' THEN SUBSTR(cterbanc.iban,4,10)
+             ELSE cterbanc.iban
+        END                                             <alias name = 'nmr_cuenta'/>,
+        CASE WHEN ctercero.ciftyp = 6 THEN 'C'
+             ELSE 'P'
+        END                                             <alias name = 'tipo_persona' />,
+        CASE WHEN ctercero.ciftyp = 1 THEN '01'
+             WHEN ctercero.ciftyp = 4 THEN '03'
+             WHEN ctercero.ciftyp = 6 THEN '02'
+             WHEN ctercero.ciftyp = 7 THEN '05'
+             ELSE '--'
+        END                                             <alias name = 'tipo_documento' />,
+        ctercero.cif                                    <alias name = 'nmr_documento' />,
+        ctercero.nombre                                 <alias name = 'nombre_cliente' />,
+        cefectos.impret                                 <alias name = 'retencion' />,
+        '        '                                      <alias name = 'complemento' />
+        
     </columns>
     <from table = 'cefecges_pcs'>
         <join table = 'cefecges_det'>
@@ -58,4 +71,5 @@
 
     <!-- <order>1,3,5,6</order> -->
 </select>
+
 
