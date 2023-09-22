@@ -1,10 +1,11 @@
-function crp_reporte_componente_bienes_permanentes__v2() {
 
-    let mSqlCond = Ax.context.property.COND;
+/** TODO: Agregado de columna para inventariable */
 
-    let mTmpTableCinmamorxMeses = Ax.db.getTempTableName(`tmp_cinmamor_x_meses`);
-    Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCinmamorxMeses}`);
-    Ax.db.execute(`
+let mSqlCond = Ax.context.property.COND;
+
+let mTmpTableCinmamorxMeses = Ax.db.getTempTableName(`tmp_cinmamor_x_meses`);
+Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCinmamorxMeses}`);
+Ax.db.execute(`
         <select intotemp='${mTmpTableCinmamorxMeses}'>
             <columns>
                 cinmcomp.empcode,
@@ -44,16 +45,17 @@ function crp_reporte_componente_bienes_permanentes__v2() {
         </select>
     `);
 
-    let mTmpTableCinmamorxConta = Ax.db.getTempTableName(`tmp_cinmamor_x_conta`);
-    Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCinmamorxConta}`);
-    Ax.db.execute(`
+let mTmpTableCinmamorxConta = Ax.db.getTempTableName(`tmp_cinmamor_x_conta`);
+Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCinmamorxConta}`);
+Ax.db.execute(`
         <select intotemp='${mTmpTableCinmamorxConta}'>
             <columns>
                 cinmcomp.empcode,
                 cinmcomp.codinm,
                 cinmcomp.codele,
                 cinmcomp.codcom,
-                SUM(cinmamor.import) <alias name='import' />
+                SUM(cinmamor.import) <alias name='import' />,
+                SUM(cinmamor.impmax) <alias name='import_depre' />
             </columns>
             <from table='cinmcomp'>
                 <join table='cinmamor'>
@@ -74,13 +76,44 @@ function crp_reporte_componente_bienes_permanentes__v2() {
         </select>
     `);
 
-    let mTmpTable = Ax.db.getTempTableName(`tmp_opening_balance`);
-    Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTable}`);
-    Ax.db.execute(`
-        SELECT FIRST 1 *
+let mTmpTableCinmamorxConta_Abril = Ax.db.getTempTableName(`tmp_cinmamor_x_conta_abril`);
+Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCinmamorxConta_Abril}`);
+Ax.db.execute(`
+        <select intotemp='${mTmpTableCinmamorxConta_Abril}'>
+            <columns>
+                cinmcomp.empcode,
+                cinmcomp.codinm,
+                cinmcomp.codele,
+                cinmcomp.codcom,
+                SUM(cinmamor.import) <alias name='import' />,
+                SUM(cinmamor.impmax) <alias name='import_depre' />
+            </columns>
+            <from table='cinmcomp'>
+                <join table='cinmamor'>
+                    <on>cinmcomp.codinm = cinmamor.codinm</on>
+                    <on>cinmcomp.codele = cinmamor.codele</on>
+                    <on>cinmcomp.codcom = cinmamor.codcom</on>
+                    <on>cinmcomp.numhis = cinmamor.numhis</on>
+                    <on>cinmamor.fecfin BETWEEN MDY(4,1,YEAR(TODAY)) AND MDY(12,31,YEAR(TODAY))</on>
+                    <on>cinmamor.estado = 'C'</on>
+                </join>
+            </from>
+            <group>
+                1, 2, 3, 4
+            </group>
+            <order>
+                4
+            </order>
+        </select>
+    `);
+
+let mTmpTable = Ax.db.getTempTableName(`tmp_opening_balance`);
+Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTable}`);
+Ax.db.execute(`
+        SELECT DISTINCT *
           FROM (SELECT gcomfach.docser, 
                     -- gcomsolh.depart depart_sol  2023 03 28 CBF por instruccion de MRA
-                       NVL(gcomsoll.auxchr2, gcomsolh.depart) depart_sol
+                       NVL(gcomsoll.auxchr2, gcomsolh.depart) depart_sol, gcomsoll.orden
                   FROM gcomfach,
                        gcomfacl,
                        gcommovh,
@@ -113,7 +146,7 @@ function crp_reporte_componente_bienes_permanentes__v2() {
           UNION ALL
           SELECT gcomfach.docser, 
               -- gcomsolh.depart depart_sol  2023 03 28 CBF por instruccion de MRA
-                 NVL(gcomsoll.auxchr2, gcomsolh.depart) depart_sol
+                 NVL(gcomsoll.auxchr2, gcomsolh.depart) depart_sol, gcomsoll.orden
             FROM gcomfacl,
                  gcomfach,
                  gcomalbl,
@@ -148,7 +181,7 @@ function crp_reporte_componente_bienes_permanentes__v2() {
           INTO TEMP ${mTmpTable} WITH NO LOG
     `);
 
-    let rsComponentes = Ax.db.executeQuery(`
+let rsComponentes = Ax.db.executeQuery(`
         <select>
             <columns>
                 cinmcomp.codcom,
@@ -156,7 +189,7 @@ function crp_reporte_componente_bienes_permanentes__v2() {
                 cinmcomp.auxchr1,
                 'UND'                                                       <alias name='crp_medida' />,
                 cinmcomp.codinm                                             <alias name='crp_grupo_bien' />,
-                cinmctas.descri                                             <alias name='crp_descripcion_bien' />,
+                cinmhead.nominm                                             <alias name='crp_descripcion_bien' />,
                 cinmctas.ccamor,
                 ccuentas2.nombre                                            <alias name='crp_description1' />, 
                 crp_chv_mapcta2.ctaori                                      <alias name='crp_cuenta_depre_chv'/>,
@@ -199,9 +232,20 @@ function crp_reporte_componente_bienes_permanentes__v2() {
                 cinmelem_ppe.ppe_label_id,
                 gdeparta.seccio,
                 cseccion.nomsec,
-                cinmctas.ccinmo                                             <alias name='crp_cuenta_inmo' />,
-                ccuentas1.nombre                                            <alias name='crp_cuenta_noinmo' />,
-                crp_chv_mapcta1.ctaori                                      <alias name='crp_cuenta_chv' />,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN cpar_parprel.ctainv
+                     ELSE cinmctas.ccinmo
+                END                                                         <alias name='crp_cuenta_inmo' />,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN (SELECT c.nombre
+                                                                FROM ccuentas c
+                                                               WHERE c.placon = 'PE'
+                                                                 AND c.codigo = cpar_parprel.ctainv)
+                     ELSE ccuentas1.nombre
+                END                                                         <alias name='crp_cuenta_noinmo' />,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN (SELECT c.ctaori
+                                                                FROM crp_chv_mapcta c
+                                                               WHERE c.cuenta = cpar_parprel.ctainv)
+                     ELSE crp_chv_mapcta1.ctaori
+                END                                                         <alias name='crp_cuenta_chv' />,
                 cinmelem.codpre                                             <alias name='crp_inversion' />,
                 cpar_parpreh.nompre                                         <alias name='crp_descri_inversion' />,
                 cinmelem.codpar                                             <alias name='crp_partida' />,
@@ -212,16 +256,16 @@ function crp_reporte_componente_bienes_permanentes__v2() {
                 CASE WHEN cinmctas.ccinmo LIKE '322%' THEN cinmftab.numeje END          <alias name='Nro_Cuotas_Arr'/>,
                 CASE WHEN cinmctas.ccinmo LIKE '322%' THEN cinmcval.invcom END          <alias name='Monto_Total_Arr'/>,
                 CASE WHEN cinmctas.ccinmo LIKE '33%' AND cinmctas.ccinmo NOT LIKE '339%' THEN 'Activos fijos'
-                    WHEN cinmctas.ccinmo LIKE '339%' THEN 'Obras en curso'
-                    WHEN cinmctas.ccinmo LIKE '321%' THEN 'Arrendamiento Operativo'
-                    WHEN cinmctas.ccinmo LIKE '322%' THEN 'Arrendamiento Financiero'
-                    WHEN cinmctas.ccinmo LIKE '34%' AND cinmctas.ccinmo NOT LIKE '349%' THEN 'Intangibles'
-                    WHEN cinmctas.ccinmo LIKE '349%' THEN 'Intangibles en curso'
-                END <alias name='Libro_AF'/>,
+                     WHEN NVL(cpar_parprel.ctainv, cinmctas.ccinmo) LIKE '339%' THEN 'Obras en curso'
+                     WHEN cinmctas.ccinmo LIKE '321%' THEN 'Arrendamiento Operativo'
+                     WHEN cinmctas.ccinmo LIKE '322%' THEN 'Arrendamiento Financiero'
+                     WHEN cinmctas.ccinmo LIKE '34%' AND cinmctas.ccinmo NOT LIKE '349%' THEN 'Intangibles'
+                     WHEN NVL(cpar_parprel.ctainv, cinmctas.ccinmo) LIKE '349%' THEN 'Intangibles en curso'
+                END                                                                     <alias name='Libro_AF'/>,
                 (SELECT MAX(capuntes.asient)
                 FROM capuntes
                 WHERE capuntes.loteid = gcomfach.loteid)                                <alias name='crp_asiento_axional' />,
-                crp_chv_xdocpro.loteid                                                  <alias name='crp_asiento_chavin' />,
+                NVL(cinmelem.auxchr2, crp_chv_xdocpro.nro_asien_ch)                     <alias name='crp_asiento_chavin' />,
                 CASE WHEN YEAR(cinmcomp.fecbaj) = YEAR(TODAY) AND cinmcomp.tipcom = 'B' THEN ABS(cinmcval.inicom)
                      WHEN YEAR(cinmcomp.fecha) &lt; YEAR(TODAY) THEN cinmcval.invcom
                      END                                                                <alias name='crp_saldo_inicial' />, 
@@ -251,15 +295,37 @@ function crp_reporte_componente_bienes_permanentes__v2() {
                 (SELECT cniveles.nombre
                    FROM cniveles
                   WHERE cniveles.codigo = SUBSTR(crp_chv_mapcta1.ctaori, 1, 3)
-                    AND cniveles.placon = 'PE')                             <alias name='des_rub_cuenta' />,
-                ${mTmpTableCinmamorxConta}.import <alias name='dep_39' />,
-                ${mTmpTableCinmamorxConta}.import <alias name='dep_68' />,
-                ${mTmpTableCinmamorxMeses}.codigo,
+                    AND cniveles.placon = 'PE')                                         <alias name='des_rub_cuenta' />,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN 0
+                     ELSE ${mTmpTableCinmamorxConta}.import
+                END                                                                     <alias name='dep_39' />,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN 0
+                     ELSE ${mTmpTableCinmamorxConta}.import
+                END                                                                     <alias name='dep_68' />,
+                CASE WHEN NVL(cinmcomp.auxchr3, -1) = -1 THEN NVL(${mTmpTableCinmamorxConta}.import_depre, 0)
+                     ELSE NVL(cinmcomp.auxchr3, 0) + NVL(${mTmpTableCinmamorxConta_Abril}.import_depre, 0)
+                END                                                                     <alias name='deprec_trib_anual' />,
+                cinmcomp.auxnum5                                                        <alias name='deprec_trib_acum' />,
+                CASE WHEN cinmcomp.tipcom = 'B' THEN ABS(cinmcval.inicom) * -1
+                    ELSE 0   
+                END                                                                     <alias name='deprec_trib_baja' />,
                 ${mTmpTableCinmamorxMeses}.codigo codigo1,
                 ${mTmpTableCinmamorxMeses}.codigo codigo2,
-                ${mTmpTableCinmamorxMeses}.amortizado,
-                ${mTmpTableCinmamorxMeses}.amortizado amortizado2,
-                ${mTmpTableCinmamorxMeses}.depre_trib
+                ${mTmpTableCinmamorxMeses}.codigo codigo3,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN 0
+                     ELSE ${mTmpTableCinmamorxMeses}.amortizado
+                END                                                                     <alias name='amortizado1' />,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN 0
+                     ELSE ${mTmpTableCinmamorxMeses}.amortizado
+                END                                                                     <alias name='amortizado2' />,
+                CASE WHEN cinmcomp.codinm LIKE '%9999%' THEN 0
+                     ELSE ${mTmpTableCinmamorxMeses}.depre_trib
+                END                                                                     <alias name='amortizado3' />,
+                
+                <!-- Inventariable -->
+                CASE WHEN cinmelem.auxchr3 = 1 THEN 'Si'
+                     ELSE 'No'
+                END                                                                     <alias name='inventariable' />
             </columns>
             <from table='cinmhead'>
                 <join table='cinmelem'>
@@ -343,6 +409,7 @@ function crp_reporte_componente_bienes_permanentes__v2() {
                         </join>
                         <join type='left' table='${mTmpTable}'>
                             <on>cinmcomp.docser = ${mTmpTable}.docser</on>
+                            <on>${mTmpTable}.orden = 5</on>
                             <join type='left' table='gcomfach'>
                                 <on>${mTmpTable}.docser = gcomfach.docser</on>
                                 <join type='left' table='gcomfacd'>
@@ -371,6 +438,12 @@ function crp_reporte_componente_bienes_permanentes__v2() {
                             <on>cinmcomp.codele = ${mTmpTableCinmamorxConta}.codele</on>
                             <on>cinmcomp.codcom = ${mTmpTableCinmamorxConta}.codcom</on>
                         </join>
+                        <join type='left' table='${mTmpTableCinmamorxConta_Abril}'>
+                            <on>cinmcomp.empcode = ${mTmpTableCinmamorxConta_Abril}.empcode</on>
+                            <on>cinmcomp.codinm = ${mTmpTableCinmamorxConta_Abril}.codinm</on>
+                            <on>cinmcomp.codele = ${mTmpTableCinmamorxConta_Abril}.codele</on>
+                            <on>cinmcomp.codcom = ${mTmpTableCinmamorxConta_Abril}.codcom</on>
+                        </join>
                     </join>
                     <join type='left' table='cpar_parpreh'>
                         <on>cinmelem.codpre = cpar_parpreh.codpre</on>
@@ -382,262 +455,269 @@ function crp_reporte_componente_bienes_permanentes__v2() {
                 </join>
             </from>
             <where>
+                cinmhead.estcom NOT IN ('N', 'C') AND
                 ${mSqlCond}
             </where>
             <order>
-                1, 78
+                1, 81
             </order>
         </select>
     `);
 
-    let mRsPivot = rsComponentes.pivot(options => {
-        options.setPivotColumnNames(['codigo', 'codigo1', 'codigo2']);
-        options.setMeasureColumnNames(['amortizado', 'amortizado2', 'depre_trib']);
-    });
+let mRsPivot = rsComponentes.pivot(options => {
+    options.setPivotColumnNames(['codigo1', 'codigo2', 'codigo3']);
+    options.setMeasureColumnNames(['amortizado1', 'amortizado2', 'amortizado3']);
+});
 
-    let rs = new Ax.rs.Reader().memory(options => {
-        options.setColumnNames([
-            'codcom',
-            'nomcom',
-            'auxchr1',
-            'crp_medida',
-            'crp_grupo_bien',
-            'crp_descripcion_bien',
-            'ccamor',
-            'crp_description1',
-            'crp_cuenta_depre_chv',
-            'crp_descri_cuenta_chv',
-            'ccdota',
-            'crp_description2',
-            'cdotach',
-            'ppe_codloc',
-            'nomlug',
-            'crp_ubi_padre',
-            'crp_ubi_padre_descri',
-            'crp_codigo_resp',
-            'crp_descri_resp',
-            'depart',
-            'nomdep',
-            'crp_elemento',
-            'crp_description_elemento',
-            'crp_periodo',
-            'fecbaj',
-            'crp_causal',
-            'motivo',
-            'crp_cod_proveedor',
-            'nombre',
-            'cif',
-            'crp_tipologia',
-            'crp_descrip_tipologia',
-            'docser',
-            'numfac',
-            'fecfac',
-            'crp_fecini_depre',
-            'vufina',
-            'vutri',
-            'pdfina',
-            'pdtrib',
-            'ppe_marca',
-            'nommar',
-            'ppe_modelo',
-            'nommod',
-            'ppe_numser',
-            'ppe_label_id',
-            'seccio',
-            'nomsec',
-            'crp_cuenta_inmo',
-            'crp_cuenta_noinmo',
-            'crp_cuenta_chv',
-            'crp_inversion',
-            'crp_descri_inversion',
-            'crp_partida',
-            'crp_descri_partida',
-            'Nro_Contrato_Arr',
-            'Fecha_Contrato_Arr',
-            'Nro_Cuotas_Arr',
-            'Monto_Total_Arr',
-            'Libro_AF',
-            'crp_asiento_axional',
-            'crp_asiento_chavin',
-            'crp_saldo_inicial',
-            'crp_imp_adqui',
-            'Imp_Mejoras',
-            'Imp_Ret_Baj',
-            'Imp_Otros_Ajus',
-            'imp_dep_acum_ejerc',
-            'dep_39',
-            'c1',
-            'c2',
-            'c3',
-            'c4',
-            'c5',
-            'c6',
-            'c7',
-            'c8',
-            'c9',
-            'c10',
-            'c11',
-            'c12',
-            'c13',
-            'dep_68',
-            'c14',
-            'c15',
-            'c16',
-            'c17',
-            'c18',
-            'c19',
-            'c20',
-            'c21',
-            'c22',
-            'c23',
-            'c24',
-            'c25',
-            'c26',
-            'imp_dep_ret_baj',
-            'imp_dep_otr_ajus',
-            'neto',
-            'cod_quiron',
-            'nro_aut_obra_quiron',
-            'estado',
-            'des_rub_cuenta',
-            'c27',
-            'c28',
-            'c29',
-            'c30',
-            'c31',
-            'c32',
-            'c33',
-            'c34',
-            'c35',
-            'c36',
-            'c37',
-            'c38',
-            'c39'
-        ]);
-        options.setColumnTypes([
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.DATE,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.DATE,
-            Ax.sql.Types.DATE,
-            Ax.sql.Types.INTEGER,
-            Ax.sql.Types.INTEGER,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.INTEGER,
-            Ax.sql.Types.INTEGER,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.CHAR,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE,
-            Ax.sql.Types.DOUBLE
-        ]);
-    });
+let rs = new Ax.rs.Reader().memory(options => {
+    options.setColumnNames([
+        'codcom',
+        'nomcom',
+        'auxchr1',
+        'crp_medida',
+        'crp_grupo_bien',
+        'crp_descripcion_bien',
+        'ccamor',
+        'crp_description1',
+        'crp_cuenta_depre_chv',
+        'crp_descri_cuenta_chv',
+        'ccdota',
+        'crp_description2',
+        'cdotach',
+        'ppe_codloc',
+        'nomlug',
+        'crp_ubi_padre',
+        'crp_ubi_padre_descri',
+        'crp_codigo_resp',
+        'crp_descri_resp',
+        'depart',
+        'nomdep',
+        'crp_elemento',
+        'crp_description_elemento',
+        'crp_periodo',
+        'fecbaj',
+        'crp_causal',
+        'motivo',
+        'crp_cod_proveedor',
+        'nombre',
+        'cif',
+        'crp_tipologia',
+        'crp_descrip_tipologia',
+        'docser',
+        'numfac',
+        'fecfac',
+        'crp_fecini_depre',
+        'vufina',
+        'vutri',
+        'pdfina',
+        'pdtrib',
+        'ppe_marca',
+        'nommar',
+        'ppe_modelo',
+        'nommod',
+        'ppe_numser',
+        'ppe_label_id',
+        'seccio',
+        'nomsec',
+        'crp_cuenta_inmo',
+        'crp_cuenta_noinmo',
+        'crp_cuenta_chv',
+        'crp_inversion',
+        'crp_descri_inversion',
+        'crp_partida',
+        'crp_descri_partida',
+        'Nro_Contrato_Arr',
+        'Fecha_Contrato_Arr',
+        'Nro_Cuotas_Arr',
+        'Monto_Total_Arr',
+        'Libro_AF',
+        'crp_asiento_axional',
+        'crp_asiento_chavin',
+        'crp_saldo_inicial',
+        'crp_imp_adqui',
+        'Imp_Mejoras',
+        'Imp_Ret_Baj',
+        'Imp_Otros_Ajus',
+        'imp_dep_acum_ejerc',
+        'dep_39',
+        'c1',
+        'c2',
+        'c3',
+        'c4',
+        'c5',
+        'c6',
+        'c7',
+        'c8',
+        'c9',
+        'c10',
+        'c11',
+        'c12',
+        'c13',
+        'dep_68',
+        'c14',
+        'c15',
+        'c16',
+        'c17',
+        'c18',
+        'c19',
+        'c20',
+        'c21',
+        'c22',
+        'c23',
+        'c24',
+        'c25',
+        'c26',
+        'imp_dep_ret_baj',
+        'imp_dep_otr_ajus',
+        'neto',
+        'cod_quiron',
+        'nro_aut_obra_quiron',
+        'estado',
+        'des_rub_cuenta',
+        'deprec_trib_acum',
+        'deprec_trib_anual',
+        'c27',
+        'c28',
+        'c29',
+        'c30',
+        'c31',
+        'c32',
+        'c33',
+        'c34',
+        'c35',
+        'c36',
+        'c37',
+        'c38',
+        'c39',
+        'deprec_trib_baja',
+        'inventariable'
+    ]);
+    options.setColumnTypes([
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.DATE,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.DATE,
+        Ax.sql.Types.DATE,
+        Ax.sql.Types.INTEGER,
+        Ax.sql.Types.INTEGER,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.INTEGER,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.CHAR,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.DOUBLE,
+        Ax.sql.Types.CHAR
+    ]);
+});
 
-    for (let mRowPivot of mRsPivot) {
-        rs.rows().add(mRowPivot);
-    }
-
-    return rs;
-
+for (let mRowPivot of mRsPivot) {
+    rs.rows().add(mRowPivot);
 }
+
+return rs;

@@ -1,0 +1,168 @@
+<union type='all' intotemp='@tmp_1'>
+    <select>
+        <columns>
+            'PV'    		   tabid,
+            gcompedh.tipdoc tipo,
+            gcompedh.fecha,
+            gcompedh.docser docum,
+            gcompedh.tercer proved,
+            gcomacul.cabid  gcomacuh_cabid,
+            gcompedh.divisa divdoc,
+            SUM(gcompedl.impnet * (1 - gcompedh.dtogen / 100) * (1 - gcompedh.dtopp / 100)) importe,
+            gcompedh.cambio camdoc,
+            SUM(icon_get_imploc(0,
+            gcompedh.empcode,
+            gcompedh.divisa,
+            gcompedh.fecha,
+            gcompedh.cambio,
+            gcompedl.impnet * (1 - gcompedh.dtogen / 100) * (1 - gcompedh.dtopp / 100))) imploc
+        </columns>
+        <from table='gcompedh'>
+            <join table='gcompedl'>
+                <on>gcompedh.cabid = gcompedl.cabid</on>
+            </join>
+            <join table='gcomacul'>
+                <on>gcompedl.linacu = gcomacul.linid</on>
+            </join>
+        </from>
+        <where>
+            gcompedh.estcab = 'V'
+        </where>
+        <group>1,2,3,4,5,6,7,9</group>
+    </select>
+
+    <select>
+        <columns>
+            'AV'    	       tabid,
+            gcomalbh.tipdoc tipo,
+            gcomalbh.fecmov,
+            gcomalbh.docser docum,
+            gcomalbh.tercer proved,
+            gcomacul.cabid  gcomacuh_cabid,
+            gcomalbh.divisa divdoc,
+            SUM(gcomalbl.impnet * (1 - gcomalbh.dtogen / 100) * (1 - gcomalbh.dtopp / 100)) importe,
+            gcomalbh.cambio camdoc,
+            SUM(icon_get_imploc(0,
+            gcomalbh.empcode,
+            gcomalbh.divisa,
+            gcomalbh.fecmov,
+            gcomalbh.cambio,
+            gcomalbl.impnet * (1 - gcomalbh.dtogen / 100) * (1 - gcomalbh.dtopp / 100))) imploc
+        </columns>
+        <from table='gcomalbh'>
+            <join table='gcomalbl'>
+                <on>gcomalbh.cabid = gcomalbl.cabid</on>
+            </join>
+            <join table='gcomacul'>
+                <on>gcomalbl.linacu = gcomacul.linid</on>
+            </join>
+        </from>
+        <where>
+            gcomalbh.estcab = 'V'
+        </where>
+        <group>1,2,3,4,5,6,7,9</group>
+    </select>
+
+    <select>
+        <columns>
+            'FV'    		   tabid,
+            gcomfach.tipdoc tipo,
+            gcomfach.fecha,
+            gcomfach.docser docum,
+            gcomfach.tercer proved,
+            gcomacul.cabid  gcomacuh_cabid,
+            gcomfach.divisa divdoc,
+            SUM(gcomfacl.impnet * (1 - gcomfach.dtogen / 100) * (1 - gcomfach.dtopp / 100)) importe,
+            gcomfach.cambio camdoc,
+            SUM(icon_get_imploc(0,
+            gcomfach.empcode,
+            gcomfach.divisa,
+            gcomfach.fecha,
+            gcomfach.cambio,
+            gcomfacl.impnet * (1 - gcomfach.dtogen / 100) * (1 - gcomfach.dtopp / 100))) imploc
+        </columns>
+        <from table='gcomfach'>
+            <join table='gcomfacl'>
+                <on>gcomfach.cabid = gcomfacl.cabid</on>
+            </join>
+            <join table='gcomacul'>
+                <on>gcomfacl.linacu = gcomacul.linid</on>
+            </join>
+        </from>
+        <where>
+            gcomfach.estcab = 'V'
+        </where>
+        <group>1,2,3,4,5,6,7,9</group>
+    </select>
+</union>
+
+<select>
+<columns>
+    $GROUPS
+    <!--
+    gcomacuh.empcode, cempresa.empname,
+    gcomacuh.tipdoc,  gcomacud.nomdoc,
+    gcomacuh.tercer,  ctercero.nombre,
+    gcomacuh.fecacu
+    -->
+    gcomacuh.docser,  gcomacuh.divisa,  gcomacuh.cambio,
+    <nvl>gcomacuh.impmax, gcomacuh.imptot</nvl> impmax,
+    icon_get_imploc(0,
+    gcomacuh.empcode,
+    gcomacuh.divisa,
+    gcomacuh.fecacu,
+    gcomacuh.cambio,
+    <nvl>gcomacuh.impmax, gcomacuh.imptot</nvl>) locimp,
+    imptot,
+    icon_get_imploc(0,
+    gcomacuh.empcode,
+    gcomacuh.divisa,
+    gcomacuh.fecacu,
+    gcomacuh.cambio,
+    gcomacuh.impacu) loctot,
+    a.tabid,
+    a.tipo,
+    a.docum,
+    a.fecha,
+    a.proved,
+    a.divdoc,
+    a.importe,
+    a.camdoc,
+    a.imploc
+</columns>
+<from table='gcomacuh'>
+    <join table='gcomacud'>
+        <on>gcomacuh.tipdoc = gcomacud.codigo</on>
+    </join>
+    <join table='gdelegac'>
+        <on>gcomacuh.delega = gdelegac.codigo</on>
+    </join>
+    <join type='left' table='@tmp_1' alias='a'>
+        <on>gcomacuh.cabid = a.gcomacuh_cabid</on>
+    </join>
+    <join table='ctercero'>
+        <on>gcomacuh.tercer = ctercero.codigo</on>
+    </join>
+    <join type='left' table='cempresa'>
+        <on>gcomacuh.empcode = cempresa.empcode</on>
+    </join>
+</from>
+<where>$0</where>
+<group>
+    $GROUPS
+    gcomacuh.docser,  gcomacuh.divisa,  gcomacuh.cambio,
+    impmax,
+    locimp,
+    imptot,
+    loctot,
+    a.tabid,
+    a.tipo,
+    a.docum,
+    a.fecha,
+    a.proved,
+    a.divdoc,
+    a.importe,
+    a.camdoc,
+    a.imploc
+</group>
+</select>

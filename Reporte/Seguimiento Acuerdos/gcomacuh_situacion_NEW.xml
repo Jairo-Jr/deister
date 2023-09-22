@@ -1,0 +1,117 @@
+<!-- TEMPORAL gcomacuh + gcomalbh -->
+<select intotemp='@tmp_group_gcomalbh'>
+    <columns>
+        gcomacuh.cabid cabid_acu,
+        gcomalbh.cabid cabid_alb
+    </columns>
+    <from table='gcomacuh'>
+        <join table='gcomacul'>
+            <on>gcomacuh.cabid = gcomacul.cabid</on>
+            <join table='gcomalbl'>
+                <on>gcomacul.linid = gcomalbl.linacu</on>
+                <join table='gcomalbh'>
+                    <on>gcomalbl.cabid = gcomalbh.cabid</on>
+                </join>
+            </join>
+        </join>
+    </from>
+</select>
+
+        <!-- TEMPORAL gcomalbh + gcomfach -->
+<union intotemp='@tmp_group_gcomfach'>
+<select>
+    <columns>
+        gcomalbh.cabid cabid_alb,
+        gcomfach.cabid cabid_fac
+    </columns>
+    <from table='gcomalbh'>
+        <join table='gcomalbl'>
+            <on>gcomalbh.cabid = gcomalbl.cabid</on>
+            <on>gcomalbl.tabori = 'gcomfach'</on>
+            <join table='gcomfach'>
+                <on>gcomalbh.cabid = gcomfach.cabid</on>
+            </join>
+        </join>
+    </from>
+</select>
+
+<select>
+    <columns>
+        gcomalbh.cabid cabid_alb,
+        gcomfach.cabid cabid_fac
+    </columns>
+    <from table='gcomalbh'>
+        <join table='gcomfacl'>
+            <on>gcomalbh.cabid = gcomfacl.cabori</on>
+            <on>gcomfacl.tabori = 'gcommovh'</on>
+            <join table='gcomfach'>
+                <on>gcomfacl.cabid = gcomfach.cabid</on>
+            </join>
+        </join>
+    </from>
+</select>
+</union>
+
+
+
+
+
+
+        <!-- GRUPO DE ACUERDOS -->
+<select>
+<columns>
+    gcomacuh.empcode,
+    cempresa.empname,
+    gcomacuh.tipdoc,
+    gcomacud.nomdoc,
+    gcomacuh.tercer,
+    ctercero.nombre,
+    gcomacuh.fecacu,
+    gcomacuh.docser,
+
+    gcomalbh.imptot                     <alias name='alb_imptot' />,
+    gcomalbh.divisa                     <alias name='alb_divisa' />,
+    gcomalbh.cambio                     <alias name='alb_cambio' />,
+    ROUND((gcomalbh.imptot * gcomalbh.cambio), 2) <alias name='alb_imploc' />,
+    gcomalbh.tipdoc                     <alias name='alb_tipdoc' />,
+    gcomalbh.docser                     <alias name='alb_docser' />,
+    gcomalbh.fecmov                     <alias name='alb_fecmov' />,
+    gcomalbh.estcab                     <alias name='alb_estcab' />,
+
+    gcomfach.imptot                     <alias name='fac_imptot' />,
+    gcomfach.divisa                     <alias name='fac_divisa' />,
+    gcomfach.cambio                     <alias name='fac_cambio' />,
+    ROUND((gcomfach.imptot * gcomfach.cambio), 2) <alias name='fac_imploc' />,
+    gcomfach.tipdoc                     <alias name='fac_tipdoc' />,
+    gcomfach.docser                     <alias name='fac_docser' />,
+    gcomfach.fecha                      <alias name='fac_fecha' />,
+    gcomfach.estcab                     <alias name='fac_estcab' />
+</columns>
+<from table='gcomacuh'>
+    <join type='left' table='cempresa'>
+        <on>gcomacuh.empcode = cempresa.empcode</on>
+    </join>
+    <join type='left' table='gcomacud'>
+        <on>gcomacuh.tipdoc = gcomacud.codigo</on>
+    </join>
+    <join type='left' table='ctercero'>
+        <on>gcomacuh.tercer = ctercero.codigo</on>
+    </join>
+
+    <join type='left' table='@tmp_group_gcomalbh' alias='group_gcomalbh'>
+        <on>gcomacuh.cabid = group_gcomalbh.cabid_acu</on>
+        <join table='gcomalbh'>
+            <on>group_gcomalbh.cabid_alb = gcomalbh.cabid</on>
+            <join type='left' table='@tmp_group_gcomfach' alias='group_gcomfach'>
+                <on>group_gcomfach.cabid_alb = gcomalbh.cabid</on>
+                <join table='gcomfach'>
+                    <on>group_gcomfach.cabid_fac = gcomfach.cabid</on>
+                </join>
+            </join>
+        </join>
+    </join>
+</from>
+<where>
+    $0
+</where>
+</select>
