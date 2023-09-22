@@ -27,7 +27,14 @@ function crp_carga_planilla_asientos(pIntFileId) {
         mXlsSheet.removeRow(0);
         var mRsSheet = mXlsSheet.toResultSet();
 
+        /**
+         * Insertar registro a la tabla cenllote para obtener el número de lote
+         */
+            // var mIntLoteid = Ax.db.insert('cenllote', {tabname : 'cxls_apuntes_master'}).getSerial();
+            // console.log('Loteid:', mIntLoteid);
 
+            // Se obtiene el número de asiento
+        var mIntAsient = Ax.db.executeFunction("icon_nxt_asient", '125', mHeaders.fecha, 1).toValue();
 
         /**
          * Recorrido de la informacion del archivo
@@ -40,6 +47,7 @@ function crp_carga_planilla_asientos(pIntFileId) {
 
         });
 
+
         Ax.db.commitWork();
     } catch (e) {
         Ax.db.rollbackWork();
@@ -47,3 +55,6 @@ function crp_carga_planilla_asientos(pIntFileId) {
         console.error("Error:", e);
     }
 }
+
+
+crp_carga_planilla_asientos(2);
