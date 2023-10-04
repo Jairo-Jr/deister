@@ -1,0 +1,121 @@
+<!-- ORIGINAL -->
+<select>
+    <columns>
+        periodo campo1,
+        cod_operacion campo2,
+        CASE WHEN cod_operacion != '00000000' THEN 'M' || '.' || <cast type='integer'>auxchr1</cast>
+        ELSE 'A' || '.' || <cast type='integer'>auxchr1</cast>
+        END campo3,
+        cod_establecimiento campo4,
+        cod_catalogo1 campo5,
+        tipo_existencia campo6,
+        cod_existencia1 campo7,
+        cod_catalogo2 campo8,
+        cod_existencia2 campo9,
+        TO_CHAR(fec_emision, '%d/%m/%Y') campo10,
+        CASE WHEN tipo_operacion IN ('01', '02') AND (serie_documento != '0') AND SUBSTR(serie_documento,1,1) != 'B' AND CAST(numero_documento AS INTEGER) != '0' THEN '01'
+        WHEN tipo_operacion IN ('01', '02') AND (serie_documento != '0') AND SUBSTR(serie_documento,1,1) = 'B' THEN '03'
+        WHEN tipo_operacion IN ('01', '02') AND (serie_documento = '0' OR serie_documento = '0000') THEN '09'
+        ELSE '00'
+        END campo11,
+        CASE WHEN serie_documento = '0' THEN '0000'
+        ELSE serie_documento
+        END campo12,
+        numero_documento campo13,
+        tipo_operacion campo14,
+        descrip_existencia campo15,
+        cod_unidad_medida campo16,
+        cod_metodo_valuacion campo17,
+        cant_bien_ingresado campo18,
+        costo_unitario_bi campo19,
+        costo_total_bi campo20,
+        cant_bien_retirado campo21,
+        costo_unitario_br campo22,
+        costo_total_br campo23,
+        cant_saldo_final campo24,
+        costo_unitario_sf campo25,
+        costo_total_sf campo26,
+        estado_operacion campo27,
+        <whitespace /> campo28
+    </columns>
+    <from table='pe_kardex_sunat_ple13' />
+    <where>
+        pe_kardex_sunat_ple13.periodo = '${year + month}00'
+    </where>
+    <order>
+        pe_kardex_sunat_ple13.fec_emision ASC
+    </order>
+</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+        crp_kardex.periodo = '${year + month}00'
+
+
+
+
+
+<!-- EN DESARROLLO -->
+
+        <!-- EN DESARROLLO -->
+<select>
+<columns>
+    periodo campo1,
+    CASE WHEN asien_ch IS NOT NULL THEN  asien_ch || '.' || krdid
+    ELSE  '00000000' || '.' || krdid
+    END campo2,
+    CASE WHEN asien_ch IS NOT NULL THEN 'M'|| asien_ch
+    ELSE 'A' || '00000000' END campo3,
+
+    '0000' campo4,
+    '9' campo5,
+    tipexist campo6,
+    producto campo7,
+    <whitespace /> campo8,
+    NVL(producto_sunat, '0000000000000000') campo9,
+    REPLACE(fecdoc, '-', '/') campo10,
+    CASE WHEN tipo_trx IN ('01', '02') AND (serdoc != '0') AND SUBSTR(serdoc,1,1) != 'B' AND CAST(SUBSTR(nrodoc, -8) AS INTEGER) != 0 THEN '01'
+    WHEN tipo_trx IN ('01', '02') AND (serdoc != '0') AND SUBSTR(serdoc,1,1) = 'B' THEN '03'
+    WHEN tipo_trx IN ('01', '02') AND (serdoc = '0' OR serdoc = '0000' OR serdoc IS NULL) THEN '09'
+    ELSE '00'
+    END campo11,
+    CASE WHEN LEN(serdoc) = 0 OR serdoc IS NULL THEN '0000'
+    ELSE serdoc
+    END campo12,
+    CASE WHEN LEN(nrodoc) = 0 OR nrodoc IS NULL THEN '00000000'
+    ELSE SUBSTR(nrodoc, -8)
+    END campo13,
+    tipo_trx campo14,
+    SUBSTR(des_producto,1,80) campo15,
+    unimed_sunat campo16,
+    '1' campo17,
+    CAST(ROUND(can_ing, 2) AS VARCHAR(25)) campo18,
+    CAST(ROUND(cos_ing, 2) AS VARCHAR(25)) campo19,
+    CAST(ROUND(tot_ing, 2) AS VARCHAR(25)) campo20,
+    CAST(ROUND(can_egr, 2) AS VARCHAR(25)) campo21,
+    CAST(ROUND(cos_egr, 2) AS VARCHAR(25)) campo22,
+    CAST(ROUND(tot_egr, 2) AS VARCHAR(25)) campo23,
+    CAST(ROUND(can_saldo, 2) AS VARCHAR(25)) campo24,
+    CAST(ROUND(cos_saldo, 2) AS VARCHAR(25)) campo25,
+    CAST(ROUND(tot_saldo, 2) AS VARCHAR(25)) campo26,
+    '1' campo27,
+    <whitespace /> campo28
+</columns>
+<from table='crp_kardex' />
+<where>
+    crp_kardex.periodo = '20230600'
+</where>
+<order>
+    crp_kardex.krdid
+</order>
+</select>
