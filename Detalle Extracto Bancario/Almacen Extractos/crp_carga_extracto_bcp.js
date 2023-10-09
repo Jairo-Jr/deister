@@ -1,7 +1,51 @@
+/**
+ *  Copyright (c) 1988-PRESENT deister software, All Rights Reserved.
+ *
+ *  All information contained herein is, and remains the property of deister software.
+ *  The intellectual and technical concepts contained herein are proprietary to
+ *  deister software and may be covered by trade secret or copyright law.
+ *  Dissemination of this information or reproduction of this material is strictly
+ *  forbidden unless prior written permission is obtained from deister software.
+ *  Access to the source code contained herein is hereby forbidden to anyone except
+ *  current deister software employees, managers or contractors who have executed
+ *  Confidentiality and Non-disclosure' agreements explicitly covering such access.
+ *  The notice above does not evidence any actual or intended publication
+ *  for disclosure of this source code, which includes information that is confidential
+ *  and/or proprietary, and is a trade secret, of deister software
+ *
+ *  ANY REPRODUCTION, MODIFICATION, DISTRIBUTION, PUBLIC  PERFORMANCE,
+ *  OR PUBLIC DISPLAY OF OR THROUGH USE  OF THIS  SOURCE CODE  WITHOUT THE
+ *  EXPRESS WRITTEN CONSENT OF COMPANY IS STRICTLY PROHIBITED, AND IN VIOLATION
+ *  OF APPLICABLE LAWS AND INTERNATIONAL TREATIES.THE RECEIPT OR POSSESSION OF
+ *  THIS SOURCE CODE AND/OR RELATED INFORMATION DOES NOT CONVEY OR IMPLY ANY
+ *  RIGHTS TO REPRODUCE, DISCLOSE OR DISTRIBUTE ITS CONTENTS, OR TO MANUFACTURE,
+ *  USE, OR SELL ANYTHING THAT IT MAY DESCRIBE, IN WHOLE OR IN PART.
+ *
+ * -----------------------------------------------------------------------------
+ *
+ *
+ *  JS:  crp_carga_extracto_bcp
+ *
+ *  Version     : v1.3
+ *  Date        : 2023-10-09
+ *  Description : Generación de extractos bancarios para cuentas BCP, a partir
+ *                de la lectura de archivo Excel.
+ *
+ *
+ *
+ *  CALLED FROM:
+ *
+ *      Obj: textract_file        Atravez de la accion 'ACTION_BUTTON_163'
+ *
+ *
+ *  PARAMETERS:
+ *
+ *      @param  {integer}   pIntFileId      Identificador de fichero
+ *
+ */
 function crp_carga_extracto_bcp(pIntFileId) {
 
     function __getValidarCampos(pObjRowSheet) {
-        console.log(pObjRowSheet);
         var mStrMsgError = '';
         if(pObjRowSheet.A == null){
             mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Fecha [Col-A]`;
@@ -41,8 +85,6 @@ function crp_carga_extracto_bcp(pIntFileId) {
     var mIntNumRow = mXlsSheet.getLastRowNum();
     var mRsSheet = mXlsSheet.toResultSet();
 
-    // console.log('Numero de filas', mIntNumRow);
-
     /**
      * Variables
      */
@@ -58,7 +100,42 @@ function crp_carga_extracto_bcp(pIntFileId) {
         'Dólares': 'USD',
         'Soles': 'PEN'
     }
-    console.log(mRsSheet);
+    /**
+     * Equivalencia para conceptos propios
+     */
+    var mObjConcepPropio = {
+        '0101': '00002',
+        '0909': '00003',
+        '2004': '00004',
+        '4406': '00175',
+        '4981': '01549',
+        '4991': '01579',
+        '4921': '00086',
+        '4903': '01210',
+        '1013': '00027',
+        '2001': '03388',
+        '2014': '00205',
+        '2406': '03496',
+        '2605': '00399',
+        '2617': '00295',
+        '2901': '00453',
+        '3001': '00501',
+        '3002': '00502',
+        '4009': '01051',
+        '2401': '01147',
+        '4033': '01403',
+        '4043': '01060',
+        '4401': '00622',
+        '4404': '01134',
+        '4510': '00352',
+        '4708': '00772',
+        '4709': '03447',
+        '4923': '03448',
+        '4983': '00560',
+        '4901': '00333',
+        '4984': '01561'
+    }
+
     /**
      * Numerador de linea
      *  - 1: Numero de cuenta
@@ -68,7 +145,6 @@ function crp_carga_extracto_bcp(pIntFileId) {
      */
     var i = 1;
     mRsSheet.forEach(mRowSheet => {
-        // console.log(mRowSheet);
 
         /**
          * Numero de cuenta
@@ -122,6 +198,12 @@ function crp_carga_extracto_bcp(pIntFileId) {
 
         if (mRowSheet.Row >= 6) {
 
+            /**
+             * Cambio de signo a el monto y saldo
+             */
+            mRowSheet.D = parseFloat(mRowSheet.D) * -1;
+            mRowSheet.E = parseFloat(mRowSheet.E) * -1;
+
             __getValidarCampos(mRowSheet);
             /**
              * Validación de fecha y saldo del extracto
@@ -133,6 +215,15 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}]`;}
                 if(mRowSheet.E != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mRowSheet.E}]`;}
             }
+
+            /**
+             *  Validacion de concepto propio
+             */
+            var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
+            if(mStrConcepPropio == undefined ) {
+                throw `Equivalencia del concepto propio [${mRowSheet.J}] no contemplado.`;
+            }
+
 
             var mObjTextract = {
                 file_seqno: pIntFileId,
@@ -149,7 +240,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 ccc2: mStrNumCuenta.substring(3,6),
                 ctacte: mStrNumCuenta.substring(6),
                 concom: '00',
-                conpro: mRowSheet.J,
+                conpro: mStrConcepPropio,
                 divisa: mStrMoneda
             }
             i++;
