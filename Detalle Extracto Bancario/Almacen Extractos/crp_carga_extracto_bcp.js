@@ -212,7 +212,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
                 var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
 
-                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}]`;}
+                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}]`;}
                 if(mRowSheet.E != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mRowSheet.E}]`;}
             }
 
