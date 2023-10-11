@@ -105,6 +105,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
      */
     var mObjConcepPropio = {
         '0101': '00002',
+        '4405': '00002',
         '0909': '00003',
         '2004': '00004',
         '4406': '00175',
