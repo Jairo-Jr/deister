@@ -1,49 +1,5 @@
-/**
- *  Copyright (c) 1988-PRESENT deister software, All Rights Reserved.
- *
- *  All information contained herein is, and remains the property of deister software.
- *  The intellectual and technical concepts contained herein are proprietary to
- *  deister software and may be covered by trade secret or copyright law.
- *  Dissemination of this information or reproduction of this material is strictly
- *  forbidden unless prior written permission is obtained from deister software.
- *  Access to the source code contained herein is hereby forbidden to anyone except
- *  current deister software employees, managers or contractors who have executed
- *  Confidentiality and Non-disclosure' agreements explicitly covering such access.
- *  The notice above does not evidence any actual or intended publication
- *  for disclosure of this source code, which includes information that is confidential
- *  and/or proprietary, and is a trade secret, of deister software
- *
- *  ANY REPRODUCTION, MODIFICATION, DISTRIBUTION, PUBLIC  PERFORMANCE,
- *  OR PUBLIC DISPLAY OF OR THROUGH USE  OF THIS  SOURCE CODE  WITHOUT THE
- *  EXPRESS WRITTEN CONSENT OF COMPANY IS STRICTLY PROHIBITED, AND IN VIOLATION
- *  OF APPLICABLE LAWS AND INTERNATIONAL TREATIES.THE RECEIPT OR POSSESSION OF
- *  THIS SOURCE CODE AND/OR RELATED INFORMATION DOES NOT CONVEY OR IMPLY ANY
- *  RIGHTS TO REPRODUCE, DISCLOSE OR DISTRIBUTE ITS CONTENTS, OR TO MANUFACTURE,
- *  USE, OR SELL ANYTHING THAT IT MAY DESCRIBE, IN WHOLE OR IN PART.
- *
- * -----------------------------------------------------------------------------
- *
- *
- *  JS:  crp_carga_extracto_bcp
- *
- *  Version     : v1.3
- *  Date        : 2023-10-09
- *  Description : Generación de extractos bancarios para cuentas BCP, a partir
- *                de la lectura de archivo Excel.
- *
- *
- *
- *  CALLED FROM:
- *
- *      Obj: textract_file        Atravez de la accion 'ACTION_BUTTON_163'
- *
- *
- *  PARAMETERS:
- *
- *      @param  {integer}   pIntFileId      Identificador de fichero
- *
- */
-function crp_carga_extracto_bcp(pIntFileId) {
+
+function crp_carga_extracto_bnacion(pIntFileId) {
 
     function __getValidarCampos(pObjRowSheet) {
         var mStrMsgError = '';
@@ -59,6 +15,22 @@ function crp_carga_extracto_bcp(pIntFileId) {
         if(pObjRowSheet.J == null){
             mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo UTC [Col-J]`;
         }
+    }
+
+    function __validaConceptoPropio(pStrConcepProp, pStrCodBanc) {
+        var mStrConcepProp = Ax.db.executeGet(`
+            <select>
+                <columns>
+                    codpro
+                </columns>
+                <from table='tconprop'/>
+                <where>
+                    tconprop.codban = ?
+                    AND  tconprop.codpro = ?
+                </where>
+            </select>
+        `, pStrCodBanc, pStrConcepProp);
+        return (mStrConcepProp != null) ? true : false;
     }
 
     /**
@@ -221,15 +193,16 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
 
                 if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+                // if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
             }
 
             /**
              *  Validacion de concepto propio
              */
             var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
-            if(mStrConcepPropio == undefined ) {
-                throw `Equivalencia del concepto propio [${mRowSheet.J}] no contemplado.`;
+            var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan);
+            if(!mBoolConcepValido) {
+                throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
             }
 
 
@@ -248,7 +221,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 ccc2: mStrNumCuenta.substring(3,6),
                 ctacte: mStrNumCuenta.substring(6),
                 concom: '00',
-                conpro: mStrConcepPropio,
+                conpro: mRowSheet.J,
                 divisa: mStrMoneda
             }
             i++;
@@ -262,7 +235,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
             /**
              * Registro del extracto bancario
              */
-            Ax.db.insert("textract", mObjTextract);
+            // Ax.db.insert("textract", mObjTextract);
         }
 
     })
@@ -270,28 +243,30 @@ function crp_carga_extracto_bcp(pIntFileId) {
     /**
      * Se actualiza el estado del almacen de fichero (textract_file)
      */
-    Ax.db.update("textract_file",
-        {
-            file_estado : 1
-        },
-        {
-            file_seqno : pIntFileId
-        }
-    );
+    // Ax.db.update("textract_file",
+    //     {
+    //         file_estado : 1
+    //     },
+    //     {
+    //         file_seqno : pIntFileId
+    //     }
+    // );
 
     /**
      * Se actualiza el saldo y fecha de la cuenta financiera (cbancpro)
      */
-    Ax.db.update("cbancpro",
-        {
-            salext : mFloatSaldoExt,
-            fecext : mDateFecExtracto
-        },
-        {
-            bban: mStrNumCuenta,
-            moneda: mStrMoneda,
-            estado: 'A',
-            tipcta: 1
-        }
-    );
+    // Ax.db.update("cbancpro",
+    //     {
+    //         salext : mFloatSaldoExt,
+    //         fecext : mDateFecExtracto
+    //     },
+    //     {
+    //         bban: mStrNumCuenta,
+    //         moneda: mStrMoneda,
+    //         estado: 'A',
+    //         tipcta: 1
+    //     }
+    // );
 }
+
+crp_carga_extracto_bnacion(53);

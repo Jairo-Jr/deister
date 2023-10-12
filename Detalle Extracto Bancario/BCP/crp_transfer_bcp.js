@@ -23,275 +23,335 @@
  *
  * -----------------------------------------------------------------------------
  *
- *
- *  JS:  crp_carga_extracto_bcp
- *
- *  Version     : v1.3
- *  Date        : 2023-10-09
- *  Description : Generación de extractos bancarios para cuentas BCP, a partir
- *                de la lectura de archivo Excel.
- *
- *
+ *  JS:  crp_transfer_bcp
+ *  Version     : v1.11
+ *  Date        : 05-10-2023
+ *  Description : Genera un archivo txt de transferencias prov. para BCP
  *
  *  CALLED FROM:
- *
- *      Obj: textract_file        Atravez de la accion 'ACTION_BUTTON_163'
- *
+ *  ==================
+ *      Obj: crp_transfer_bcp_pen              A través de la acción 'ACTION_SOPORTE_ELEC' de cremesas
  *
  *  PARAMETERS:
+ *  ==================
  *
- *      @param  {integer}   pIntFileId      Identificador de fichero
+ *                @param    {integer}    pIntNumRemesa        Numero de la remesa
  *
- */
-function crp_carga_extracto_bcp(pIntFileId) {
+ **/
+function crp_transfer_bcp(pIntNumRemesa, pStrDivisa) {
 
-    function __getValidarCampos(pObjRowSheet) {
-        var mStrMsgError = '';
-        if(pObjRowSheet.A == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Fecha [Col-A]`;
-        }
-        if(pObjRowSheet.D == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Monto [Col-D]`;
-        }
-        if(pObjRowSheet.E == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Saldo [Col-E]`;
-        }
-        if(pObjRowSheet.J == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo UTC [Col-J]`;
-        }
+    /**
+     * LOCAL FUNCTION: __getNumCuentaCtrl
+     *
+     * Description: Funcion para dar formato al numero de cuenta necesario para checksum
+     *
+     * PARAMETERS:
+     *      @param  {string}       pStrNumCuenta           Numero de cuenta bancaria
+     */
+    function __getNumCuentaCtrl(pStrNumCuenta) {
+        var mStrCuenta = pStrNumCuenta.trim().substring(3);
+
+        return parseInt(mStrCuenta);
     }
 
     /**
-     * Captura del archivo Excel
+     * VARIABLES DE ENTRADA
      */
-    let mObjBlobData = Ax.db.executeGet(`
+    var mIntNumrem = pIntNumRemesa;
+    var mStrDivisa = pStrDivisa;
+    var mStrMessageError = '';
+    var mIntNumCtrlchecksum = 0;
+
+    //==========================================================================
+    // Datos necesarios del detalle de la trama de BCP
+    // tipo_cuenta (segun cterbanc.tipcta)
+    //      1 -> C Cuenta corriente
+    //      2 -> A Cuenta ahorro
+    //      3 -> M Maestra
+    //      4 -> M Maestra
+    // moneda_abono (del documento a liquidar):
+    //      PEN -> 0001 Soles
+    //      USD -> 1000 Dolares
+    // flag_idc
+    //      N = No desea validar IDC vs Cuenta
+    //      S = Si desea validar IDC vs Cuenta
+    // moneda_abono (de la cuenta bancaria de la empresa):
+    //      PEN -> 0001 Soles
+    //      USD -> 1000 Dolares
+    // tipo_cuenta (corriente o maestra segun cbancpro.agrcta):
+    //      CC -> C Cuenta corriente
+    //      ?? -> M Maestra
+    // flag_itf (exoneracion ITF):
+    //      N = Cuando la cuenta de abono NO pertenece al mismo titular de la cuenta origen Pagos
+    //      S = Cuando la cuenta de abono SI pertenece al mismo titular de la cuenta origen Traspasos
+    //
+    //==========================================================================
+    var mStrDetails = '';
+    var mArrayDetalles = Ax.db.executeQuery(`
         <select>
             <columns>
-                file_data
+                cefecges_det.det_agrupa                                             <alias name = 'det_agrupa' />,
+                '2'                                                                 <alias name = 'tipo_registro' />,
+                ''                                                                  <alias name = 'tipo_cuenta' />,
+                ''                                                                  <alias name = 'nmr_cuenta_abono'/>,
+                '1'                                                                 <alias name = 'modo_pago'/>,
+                MAX(CASE WHEN ctercero.ciftyp = 1 THEN '1'
+                        WHEN ctercero.ciftyp = 4 THEN '3'
+                        WHEN ctercero.ciftyp = 6 THEN '6'
+                        WHEN ctercero.ciftyp = 7 THEN '4'
+                        ELSE '--'
+                END)                                                                <alias name = 'tipo_documento'/>,
+                MAX(RPAD(TRIM(ctercero.cif), 12,' '))                               <alias name = 'num_documento' />,
+                '   '                                                               <alias name = 'correlativo_doc' />,
+                MAX(RPAD(TRIM(ctercero.nombre), 75,' '))                            <alias name = 'nombre_proveedor' />,
+                MAX(RPAD(TRIM(cefectos.docser), 40,' '))                            <alias name = 'referencia_proveedor' />,
+                MAX(RPAD(TRIM(NVL(cefectos.refban, cefectos.docser)), 20, ' '))     <alias name = 'referencia_empresa' />,
+                MAX(CASE WHEN cefectos.moneda = 'PEN' THEN '0001'
+                        WHEN cefectos.moneda = 'USD' THEN '1001'
+                        ELSE '--'
+                END)                                                                <alias name = 'moneda_abono' />,
+                ABS(SUM(cefecges_det.det_impdiv))                                        <alias name = 'importe_abono' />,
+                'S'                                                                 <alias name = 'flag_idc' />,
+                MAX(ctercero.codigo)                                                <alias name = 'tercero' />
             </columns>
-            <from table='textract_file'/>
+            <from table = 'cefecges_pcs'>
+                <join table = 'cefecges_det'>
+                    <on>cefecges_pcs.pcs_seqno = cefecges_det.pcs_seqno</on>
+                    <join table = 'cefectos'>
+                        <on>cefecges_det.det_numero = cefectos.numero</on>
+                        <join table = 'ctercero'>
+                            <on>cefectos.codper = ctercero.codigo</on>
+                        </join>
+                    </join>
+                </join>
+            </from>
             <where>
-                file_seqno = ?
+                cefecges_pcs.pcs_numrem = ?
+            </where>
+            <group>
+                1
+            </group>
+            <order>
+                6
+            </order>
+        </select>
+    `, mIntNumrem).toJSONArray();
+
+    var mObjCodMoneda = {
+        'PEN': '0001',
+        'USD': '1001'
+    };
+
+    mArrayDetalles.forEach(mObjDetalle => {
+
+        var mObjDataTerbanc = Ax.db.executeQuery(`
+            <select first='1'>
+                <columns>
+                    CASE WHEN cterbanc.tipcta = 1 THEN 'C'
+                         WHEN cterbanc.tipcta = 2 THEN 'A'
+                         WHEN cterbanc.tipcta = 3 THEN 'M'
+                         WHEN cterbanc.tipcta = 4 THEN 'M'
+                         ELSE '--'
+                    END                                     <alias name = 'tipo_cuenta' />,
+                    RPAD(TRIM(cterbanc.iban), 20,' ')       <alias name = 'nmr_cuenta_abono'/>
+                </columns>
+                <from table = 'ctercero'>
+                    <join type = 'left' table = 'cterbanc'>
+                        <on>ctercero.codigo = cterbanc.codigo</on>
+                    </join>
+                </from>
+                <where>
+                    cterbanc.tipcta IN (1,2,3,4)
+                    -- AND CHAR_LENGTH(cterbanc.iban) >=13
+                    AND ctercero.codigo = ?
+                </where>
+                <order>
+                    cterbanc.priori DESC
+                </order>
+            </select>
+        `, mObjDetalle.tercero).toOne();
+
+        /**
+         * Asocia datos bancarios del tercero
+         */
+        mObjDetalle.tipo_cuenta = mObjDataTerbanc.tipo_cuenta;
+        mObjDetalle.nmr_cuenta_abono = mObjDataTerbanc.nmr_cuenta_abono;
+
+        /**
+         * Validacion de datos necesarios
+         */
+        if (!mObjDetalle.tipo_cuenta || mObjDetalle.tipo_cuenta == '--'){
+            mStrMessageError += `Tipo de cuenta de proveedor [${mObjDetalle.tercero}] incorrecto para pagos.\n`;
+        }
+        if (!mObjDetalle.tipo_documento || mObjDetalle.tipo_documento == '--'){
+            mStrMessageError += `Tipo de Id. fiscal del proveedor ${mObjDetalle.tercero} no contemplado.\n`;
+        }
+        if (!mObjDetalle.moneda_abono || mObjDetalle.moneda_abono != mObjCodMoneda[mStrDivisa]){
+            mStrMessageError += `La moneda del efecto [${mObjDetalle.referencia_proveedor}] es diferente de [${mStrDivisa}].\n`;
+        }
+
+        // mStrDetails += __getEstructuraDetalle(mObjDataTerbanc, mObjDetalle.impdiv);
+
+    });
+
+    /**
+     * Finaliza si algún dato necesario no está informado
+     */
+    if(mStrMessageError != '') {
+        throw new Error(mStrMessageError);
+    }
+
+    var NumberFormatUs = new Ax.text.NumberFormat("us");
+
+    mArrayDetalles.forEach(mObjDetalle => {
+
+        var mIntPos                  = mObjDetalle.referencia_proveedor.indexOf("-");
+        var mStrSerie                = mObjDetalle.referencia_proveedor.substring(0, mIntPos);
+        var mStrCorrelativo          = mObjDetalle.referencia_proveedor.substring(mIntPos+1, mObjDetalle.referencia_proveedor.length);
+        var mStrCorrelativoFormato   = NumberFormatUs.format(mStrCorrelativo, "00000000");
+        mObjDetalle.referencia_proveedor = mStrSerie + mStrCorrelativoFormato;
+
+        mIntPos                  = mObjDetalle.referencia_empresa.indexOf("-");
+        mStrSerie                = mObjDetalle.referencia_empresa.substring(0, mIntPos);
+        mStrCorrelativo          = mObjDetalle.referencia_empresa.substring(mIntPos+1, mObjDetalle.referencia_empresa.length);
+        mStrCorrelativoFormato   = NumberFormatUs.format(mStrCorrelativo, "00000000");
+        mObjDetalle.referencia_empresa = mStrSerie + mStrCorrelativoFormato;
+
+
+        var mStrImporteAbonarFormato = NumberFormatUs.format(mObjDetalle.importe_abono, "00000000000000.00");
+        mObjDetalle.importe_abono = mStrImporteAbonarFormato;
+
+        var mStrRowDetalle = new Ax.text.Line(196)
+            .add(0,   mObjDetalle.tipo_registro)
+            .add(1,   mObjDetalle.tipo_cuenta)
+            .add(2,   mObjDetalle.nmr_cuenta_abono)
+            .add(22,  mObjDetalle.modo_pago)
+            .add(23,  mObjDetalle.tipo_documento)
+            .add(24,  mObjDetalle.num_documento)
+            .add(36,  mObjDetalle.correlativo_doc)
+            .add(39,  mObjDetalle.nombre_proveedor)
+            .add(114, mObjDetalle.referencia_proveedor)
+            .add(154, mObjDetalle.referencia_empresa)
+            .add(174, mObjDetalle.moneda_abono)
+            .add(178, mObjDetalle.importe_abono)
+            .add(195, mObjDetalle.flag_idc)
+            .toString();
+        mStrDetails += '\n' + mStrRowDetalle;
+
+        mIntNumCtrlchecksum += __getNumCuentaCtrl(mObjDetalle.nmr_cuenta_abono);
+    });
+
+
+    /**
+     *
+     * CONSTRUCCION DEL ENCABEZADO
+     *
+     */
+    var mIntNumRegistros = mArrayDetalles.length;
+    const mObjHeader = Ax.db.executeQuery(`
+        <select>
+            <columns>
+                '1'                                             <alias name = 'tipo_registro' />,
+                LPAD('${mIntNumRegistros}', 6,'0')              <alias name = 'cantidad_planilla'/>,
+                TO_CHAR(cremesas.fecrem, '%Y%m%d')              <alias name = 'fecha_proceso'/>,
+                CASE WHEN cbancpro.agrcta = 'CC' THEN 'C'
+                     ELSE 'M'
+                END                                             <alias name = 'tipo_cuenta'/>,
+                CASE WHEN cbancpro.moneda = 'PEN' THEN '0001'
+                     WHEN cbancpro.moneda = 'USD' THEN '1001'
+                     ELSE '--'
+                END                                             <alias name = 'moneda_cargo' />,
+                RPAD(TRIM(cbancpro.bban), 20,' ')               <alias name = 'nmr_cuenta_cargo'/>,
+                ABS(cremesas.imptot)                            <alias name = 'monto_planilla'/>,
+                RPAD(TRIM(cremesas.jusser), 40, ' ')            <alias name = 'referencia_planilla'/>,
+                'N'                                             <alias name = 'flag_itf' />,
+                ''                                              <alias name = 'checksum' />,
+                cremesas.ctafin                                 <alias name = 'cta_financiera' />,
+                cremesas.jusser                                 <alias name = 'rem_docser' />
+            </columns>
+            <from table='cremesas'>
+                <join table='cbancpro'>
+                    <on>cremesas.ctafin = cbancpro.ctafin</on>
+                </join>
+            </from>
+            <where>
+                cremesas.numrem  = ?
             </where>
         </select>
-    `, pIntFileId);
+    `, mIntNumrem).toOne();
+
+    mIntNumCtrlchecksum += __getNumCuentaCtrl(mObjHeader.nmr_cuenta_cargo);
 
     /**
-     * Transformacion de la data del archivo en resultset
+     * Validacion de datos necesarios
      */
-    var wb = Ax.ms.Excel.load(mObjBlobData);
-    var mXlsSheet = wb.getSheet(0);
-    mXlsSheet.packRows();
-    var mIntNumRow = mXlsSheet.getLastRowNum();
-    var mRsSheet = mXlsSheet.toResultSet();
-
-    /**
-     * Variables
-     */
-    var mStrNumCuenta = '';
-    var mStrCodCtaFin = '';
-    var mStrCodBan = '';
-    var mStrMoneda = '';
-    var mStrTipoCuenta = '';
-    var mDateFecExtracto = '';
-    var mFloatImporteExt = 0;
-    var mFloatSaldoExt = 0;
-    var mObjDivisa = {
-        'Dólares': 'USD',
-        'Soles': 'PEN'
+    if (!mObjHeader.moneda_cargo || mObjHeader.moneda_cargo != mObjCodMoneda[mStrDivisa]){
+        mStrMessageError += `La moneda de la cuenta financiera [${mObjHeader.cta_financiera}] para la remesa [${mObjHeader.rem_docser}] es diferente de [${mStrDivisa}].\n`;
     }
-    /**
-     * Equivalencia para conceptos propios
-     */
-    var mObjConcepPropio = {
-        '0101': '00002',
-        '4405': '00002',
-        '0909': '00003',
-        '2004': '00004',
-        '4406': '00175',
-        '4981': '01549',
-        '4991': '01579',
-        '4921': '00086',
-        '4903': '01210',
-        '1013': '00027',
-        '2001': '03388',
-        '2014': '00205',
-        '2406': '03496',
-        '2605': '00399',
-        '2617': '00295',
-        '2901': '00453',
-        '3001': '00501',
-        '3002': '00502',
-        '4009': '01051',
-        '2401': '01147',
-        '4033': '01403',
-        '4043': '01060',
-        '4401': '00622',
-        '4404': '01134',
-        '4510': '00352',
-        '4708': '00772',
-        '4709': '03447',
-        '4923': '03448',
-        '4983': '00560',
-        '4901': '00333',
-        '4984': '01561'
+    if (!mObjHeader.nmr_cuenta_cargo || mObjHeader.nmr_cuenta_cargo.trim() == ''){
+        mStrMessageError += `Cta. Bancaria no valida/inexistente para la cuenta financiera [${mObjHeader.cta_financiera}] de la remesa [${mObjHeader.rem_docser}].\n`;
     }
 
     /**
-     * Numerador de linea
-     *  - 1: Numero de cuenta
-     *  - 2: Divisa
-     *  - 3: Tipo de cuenta
-     *  - 6: Informacion para el extracto
+     * Finaliza si algún dato necesario no está informado
      */
-    var i = 1;
-    mRsSheet.forEach(mRowSheet => {
+    if(mStrMessageError != '') {
+        throw new Error(mStrMessageError);
+    }
 
-        /**
-         * Numero de cuenta
-         */
-        if (mRowSheet.Row == 1){
-            mStrNumCuenta = mRowSheet.B.replaceAll('-', '').split(' ')[0];
+    var mStrImporteTotalFormato   = NumberFormatUs.format(mObjHeader.monto_planilla, "00000000000000.00");
+    mObjHeader.monto_planilla = mStrImporteTotalFormato;
 
-        }
+    mObjHeader.checksum = NumberFormatUs.format(mIntNumCtrlchecksum, "000000000000000");
 
-        /**
-         * Tipo de la divisa
-         *  - Soles
-         *  - Dólares
-         */
-        if (mRowSheet.Row == 2){
-            mStrMoneda = mObjDivisa[mRowSheet.B];
+    var mStrHeader = new Ax.text.Line(113)
+        .add(0,   mObjHeader.tipo_registro)
+        .add(1,   mObjHeader.cantidad_planilla)
+        .add(7,  mObjHeader.fecha_proceso)
+        .add(15,  mObjHeader.tipo_cuenta)
+        .add(16,  mObjHeader.moneda_cargo)
+        .add(20,  mObjHeader.nmr_cuenta_cargo)
+        .add(40,  mObjHeader.monto_planilla)
+        .add(57,  mObjHeader.referencia_planilla)
+        .add(97,  mObjHeader.flag_itf)
+        .add(98,  mObjHeader.checksum)
+        .toString();
 
-            if(mStrMoneda == undefined ) {
-                throw `Tipo de moneda no contemplado, solo [Soles - Dólares]`;
-            }
-
-            var mArrayCbankPro = Ax.db.executeQuery(`
-                <select>
-                    <columns>
-                        ctafin, codban, salext, fecext
-                    </columns>
-                    <from table='cbancpro'/>
-                    <where>
-                        bban = ?
-                        AND moneda = ?
-                        AND estado = 'A'
-                        AND tipcta = 1
-                    </where>
-                </select>
-            `, mStrNumCuenta, mStrMoneda).toJSONArray();
-
-            if(mArrayCbankPro.length == 0) {
-                throw `No existe una cuenta financiera con BBAN [${mStrNumCuenta}] y Moneda [${mStrMoneda}], en Estado [Abierta] y Tipo [Cuenta corriente]`;
-            } else if(mArrayCbankPro.length > 1) {
-                throw `Existe más de una cuenta financiera con BBAN [${mStrNumCuenta}] y Moneda [${mStrMoneda}], en Estado [Abierta] y Tipo [Cuenta corriente]`;
-            } else {
-                mStrCodCtaFin    = mArrayCbankPro[0].ctafin;
-                mStrCodBan       = mArrayCbankPro[0].codban;
-                mFloatImporteExt = mArrayCbankPro[0].salext;
-                mDateFecExtracto = mArrayCbankPro[0].fecext;
-            }
-        }
-        if (mRowSheet.Row == 3){
-            mStrTipoCuenta = mRowSheet.B;
-        }
-
-        if (mRowSheet.Row >= 6) {
-
-            /**
-             * Cambio de signo a el monto y saldo
-             */
-            mRowSheet.D = parseFloat(mRowSheet.D) * -1;
-            mRowSheet.E = parseFloat(mRowSheet.E) * -1;
-
-            __getValidarCampos(mRowSheet);
-            /**
-             * Validación de fecha y saldo del extracto
-             */
-            if(i == 1) {
-                /**
-                 * Calculo del saldo para la cuenta financiera
-                 */
-                var mFloatSaldoCtaFin = parseFloat(mRowSheet.D) + parseFloat(mRowSheet.E);
-                mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
-
-                var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
-                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
-
-                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-            }
-
-            /**
-             *  Validacion de concepto propio
-             */
-            var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
-            if(mStrConcepPropio == undefined ) {
-                throw `Equivalencia del concepto propio [${mRowSheet.J}] no contemplado.`;
-            }
-
-
-            var mObjTextract = {
-                file_seqno: pIntFileId,
-                fecope: mRowSheet.A,
-                fecval: mRowSheet.B == null ? mRowSheet.A : mRowSheet.B,
-                refer1: mRowSheet.C,//
-                import: mRowSheet.D,
-                refer2: mRowSheet.F,//
-                docume: mRowSheet.G,//
-                ctafin: mStrCodCtaFin,
-                empcode: '125',
-                codban: mStrCodBan,
-                ccc1: mStrNumCuenta.substring(0,3),
-                ccc2: mStrNumCuenta.substring(3,6),
-                ctacte: mStrNumCuenta.substring(6),
-                concom: '00',
-                conpro: mStrConcepPropio,
-                divisa: mStrMoneda
-            }
-            i++;
-
-            /**
-             * Captura del ultimo registro para Fecha y Saldo del extracto
-             */
-            mFloatSaldoExt   = mRowSheet.E;
-            mDateFecExtracto = mRowSheet.A;
-
-            /**
-             * Registro del extracto bancario
-             */
-            Ax.db.insert("textract", mObjTextract);
-        }
-
-    })
+    var mStrBodyTxt = mStrHeader + mStrDetails;
 
     /**
-     * Se actualiza el estado del almacen de fichero (textract_file)
+     * Creacion del archivo txt
      */
-    Ax.db.update("textract_file",
-        {
-            file_estado : 1
-        },
-        {
-            file_seqno : pIntFileId
-        }
-    );
+    var mFileTxtTramaBCP = new Ax.sql.Blob(`transferBCP${pStrDivisa}.txt`);
+    mFileTxtTramaBCP.setContentType("text/plain");
+    mFileTxtTramaBCP.setContent(mStrBodyTxt);
 
     /**
-     * Se actualiza el saldo y fecha de la cuenta financiera (cbancpro)
+     * Variables con informacion para la respuesta
      */
-    Ax.db.update("cbancpro",
-        {
-            salext : mFloatSaldoExt,
-            fecext : mDateFecExtracto
-        },
-        {
-            bban: mStrNumCuenta,
-            moneda: mStrMoneda,
-            estado: 'A',
-            tipcta: 1
-        }
-    );
+    var mFileProc     = `crp_transfer_bcp_${pStrDivisa.toLowerCase()}`;
+    var mFileName     = `transferBCP${pStrDivisa}.txt`;
+    var mFileMemo     = `Transferencia BCP ${pStrDivisa}`;
+    var mStrFileArgs  = `Numero de remesa: ${mIntNumrem}`;
+    var mHashMD5      = new Ax.crypt.Digest("MD5");
+    var mStrHashTrama = mHashMD5.update(mFileTxtTramaBCP).digest();
+
+    Ax.db.execute(`DELETE FROM csopmagn WHERE file_md5 = ?`, mStrHashTrama);
+
+    var mObjInsertCsopmagn = {
+        file_proc    : mFileProc,
+        file_name    : mFileName,
+        file_memo    : mFileMemo,
+        file_args    : mStrFileArgs,
+        file_type    : 'text/plain',
+        file_size    : mFileTxtTramaBCP.length(),
+        file_md5     : mStrHashTrama,
+        file_data    : mFileTxtTramaBCP,
+        user_created : Ax.db.getUser(),
+        date_created : new Ax.util.Date(),
+    };
+
+    var mIntSeqno = Ax.db.insert('csopmagn', mObjInsertCsopmagn).getSerial();
+
+    return Ax.db.executeQuery(`SELECT * FROM csopmagn WHERE file_seqno = ?`, mIntSeqno);
 }
