@@ -105,6 +105,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
      */
     var mObjConcepPropio = {
         '0101': '00002',
+        '4405': '00002',
         '0909': '00003',
         '2004': '00004',
         '4406': '00175',
@@ -133,8 +134,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
         '4923': '03448',
         '4983': '00560',
         '4901': '00333',
-        '4984': '01561',
-        '4405': '00002'
+        '4984': '01561'
     }
 
     /**
@@ -210,11 +210,18 @@ function crp_carga_extracto_bcp(pIntFileId) {
              * Validación de fecha y saldo del extracto
              */
             if(i == 1) {
+                /**
+                 * Calculo del saldo para la cuenta financiera
+                 */
+                var mFloatSaldoCtaFin = parseFloat(mRowSheet.D) + parseFloat(mRowSheet.E);
+                mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
+
                 var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
+                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
                 var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
 
-                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}]`;}
-                if(mRowSheet.E != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mRowSheet.E}]`;}
+                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+                if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
             }
 
             /**

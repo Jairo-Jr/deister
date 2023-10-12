@@ -158,14 +158,20 @@ function crp_carga_extracto_interbank(pIntFileId) {
                 }
 
                 /**
+                 * Calculo del saldo para la cuenta financiera
+                 */
+                var mFloatSaldoCtaFin = parseFloat(mFloatMonto) + parseFloat(mFloatSaldo);
+                mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
+
+                /**
                  * Validación de fecha y saldo del extracto
                  */
                 var mDateFechaInicio = new Ax.util.Date(mStrFecOpe);
-                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}]`;}
+                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
                 var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
 
-                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}]`;}
-                if(mFloatSaldo != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mFloatSaldo}]`;}
+                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+                if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
 
             }
 
