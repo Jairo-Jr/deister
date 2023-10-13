@@ -61,6 +61,22 @@ function crp_carga_extracto_bcp(pIntFileId) {
         }
     }
 
+    function __validaConceptoPropio(pStrConcepProp, pStrCodBanc) {
+        var mStrConcepProp = Ax.db.executeGet(`
+            <select>
+                <columns>
+                    codpro
+                </columns>
+                <from table='tconprop'/>
+                <where>
+                    tconprop.codban = ?
+                    AND  tconprop.codpro = ?
+                </where>
+            </select>
+        `, pStrCodBanc, pStrConcepProp);
+        return (mStrConcepProp != null) ? true : false;
+    }
+
     /**
      * Captura del archivo Excel
      */
@@ -206,30 +222,15 @@ function crp_carga_extracto_bcp(pIntFileId) {
             mRowSheet.E = parseFloat(mRowSheet.E) * -1;
 
             __getValidarCampos(mRowSheet);
-            /**
-             * Validación de fecha y saldo del extracto
-             */
-            if(i == 1) {
-                /**
-                 * Calculo del saldo para la cuenta financiera
-                 */
-                var mFloatSaldoCtaFin = parseFloat(mRowSheet.D) + parseFloat(mRowSheet.E);
-                mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
 
-                var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
-                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
-
-                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-            }
 
             /**
              *  Validacion de concepto propio
              */
             var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
-            if(mStrConcepPropio == undefined ) {
-                throw `Equivalencia del concepto propio [${mRowSheet.J}] no contemplado.`;
+            var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan);
+            if(!mBoolConcepValido) {
+                throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
             }
 
 
@@ -248,10 +249,28 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 ccc2: mStrNumCuenta.substring(3,6),
                 ctacte: mStrNumCuenta.substring(6),
                 concom: '00',
-                conpro: mStrConcepPropio,
+                conpro: mRowSheet.J,
                 divisa: mStrMoneda
             }
             i++;
+
+            if (mRowSheet.Row == mIntNumRow + 1) {
+                /**
+                 * Validación de fecha y saldo del extracto
+                 */
+                /**
+                 * Calculo del saldo para la cuenta financiera
+                 */
+                var mFloatSaldoCtaFin = parseFloat(mRowSheet.E) - parseFloat(mRowSheet.D);
+                mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
+
+                var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
+                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+                var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
+
+                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+                if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+            }
 
             /**
              * Captura del ultimo registro para Fecha y Saldo del extracto
