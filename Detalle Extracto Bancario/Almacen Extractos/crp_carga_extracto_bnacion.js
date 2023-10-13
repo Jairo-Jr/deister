@@ -53,9 +53,13 @@ function crp_carga_extracto_bnacion(pIntFileId) {
      */
     var wb = Ax.ms.Excel.load(mObjBlobData);
     var mXlsSheet = wb.getSheet(0);
-    mXlsSheet.packRows();
+    let row = mXlsSheet.getRow(4);
+    // console.log(row);
+    // mXlsSheet.packRows();
     var mIntNumRow = mXlsSheet.getLastRowNum();
     var mRsSheet = mXlsSheet.toResultSet();
+    // console.log(mRsSheet);
+
 
     /**
      * Variables
@@ -68,6 +72,7 @@ function crp_carga_extracto_bnacion(pIntFileId) {
     var mDateFecExtracto = '';
     var mFloatImporteExt = 0;
     var mFloatSaldoExt = 0;
+    var mFloatSaldoCtaFin = 0;
     var mObjDivisa = {
         'Dólares': 'USD',
         'Soles': 'PEN'
@@ -118,22 +123,41 @@ function crp_carga_extracto_bnacion(pIntFileId) {
      */
     var i = 1;
     mRsSheet.forEach(mRowSheet => {
+        // console.log(mRowSheet.A, mRowSheet.B, mRowSheet.C, mRowSheet.D, mRowSheet.E, mRowSheet.F, mRowSheet.G, mRowSheet.H);
 
         /**
          * Numero de cuenta
          */
-        if (mRowSheet.Row == 1){
-            mStrNumCuenta = mRowSheet.B.replaceAll('-', '').split(' ')[0];
-
+        if (mRowSheet.Row == 2){
+            // mStrNumCuenta = mRowSheet.D.replaceAll('-', '').split(' ')[0];
+            var mArrayRow2 = mRowSheet.D.trim().split(' ');
+            mStrNumCuenta = mArrayRow2[mArrayRow2.length - 1].replaceAll('-', '');
+            console.log('Cta:', mStrNumCuenta);
         }
 
         /**
          * Tipo de la divisa
          *  - Soles
          *  - Dólares
+         *
+         * Saldo
          */
-        if (mRowSheet.Row == 2){
-            mStrMoneda = mObjDivisa[mRowSheet.B];
+        if (mRowSheet.Row == 3){
+
+            /**
+             * Saldo extracto de la Cta. Financiera
+             */
+            mFloatSaldoCtaFin = mRowSheet.H;
+
+            /**
+             * Moneda de la Cta. Financiera
+             */
+            var mArrayRow3 = mRowSheet.D.trim().split(' ');
+            mStrMoneda = mArrayRow3[mArrayRow3.length - 1];
+            mStrMoneda = mObjDivisa[mStrMoneda];
+
+            console.log('Moneda:', mStrMoneda);
+            console.log('Saldo:', mFloatSaldoCtaFin);
 
             if(mStrMoneda == undefined ) {
                 throw `Tipo de moneda no contemplado, solo [Soles - Dólares]`;
@@ -154,6 +178,8 @@ function crp_carga_extracto_bnacion(pIntFileId) {
                 </select>
             `, mStrNumCuenta, mStrMoneda).toJSONArray();
 
+            console.log(mArrayCbankPro);
+
             if(mArrayCbankPro.length == 0) {
                 throw `No existe una cuenta financiera con BBAN [${mStrNumCuenta}] y Moneda [${mStrMoneda}], en Estado [Abierta] y Tipo [Cuenta corriente]`;
             } else if(mArrayCbankPro.length > 1) {
@@ -165,78 +191,78 @@ function crp_carga_extracto_bnacion(pIntFileId) {
                 mDateFecExtracto = mArrayCbankPro[0].fecext;
             }
         }
-        if (mRowSheet.Row == 3){
-            mStrTipoCuenta = mRowSheet.B;
-        }
+        //     if (mRowSheet.Row == 3){
+        //         mStrTipoCuenta = mRowSheet.B;
+        //     }
 
-        if (mRowSheet.Row >= 6) {
+        //     if (mRowSheet.Row >= 6) {
 
-            /**
-             * Cambio de signo a el monto y saldo
-             */
-            mRowSheet.D = parseFloat(mRowSheet.D) * -1;
-            mRowSheet.E = parseFloat(mRowSheet.E) * -1;
+        //         /**
+        //          * Cambio de signo a el monto y saldo
+        //          */
+        //         mRowSheet.D = parseFloat(mRowSheet.D) * -1;
+        //         mRowSheet.E = parseFloat(mRowSheet.E) * -1;
 
-            __getValidarCampos(mRowSheet);
-            /**
-             * Validación de fecha y saldo del extracto
-             */
-            if(i == 1) {
-                /**
-                 * Calculo del saldo para la cuenta financiera
-                 */
-                var mFloatSaldoCtaFin = parseFloat(mRowSheet.D) + parseFloat(mRowSheet.E);
-                mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
+        //         __getValidarCampos(mRowSheet);
+        //         /**
+        //          * Validación de fecha y saldo del extracto
+        //          */
+        //         if(i == 1) {
+        //             /**
+        //              * Calculo del saldo para la cuenta financiera
+        //              */
+        //             var mFloatSaldoCtaFin = parseFloat(mRowSheet.D) + parseFloat(mRowSheet.E);
+        //             mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
 
-                var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
-                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
+        //             var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
+        //             if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+        //             var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
 
-                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                // if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-            }
+        //             if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+        //             // if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+        //         }
 
-            /**
-             *  Validacion de concepto propio
-             */
-            var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
-            var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan);
-            if(!mBoolConcepValido) {
-                throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
-            }
+        //         /**
+        //          *  Validacion de concepto propio
+        //          */
+        //         var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
+        //         var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan);
+        //         if(!mBoolConcepValido) {
+        //             throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
+        //         }
 
 
-            var mObjTextract = {
-                file_seqno: pIntFileId,
-                fecope: mRowSheet.A,
-                fecval: mRowSheet.B == null ? mRowSheet.A : mRowSheet.B,
-                refer1: mRowSheet.C,//
-                import: mRowSheet.D,
-                refer2: mRowSheet.F,//
-                docume: mRowSheet.G,//
-                ctafin: mStrCodCtaFin,
-                empcode: '125',
-                codban: mStrCodBan,
-                ccc1: mStrNumCuenta.substring(0,3),
-                ccc2: mStrNumCuenta.substring(3,6),
-                ctacte: mStrNumCuenta.substring(6),
-                concom: '00',
-                conpro: mRowSheet.J,
-                divisa: mStrMoneda
-            }
-            i++;
+        //         var mObjTextract = {
+        //             file_seqno: pIntFileId,
+        //             fecope: mRowSheet.A,
+        //             fecval: mRowSheet.B == null ? mRowSheet.A : mRowSheet.B,
+        //             refer1: mRowSheet.C,//
+        //             import: mRowSheet.D,
+        //             refer2: mRowSheet.F,//
+        //             docume: mRowSheet.G,//
+        //             ctafin: mStrCodCtaFin,
+        //             empcode: '125',
+        //             codban: mStrCodBan,
+        //             ccc1: mStrNumCuenta.substring(0,3),
+        //             ccc2: mStrNumCuenta.substring(3,6),
+        //             ctacte: mStrNumCuenta.substring(6),
+        //             concom: '00',
+        //             conpro: mRowSheet.J,
+        //             divisa: mStrMoneda
+        //         }
+        //         i++;
 
-            /**
-             * Captura del ultimo registro para Fecha y Saldo del extracto
-             */
-            mFloatSaldoExt   = mRowSheet.E;
-            mDateFecExtracto = mRowSheet.A;
+        //         /**
+        //          * Captura del ultimo registro para Fecha y Saldo del extracto
+        //          */
+        //         mFloatSaldoExt   = mRowSheet.E;
+        //         mDateFecExtracto = mRowSheet.A;
 
-            /**
-             * Registro del extracto bancario
-             */
-            // Ax.db.insert("textract", mObjTextract);
-        }
+        //         /**
+        //          * Registro del extracto bancario
+        //          */
+        //         // Ax.db.insert("textract", mObjTextract);
+        //     }
 
     })
 
@@ -269,4 +295,5 @@ function crp_carga_extracto_bnacion(pIntFileId) {
     // );
 }
 
-crp_carga_extracto_bnacion(53);
+// crp_carga_extracto_bnacion(63);
+crp_carga_extracto_bnacion(71);
