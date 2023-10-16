@@ -3,21 +3,18 @@ function crp_carga_extracto_bnacion(pIntFileId) {
 
     function __getValidarCampos(pObjRowSheet) {
         var mStrMsgError = '';
-        if(pObjRowSheet.A == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Fecha [Col-A]`;
+        if(pObjRowSheet.B == null){
+            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Fecha [Col-B]`;
         }
-        if(pObjRowSheet.D == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Monto [Col-D]`;
+        if(pObjRowSheet.F == null){
+            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Oficina [Col-F]`;
         }
-        if(pObjRowSheet.E == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo Saldo [Col-E]`;
-        }
-        if(pObjRowSheet.J == null){
-            mStrMsgError += `Línea [${pObjRowSheet.Row}] - Valor inexistente para el campo UTC [Col-J]`;
+        if((pObjRowSheet.G == null && pObjRowSheet.H == null) || (pObjRowSheet.G != null && pObjRowSheet.H != null)){
+            mStrMsgError += `Línea [${pObjRowSheet.Row}] - solo uno de los campos debería estar informado Cargo [Col-G]/Abono [Col-H]`;
         }
     }
 
-    function __validaConceptoPropio(pStrConcepProp, pStrCodBanc) {
+    function __getConceptoPropio(pStrConcepProp, pStrCodBanc) {
         var mStrConcepProp = Ax.db.executeGet(`
             <select>
                 <columns>
@@ -30,7 +27,7 @@ function crp_carga_extracto_bnacion(pIntFileId) {
                 </where>
             </select>
         `, pStrCodBanc, pStrConcepProp);
-        return (mStrConcepProp != null) ? true : false;
+        return mStrConcepProp;
     }
 
     /**
@@ -48,18 +45,14 @@ function crp_carga_extracto_bnacion(pIntFileId) {
         </select>
     `, pIntFileId);
 
-    /**
-     * Transformacion de la data del archivo en resultset
-     */
+    // var mXlsSheet = mWbWorkbook.getSheet(0);
     var wb = Ax.ms.Excel.load(mObjBlobData);
     var mXlsSheet = wb.getSheet(0);
-    let row = mXlsSheet.getRow(4);
-    // console.log(row);
     // mXlsSheet.packRows();
     var mIntNumRow = mXlsSheet.getLastRowNum();
     var mRsSheet = mXlsSheet.toResultSet();
+    // console.log('Num Row:', mIntNumRow);
     // console.log(mRsSheet);
-
 
     /**
      * Variables
@@ -70,48 +63,16 @@ function crp_carga_extracto_bnacion(pIntFileId) {
     var mStrMoneda = '';
     var mStrTipoCuenta = '';
     var mDateFecExtracto = '';
-    var mFloatImporteExt = 0;
-    var mFloatSaldoExt = 0;
+    var mDateFecExtCierre = '';
+    var mStrConcepPropio = '';
+    var mFloatSaldoExtBanc = 0;
+    var mFloatSaldoCierre = 0;
+    var mFloatSaldoApertura = 0;
     var mFloatSaldoCtaFin = 0;
+    var mFloatImportExt = 0;
     var mObjDivisa = {
         'Dólares': 'USD',
         'Soles': 'PEN'
-    }
-    /**
-     * Equivalencia para conceptos propios
-     */
-    var mObjConcepPropio = {
-        '0101': '00002',
-        '4405': '00002',
-        '0909': '00003',
-        '2004': '00004',
-        '4406': '00175',
-        '4981': '01549',
-        '4991': '01579',
-        '4921': '00086',
-        '4903': '01210',
-        '1013': '00027',
-        '2001': '03388',
-        '2014': '00205',
-        '2406': '03496',
-        '2605': '00399',
-        '2617': '00295',
-        '2901': '00453',
-        '3001': '00501',
-        '3002': '00502',
-        '4009': '01051',
-        '2401': '01147',
-        '4033': '01403',
-        '4043': '01060',
-        '4401': '00622',
-        '4404': '01134',
-        '4510': '00352',
-        '4708': '00772',
-        '4709': '03447',
-        '4923': '03448',
-        '4983': '00560',
-        '4901': '00333',
-        '4984': '01561'
     }
 
     /**
@@ -123,16 +84,26 @@ function crp_carga_extracto_bnacion(pIntFileId) {
      */
     var i = 1;
     mRsSheet.forEach(mRowSheet => {
-        // console.log(mRowSheet.A, mRowSheet.B, mRowSheet.C, mRowSheet.D, mRowSheet.E, mRowSheet.F, mRowSheet.G, mRowSheet.H);
+        var mObjRow = {
+            Row: mRowSheet.Row,
+            A: mRowSheet.A,
+            B: mRowSheet.B,
+            C: mRowSheet.C,
+            D: mRowSheet.D,
+            E: mRowSheet.E,
+            F: mRowSheet.F,
+            G: mRowSheet.G,
+            H: mRowSheet.H
+        }
 
         /**
          * Numero de cuenta
          */
-        if (mRowSheet.Row == 2){
-            // mStrNumCuenta = mRowSheet.D.replaceAll('-', '').split(' ')[0];
-            var mArrayRow2 = mRowSheet.D.trim().split(' ');
+        if (mObjRow.Row == 2){
+            // mStrNumCuenta = mObjRow.D.replaceAll('-', '').split(' ')[0];
+            var mArrayRow2 = mObjRow.D.trim().split(' ');
             mStrNumCuenta = mArrayRow2[mArrayRow2.length - 1].replaceAll('-', '');
-            console.log('Cta:', mStrNumCuenta);
+            // console.log('Cta:', mStrNumCuenta);
         }
 
         /**
@@ -140,24 +111,24 @@ function crp_carga_extracto_bnacion(pIntFileId) {
          *  - Soles
          *  - Dólares
          *
-         * Saldo
+         * Saldo de apertura
          */
-        if (mRowSheet.Row == 3){
+        if (mObjRow.Row == 3){
 
             /**
-             * Saldo extracto de la Cta. Financiera
+             * Saldo de apertura
              */
-            mFloatSaldoCtaFin = mRowSheet.H;
+            mFloatSaldoApertura = mObjRow.H;
 
             /**
              * Moneda de la Cta. Financiera
              */
-            var mArrayRow3 = mRowSheet.D.trim().split(' ');
+            var mArrayRow3 = mObjRow.D.trim().split(' ');
             mStrMoneda = mArrayRow3[mArrayRow3.length - 1];
             mStrMoneda = mObjDivisa[mStrMoneda];
 
-            console.log('Moneda:', mStrMoneda);
-            console.log('Saldo:', mFloatSaldoCtaFin);
+            // console.log('Moneda:', mStrMoneda);
+            // console.log('Saldo Apertura:', mFloatSaldoApertura);
 
             if(mStrMoneda == undefined ) {
                 throw `Tipo de moneda no contemplado, solo [Soles - Dólares]`;
@@ -178,7 +149,7 @@ function crp_carga_extracto_bnacion(pIntFileId) {
                 </select>
             `, mStrNumCuenta, mStrMoneda).toJSONArray();
 
-            console.log(mArrayCbankPro);
+            // console.log(mArrayCbankPro);
 
             if(mArrayCbankPro.length == 0) {
                 throw `No existe una cuenta financiera con BBAN [${mStrNumCuenta}] y Moneda [${mStrMoneda}], en Estado [Abierta] y Tipo [Cuenta corriente]`;
@@ -187,113 +158,118 @@ function crp_carga_extracto_bnacion(pIntFileId) {
             } else {
                 mStrCodCtaFin    = mArrayCbankPro[0].ctafin;
                 mStrCodBan       = mArrayCbankPro[0].codban;
-                mFloatImporteExt = mArrayCbankPro[0].salext;
+                mFloatSaldoExtBanc = mArrayCbankPro[0].salext;
                 mDateFecExtracto = mArrayCbankPro[0].fecext;
             }
         }
-        //     if (mRowSheet.Row == 3){
-        //         mStrTipoCuenta = mRowSheet.B;
-        //     }
 
-        //     if (mRowSheet.Row >= 6) {
+        /**
+         * Control de apertura para fecha y saldo de extracto bancario
+         */
+        if (mObjRow.Row == 5) {
 
-        //         /**
-        //          * Cambio de signo a el monto y saldo
-        //          */
-        //         mRowSheet.D = parseFloat(mRowSheet.D) * -1;
-        //         mRowSheet.E = parseFloat(mRowSheet.E) * -1;
+            mObjRow.B = mObjRow.B.replace(/\./g, '/');
+            var mDateFechaInicio = new Ax.util.Date(mObjRow.B);
+            mDateFechaInicio = mDateFechaInicio.addDay(-1);
+            if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoApertura}]`;}
+            var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
 
-        //         __getValidarCampos(mRowSheet);
-        //         /**
-        //          * Validación de fecha y saldo del extracto
-        //          */
-        //         if(i == 1) {
-        //             /**
-        //              * Calculo del saldo para la cuenta financiera
-        //              */
-        //             var mFloatSaldoCtaFin = parseFloat(mRowSheet.D) + parseFloat(mRowSheet.E);
-        //             mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
+            if(!(mDateCbancproFecExtracto <= mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoApertura}]`;}
+            if(mFloatSaldoApertura != mFloatSaldoExtBanc) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoApertura}]`;}
+        }
 
-        //             var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
-        //             if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-        //             var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
+        /**
+         * Informacion de extractos del archivo excel
+         */
+        if (mObjRow.Row >= 5) {
 
-        //             if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-        //             // if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-        //         }
+            /**
+             * Determinacion del importe del extracto
+             */
+            mFloatImportExt = mObjRow.G != null ? mObjRow.G : mObjRow.H;
+            mFloatImportExt = parseFloat(mFloatImportExt);
+            // console.log(typeof mFloatImportExt);
 
-        //         /**
-        //          *  Validacion de concepto propio
-        //          */
-        //         var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
-        //         var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan);
-        //         if(!mBoolConcepValido) {
-        //             throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
-        //         }
+            __getValidarCampos(mObjRow);
 
+            /**
+             *  Validacion de concepto propio
+             */
+            mStrConcepPropio = __getConceptoPropio(mObjRow.F, mStrCodBan);
+            // if(mStrConcepPropio == null) {
+            //     throw `Concepto propio [${mObjRow.F}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
+            // }
 
-        //         var mObjTextract = {
-        //             file_seqno: pIntFileId,
-        //             fecope: mRowSheet.A,
-        //             fecval: mRowSheet.B == null ? mRowSheet.A : mRowSheet.B,
-        //             refer1: mRowSheet.C,//
-        //             import: mRowSheet.D,
-        //             refer2: mRowSheet.F,//
-        //             docume: mRowSheet.G,//
-        //             ctafin: mStrCodCtaFin,
-        //             empcode: '125',
-        //             codban: mStrCodBan,
-        //             ccc1: mStrNumCuenta.substring(0,3),
-        //             ccc2: mStrNumCuenta.substring(3,6),
-        //             ctacte: mStrNumCuenta.substring(6),
-        //             concom: '00',
-        //             conpro: mRowSheet.J,
-        //             divisa: mStrMoneda
-        //         }
-        //         i++;
+            /**
+             * Actualizacion de formato de fecha
+             */
+            mObjRow.B = mObjRow.B.replace(/\./g, '/');
+            mObjRow.B = new Ax.util.Date(mObjRow.B);
 
-        //         /**
-        //          * Captura del ultimo registro para Fecha y Saldo del extracto
-        //          */
-        //         mFloatSaldoExt   = mRowSheet.E;
-        //         mDateFecExtracto = mRowSheet.A;
+            var mObjTextract = {
+                file_seqno: pIntFileId,
+                fecope: mObjRow.B,
+                fecval: mObjRow.B,
+                refer1: mObjRow.C,//
+                import: mFloatImportExt,
+                refer2: mObjRow.E,//
+                docume: mObjRow.D,//
+                ctafin: mStrCodCtaFin,
+                empcode: '125',
+                codban: mStrCodBan,
+                ccc1: mStrNumCuenta.substring(0,3),
+                ccc2: mStrNumCuenta.substring(3,6),
+                ctacte: mStrNumCuenta.substring(6),
+                concom: '00',
+                // conpro: mStrConcepPropio,
+                conpro: mObjRow.F,
+                divisa: mStrMoneda
+            }
 
-        //         /**
-        //          * Registro del extracto bancario
-        //          */
-        //         // Ax.db.insert("textract", mObjTextract);
-        //     }
+            /**
+             * Calculo del saldo de cierre
+             */
+            mDateFecExtCierre = mObjRow.B;
+            mFloatSaldoCierre += mFloatImportExt;
+
+            /**
+             * Registro del extracto bancario
+             */
+            Ax.db.insert("textract", mObjTextract);
+        }
 
     })
+    mFloatSaldoCierre += parseFloat(mFloatSaldoApertura);
+    console.log('Saldo Cierre', mFloatSaldoCierre);
 
     /**
      * Se actualiza el estado del almacen de fichero (textract_file)
      */
-    // Ax.db.update("textract_file",
-    //     {
-    //         file_estado : 1
-    //     },
-    //     {
-    //         file_seqno : pIntFileId
-    //     }
-    // );
+    Ax.db.update("textract_file",
+        {
+            file_estado : 1
+        },
+        {
+            file_seqno : pIntFileId
+        }
+    );
 
     /**
      * Se actualiza el saldo y fecha de la cuenta financiera (cbancpro)
      */
-    // Ax.db.update("cbancpro",
-    //     {
-    //         salext : mFloatSaldoExt,
-    //         fecext : mDateFecExtracto
-    //     },
-    //     {
-    //         bban: mStrNumCuenta,
-    //         moneda: mStrMoneda,
-    //         estado: 'A',
-    //         tipcta: 1
-    //     }
-    // );
+    Ax.db.update("cbancpro",
+        {
+            salext : mFloatSaldoCierre,
+            fecext : mDateFecExtCierre
+        },
+        {
+            bban: mStrNumCuenta,
+            moneda: mStrMoneda,
+            estado: 'A',
+            tipcta: 1
+        }
+    );
 }
 
-// crp_carga_extracto_bnacion(63);
-crp_carga_extracto_bnacion(71);
+crp_carga_extracto_bnacion(77);
+// crp_carga_extracto_bnacion(71);
