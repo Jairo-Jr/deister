@@ -26,8 +26,8 @@
  *
  *  JS:  crp_carga_extracto_bcp
  *
- *  Version     : v1.3
- *  Date        : 2023-10-09
+ *  Version     : v1.7
+ *  Date        : 2023-10-16
  *  Description : Generación de extractos bancarios para cuentas BCP, a partir
  *                de la lectura de archivo Excel.
  *
@@ -109,9 +109,11 @@ function crp_carga_extracto_bcp(pIntFileId) {
     var mStrCodBan = '';
     var mStrMoneda = '';
     var mStrTipoCuenta = '';
+    var mDateFecExtCierre = '';
     var mDateFecExtracto = '';
     var mFloatImporteExt = 0;
-    var mFloatSaldoExt = 0;
+    var mFloatSaldoCierre = 0;
+    var mFloatSaldoApertura = 0;
     var mObjDivisa = {
         'Dólares': 'USD',
         'Soles': 'PEN'
@@ -213,6 +215,10 @@ function crp_carga_extracto_bcp(pIntFileId) {
             mStrTipoCuenta = mRowSheet.B;
         }
 
+        if (mRowSheet.Row == 6){
+            mDateFecExtCierre = new Ax.util.Date(mRowSheet.A);
+        }
+
         if (mRowSheet.Row >= 6) {
 
             /**
@@ -227,7 +233,6 @@ function crp_carga_extracto_bcp(pIntFileId) {
             /**
              *  Validacion de concepto propio
              */
-            var mStrConcepPropio = mObjConcepPropio[mRowSheet.J];
             var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan);
             if(!mBoolConcepValido) {
                 throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
@@ -253,6 +258,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 divisa: mStrMoneda
             }
             i++;
+            mFloatSaldoCierre += mRowSheet.D;
 
             if (mRowSheet.Row == mIntNumRow + 1) {
                 /**
@@ -261,22 +267,18 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 /**
                  * Calculo del saldo para la cuenta financiera
                  */
-                var mFloatSaldoCtaFin = parseFloat(mRowSheet.E) - parseFloat(mRowSheet.D);
-                mFloatSaldoCtaFin = mFloatSaldoCtaFin.toFixed(2);
+                mFloatSaldoApertura = parseFloat(mRowSheet.E) - parseFloat(mRowSheet.D);
+                mFloatSaldoApertura = mFloatSaldoApertura.toFixed(2);
 
                 var mDateFechaInicio = new Ax.util.Date(mRowSheet.A);
-                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+                if(mDateFecExtracto == null) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoApertura}]`;}
+
+                mDateFechaInicio = mDateFechaInicio.addDay(-1);
                 var mDateCbancproFecExtracto = new Ax.util.Date(mDateFecExtracto);
 
-                if(mDateCbancproFecExtracto.afterOrEqual(mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
-                if(mFloatSaldoCtaFin != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoCtaFin}]`;}
+                if(!(mDateCbancproFecExtracto <= mDateFechaInicio)) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en fecha de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoApertura}]`;}
+                if(mFloatSaldoApertura != mFloatImporteExt) {throw `Cta: [${mStrCodCtaFin}] - Inconsistencia en saldo de extracto :[${mDateFechaInicio.format("dd-MM-yyyy")}/${mFloatSaldoApertura}]`;}
             }
-
-            /**
-             * Captura del ultimo registro para Fecha y Saldo del extracto
-             */
-            mFloatSaldoExt   = mRowSheet.E;
-            mDateFecExtracto = mRowSheet.A;
 
             /**
              * Registro del extracto bancario
@@ -285,6 +287,10 @@ function crp_carga_extracto_bcp(pIntFileId) {
         }
 
     })
+    /**
+     * Calculo del saldo de cierre
+     */
+    mFloatSaldoCierre += parseFloat(mFloatSaldoApertura);
 
     /**
      * Se actualiza el estado del almacen de fichero (textract_file)
@@ -303,8 +309,8 @@ function crp_carga_extracto_bcp(pIntFileId) {
      */
     Ax.db.update("cbancpro",
         {
-            salext : mFloatSaldoExt,
-            fecext : mDateFecExtracto
+            salext : mFloatSaldoCierre,
+            fecext : mDateFecExtCierre
         },
         {
             bban: mStrNumCuenta,
