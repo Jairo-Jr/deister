@@ -1,88 +1,25 @@
-<!-- 13/10/2023 Desagrupado por lineas acuerdos - albaran - factura -->
+<!-- 18/10/2023 Enlace por lineas acuerdos - albaran - factura -->
 
 
-<!-- TEMPORAL gcomacuh + gcomalbh -->
-<select intotemp='@tmp_group_gcomalbh'>
-    <columns>
-        gcomacuh.cabid cabid_acu,
-        gcomalbh.cabid cabid_alb
-    </columns>
-    <from table='gcomacuh'>
-        <join table='gcomacul'>
-            <on>gcomacuh.cabid = gcomacul.cabid</on>
-            <join table='gcomalbl'>
-                <on>gcomacul.linid = gcomalbl.linacu</on>
-                <join table='gcomalbh'>
-                    <on>gcomalbl.cabid = gcomalbh.cabid</on>
-                </join>
-            </join>
-        </join>
-    </from>
-    <group>
-        1,2
-    </group>
-</select>
-
-        <!-- TEMPORAL gcomacul + gcomacul_datc -->
+<!-- TEMPORAL gcomacul + gcomacul_datc -->
 <select intotemp='@tmp_group_gcomacul_datc'>
-<columns>
-    gcomacul.linid linid_acu,
-    MAX(gcomacul_datc.seccio) seccio_acu_datc,
-    MAX(gcomacul_datc.codpre) codpre_acu_datc,
-    MAX(gcomacul_datc.codpar) codpar_acu_datc,
-    SUM(gcomacul_datc.porcen) porcen_acu_datc,
-    SUM(gcomacul_datc.import) import_acu_datc
-</columns>
-<from table='gcomacul'>
-    <join type='left' table='gcomacul_datc'>
-        <on>gcomacul.linid = gcomacul_datc.linid</on>
-    </join>
-</from>
-<group>
-    1
-</group>
-</select>
-
-        <!-- TEMPORAL gcomalbh + gcomfach -->
-<union intotemp='@tmp_group_gcomfach'>
-<select>
     <columns>
-        gcomalbh.cabid cabid_alb,
-        gcomfach.cabid cabid_fac
+        gcomacul.linid linid_acu,
+        MAX(gcomacul_datc.seccio) seccio_acu_datc,
+        MAX(gcomacul_datc.codpre) codpre_acu_datc,
+        MAX(gcomacul_datc.codpar) codpar_acu_datc,
+        SUM(gcomacul_datc.porcen) porcen_acu_datc,
+        SUM(gcomacul_datc.import) import_acu_datc
     </columns>
-    <from table='gcomalbh'>
-        <join table='gcomalbl'>
-            <on>gcomalbh.cabid = gcomalbl.cabid</on>
-            <on>gcomalbl.tabori = 'gcomfach'</on>
-            <join table='gcomfach'>
-                <on>gcomalbh.cabid = gcomfach.cabid</on>
-            </join>
+    <from table='gcomacul'>
+        <join type='left' table='gcomacul_datc'>
+            <on>gcomacul.linid = gcomacul_datc.linid</on>
         </join>
     </from>
     <group>
-        1,2
+        1
     </group>
 </select>
-
-<select>
-    <columns>
-        gcomalbh.cabid cabid_alb,
-        gcomfach.cabid cabid_fac
-    </columns>
-    <from table='gcomalbh'>
-        <join table='gcomfacl'>
-            <on>gcomalbh.cabid = gcomfacl.cabori</on>
-            <on>gcomfacl.tabori = 'gcommovh'</on>
-            <join table='gcomfach'>
-                <on>gcomfacl.cabid = gcomfach.cabid</on>
-            </join>
-        </join>
-    </from>
-    <group>
-        1,2
-    </group>
-</select>
-</union>
 
         <!-- TEMPORAL gcomalbl + gcommovl_datc -->
 <select intotemp='@tmp_group_gcommovl_datc'>
@@ -104,12 +41,9 @@
 </group>
 </select>
 
-
-
-
-        <!-- GRUPO DE ACUERDOS -->
 <select>
 <columns>
+    <!-- Acuerdo de compra -->
     gcomacuh.tercer,
     ctercero.cif,
     ctercero.nombre,
@@ -137,13 +71,14 @@
     gcomacul.vigfin,
 
     <!-- Datos contablas gcomacul -->
-    gcomacul_datc.seccio_acu_datc,  cseccion.nomsec,
+    gcomacul_datc.seccio_acu_datc,
+    cseccion.nomsec,
     gcomacul_datc.codpre_acu_datc,
     gcomacul_datc.codpar_acu_datc,
     gcomacul_datc.porcen_acu_datc,
     gcomacul_datc.import_acu_datc,
-
     gcomacuh_docs.file_name,
+
     <!-- Albaran de compras -->
     gcomalbh.fecmov                                                         <alias name='alb_fecmov' />,
     gcomalbh.docser                                                         <alias name='alb_docser' />,
@@ -156,18 +91,16 @@
     gcomalbl.impnet                                                         <alias name='alb_impnet' />,
     gcommovl_datc.seccio_alb_datc                                           <alias name='alb_seccio' />,
     alb_cseccion.nomsec                                                     <alias name='alb_nomsec' />,
-
     gcomalbh.divisa                                                         <alias name='alb_divisa' />,
     gcomalbh.cambio                                                         <alias name='alb_cambio' />,
     ROUND((gcomalbh.albh_gross * gcomalbh.cambio), 2)                       <alias name='alb_imploc' />,
     gcomalbh.estcab                                                         <alias name='alb_estcab' />,
     gcomalbh.estado                                                         <alias name='alb_estado' />,
 
+    <!-- Factura de compra -->
     gcomfach.fecha                                                          <alias name='fac_fecha'  />,
     gcomfach.refter                                                         <alias name='fac_docser' />,
     gcomfach.fach_gross                                                     <alias name='fac_imptot' />,
-
-    <!-- Datos factura de compras -->
     gcomfacl.codart                                                         <alias name='fac_codart' />,
     garticul.nomart,
     gcomfacl.canfac                                                         <alias name='fac_udmcom' />,
@@ -181,70 +114,63 @@
     (NVL(gcomfach.auxchr5,'') ||'-'|| NVL(gcomfach.auxchr3,''))             <alias name='fac_planilla'/>,
     crp_chv_xdocpro.nro_asien_ch                                            <alias name='fac_asient' />
 </columns>
-<from table='gcomacuh'>
-    <join type='left' table='gcomacuh_docs'>
-        <on>gcomacuh.cabid = gcomacuh_docs.cabid</on>
+<from table='gcomacul'>
+    <join table='garticul' alias='acu_codart'>
+        <on>gcomacul.codart = acu_codart.codigo</on>
     </join>
-    <join type='left' table='gcomacud'>
-        <on>gcomacuh.tipdoc = gcomacud.codigo</on>
+    <!-- Dato contable gcomacul -->
+    <join table='@tmp_group_gcomacul_datc' alias='gcomacul_datc'>
+        <on>gcomacul.linid = gcomacul_datc.linid_acu</on>
+        <join type="left" table="cseccion" >
+            <on>gcomacul_datc.seccio_acu_datc = cseccion.codigo</on>
+        </join>
     </join>
-    <join type='left' table='ctercero'>
-        <on>gcomacuh.tercer = ctercero.codigo</on>
-    </join>
-    <join type='left' table='gclasdoc'>
-        <on>gcomacuh.clasif = gclasdoc.codigo</on>
-        <on>gclasdoc.tabid = 'gcomacuh'</on>
+    <join table='gcomacuh'>
+        <on>gcomacul.cabid = gcomacuh.cabid</on>
+        <join type='left' table='ctercero'>
+            <on>gcomacuh.tercer = ctercero.codigo</on>
+        </join>
+        <join type='left' table='gcomacud'>
+            <on>gcomacuh.tipdoc = gcomacud.codigo</on>
+        </join>
+        <join type='left' table='gclasdoc'>
+            <on>gcomacuh.clasif = gclasdoc.codigo</on>
+            <on>gclasdoc.tabid = 'gcomacuh'</on>
+        </join>
+        <join type='left' table='gcomacuh_docs'>
+            <on>gcomacuh.cabid = gcomacuh_docs.cabid</on>
+        </join>
     </join>
 
-    <!-- Lineas de Acuerdos -->
-    <join table='gcomacul'>
-        <on>gcomacuh.cabid = gcomacul.cabid</on>
-        <on>gcomacul.codfam IS NULL</on>
-        <join table='garticul' alias='acu_codart'>
-            <on>gcomacul.codart = acu_codart.codigo</on>
+    <!-- Albaran de compra -->
+    <join type='left' table='gcomalbl'>
+        <on>gcomacul.linid = gcomalbl.linacu</on>
+        <join table='garticul' alias='alb_codart'>
+            <on>gcomalbl.codart = alb_codart.codigo</on>
         </join>
-        <!-- Dato contable -->
-        <join table='@tmp_group_gcomacul_datc' alias='gcomacul_datc'>
-            <on>gcomacul.linid = gcomacul_datc.linid_acu</on>
-            <join type="left" table="cseccion" >
-                <on>gcomacul_datc.seccio_acu_datc = cseccion.codigo</on>
+        <!-- Dato contable gcomalbl -->
+        <join table="@tmp_group_gcommovl_datc" alias='gcommovl_datc'>
+            <on>gcomalbl.linid = gcommovl_datc.linid_alb</on>
+            <join type="left" table="cseccion" alias='alb_cseccion'>
+                <on>gcommovl_datc.seccio_alb_datc = alb_cseccion.codigo</on>
             </join>
         </join>
-    </join>
-
-    <join type='left' table='@tmp_group_gcomalbh' alias='group_gcomalbh'>
-        <on>gcomacuh.cabid = group_gcomalbh.cabid_acu</on>
         <join table='gcomalbh'>
-            <on>group_gcomalbh.cabid_alb = gcomalbh.cabid</on>
-            <!-- Lineas del Albaran -->
-            <join table='gcomalbl'>
-                <on>gcomalbh.cabid = gcomalbl.cabid</on>
-                <join table='garticul' alias='alb_codart'>
-                    <on>gcomalbl.codart = alb_codart.codigo</on>
-                </join>
-                <!-- Dato contable -->
-                <join table="@tmp_group_gcommovl_datc" alias='gcommovl_datc'>
-                    <on>gcomalbl.linid = gcommovl_datc.linid_alb</on>
-                    <join type="left" table="cseccion" alias='alb_cseccion'>
-                        <on>gcommovl_datc.seccio_alb_datc = alb_cseccion.codigo</on>
-                    </join>
-                </join>
-            </join>
+            <on>gcomalbl.cabid = gcomalbh.cabid</on>
+        </join>
 
-            <join type='left' table='@tmp_group_gcomfach' alias='group_gcomfach'>
-                <on>group_gcomfach.cabid_alb = gcomalbh.cabid</on>
-                <join table='gcomfach'>
-                    <on>group_gcomfach.cabid_fac = gcomfach.cabid</on>
-                    <!-- Lineas de Factura -->
-                    <join table='gcomfacl'>
-                        <on>gcomfach.cabid  = gcomfacl.cabid</on>
-                        <join table='garticul'>
-                            <on>gcomfacl.codart = garticul.codigo</on>
-                        </join>
-                    </join>
-                    <join type='left' table ='crp_chv_xdocpro'>
-                        <on>gcomfach.auxchr5  = crp_chv_xdocpro.dnrorec</on>
-                    </join>
+        <!-- Factura de compra -->
+        <join type='left' table='gcomfacl'>
+            <on>gcomalbl.linid = gcomfacl.linori</on>
+            <!-- <on>gcomalbl.cabid = gcomfacl.cabori</on>
+            <on>gcomfacl.tabori = 'gcommovh'</on> -->
+            <join table='garticul'>
+                <on>gcomfacl.codart = garticul.codigo</on>
+            </join>
+            <join table='gcomfach'>
+                <on>gcomfacl.cabid = gcomfach.cabid</on>
+                <join type='left' table ='crp_chv_xdocpro'>
+                    <on>gcomfach.auxchr5  = crp_chv_xdocpro.dnrorec</on>
                 </join>
             </join>
         </join>
