@@ -1,3 +1,6 @@
+
+<!-- DEV 19/10 -->
+
 <!-- Agrupado de cpar_premovi_ext (Dat. Complemento de Ingreso Gasto) -->
 <select intotemp='@tmp_cpar_premovi_ext_sinv'>
     <columns>
@@ -178,7 +181,13 @@
     cinmcomp.codcom,
 
     cpar_premovi.auxfec2,       cpar_parprel.ctainv,
-    cpar_premovi.auxnum1,       cpar_premovi.auxnum2,
+    cpar_premovi.auxnum1,
+
+    <!-- Cuenta Chavin -->
+    CASE WHEN cpar_premovi.auxnum2 IS NOT NULL THEN cpar_premovi.auxnum2
+    ELSE CAST(crp_chv_mapcta.ctaori AS INTEGER)
+    END auxnum2,
+
     cpar_premovi.auxnum3,
     <!--Datos del pedido-->
     cpar_premovi_ext.soltip,    cpar_premovi_ext.soldoc,
@@ -241,6 +250,11 @@
     <join table="cpar_parprel">
         <on>cpar_parpreh.empcode = cpar_parprel.empcode</on>
         <on>cpar_parpreh.codpre  = cpar_parprel.codpre</on>
+
+        <!-- Cuenta Chavin -->
+        <join type='left' table='crp_chv_mapcta'>
+            <on>cpar_parprel.ctainv  = crp_chv_mapcta.cuenta</on>
+        </join>
 
         <!-- Ingresos y gastos -->
         <join table="cpar_premovi">

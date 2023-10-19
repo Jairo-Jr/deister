@@ -1,3 +1,6 @@
+
+<!-- PRO 28/09 -->
+
 <!-- Agrupado de cpar_premovi_ext (Dat. Complemento de Ingreso Gasto) -->
 <select intotemp='@tmp_cpar_premovi_ext_sinv'>
     <columns>
@@ -222,8 +225,13 @@
 
     <!-- Etiqueta -->
     cinmelem_ppe.ppe_label_id,
-    cinmelem_ppe.ppe_marca,
-    cinmelem_ppe.ppe_modelo,
+
+    <!--cinmelem_ppe.ppe_marca,-->
+    gartmarc.nommar ppe_marca,
+
+    <!-- cinmelem_ppe.ppe_modelo, -->
+    gartmode.nommod ppe_modelo,
+
     cinmelem_ppe.ppe_numser,
     cpar_parpreh.coment,
     cpar_premovi.estado
@@ -279,6 +287,15 @@
                 <!-- Equipos y maquinas -->
                 <join type="left" table="cinmelem_ppe">
                     <on>cinmcomp.seqno = cinmelem_ppe.ppe_seqno_compon</on>
+                    <!-- Marca -->
+                    <join type='left' table='gartmarc'>
+                        <on>cinmelem_ppe.ppe_marca  = gartmarc.codigo </on>
+                    </join>
+                    <!-- Modelo -->
+                    <join type='left' table='gartmode'>
+                        <on>cinmelem_ppe.ppe_marca  = gartmode.marca </on>
+                        <on>cinmelem_ppe.ppe_modelo  = gartmode.modelo </on>
+                    </join>
 
                     <!-- Descrip. Localizacion fisica -->
                     <join type='left' table='cinmlosu' alias='sub_loca_cinmcomp'>
