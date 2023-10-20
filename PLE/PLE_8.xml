@@ -1,0 +1,123 @@
+<select>
+    <columns>
+        ctax_move_head.taxh_jusser,
+        cefectos.impdiv,
+
+        '20231000' campo1,
+        '00000000' campo2,
+        'A00000000' campo3,
+        ctax_move_head.taxh_fecdoc campo4,
+        cefectos.fecven campo5
+        <!-- <whitespace /> campo28 -->
+    </columns>
+    <from table='ctax_move_head'>
+        <lateral alias='cefectos'>
+            <select first='1'>
+                <columns>
+                    cfec.fecven, cfec.impdiv
+                </columns>
+                <from table='cefectos' alias='cfec' />
+                <where>
+                    cfec.auxnum4 = ctax_move_head.taxh_loteid
+                </where>
+                <order>cfec.impdiv DESC</order>
+            </select>
+        </lateral>
+    </from>
+    <where>
+        taxh_jusser = 'FCTC0000090'
+    </where>
+
+</select>
+
+        <!-- 33,105 -->
+
+
+
+<!-- DESARROLLO PLE8 -->
+
+
+<select>
+<columns>
+    '20231000'                                          campo1,
+    '00000000'                                          campo2,
+    'A00000000'                                         campo3,
+    TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')     campo4,
+    TO_CHAR(cefectos.fecven, '%d/%m/%Y')                campo5,
+    gcomfach.dockey                                     campo6,
+    SUBSTR(ctax_move_head.taxh_docser, 0, 5) campo7,
+    '0' campo8,
+    SUBSTR(ctax_move_head.taxh_docser, CHARINDEX('-', ctax_move_head.taxh_docser)+1) campo9,
+    '' campo10,
+    gcomfach.ciftyp campo11,
+    ctercero.cif campo12,
+    ctercero.nombre campo13,
+
+    'campo 14' campo14,
+    'campo 15' campo15,
+    'campo 16' campo16,
+    'campo 17' campo17,
+    'campo 18' campo18,
+    'campo 19' campo19,
+    'campo 20' campo20,
+    'campo 21' campo21,
+    'campo 22' campo22,
+    'campo 23' campo23,
+
+    ctax_move_head.taxh_import campo24,
+    ctax_move_head.taxh_moneda campo25,
+    ctax_move_head.taxh_cambio campo26,
+
+    'campo 23' campo27,
+    'campo 23' campo28,
+    'campo 23' campo29,
+    'campo 23' campo30,
+    'campo 23' campo31,
+    'campo 23' campo32,
+    'campo 23' campo33,
+    'campo 23' campo34,
+    'campo 23' campo35,
+    'campo 23' campo36,
+    'campo 23' campo37,
+    'campo 23' campo38,
+    'campo 23' campo39,
+    'campo 23' campo40,
+    'campo 23' campo41,
+    'campo 23' campo42
+
+    <!-- <whitespace /> campo28 -->
+</columns>
+<from table='ctax_move_head'>
+    <lateral alias='cefectos'>
+        <select first='1'>
+            <columns>
+                cfec.fecven, cfec.impdiv
+            </columns>
+            <from table='cefectos' alias='cfec' />
+            <where>
+                cfec.auxnum4 = ctax_move_head.taxh_loteid
+            </where>
+            <order>cfec.impdiv DESC</order>
+        </select>
+    </lateral>
+    <join table="cenllote">
+        <on>ctax_move_head.taxh_loteid = cenllote.loteid</on>
+    </join>
+    <join table="gcomfach">
+        <on>ctax_move_head.taxh_loteid = gcomfach.loteid</on>
+        <join table="ctercero">
+            <on>gcomfach.tercer = ctercero.codigo</on>
+        </join>
+    </join>
+</from>
+<where>
+    cenllote.tabname = 'gcomfach'
+    <!-- AND taxh_jusser = 'FCTC0000090' -->
+</where>
+<order>
+    1
+</order>
+</select>
+
+        <!-- 33,105 -->
+        <!-- 33,075 con efectos -->
