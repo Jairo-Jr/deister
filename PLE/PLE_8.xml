@@ -34,18 +34,35 @@
 
 
 
-<!-- DESARROLLO PLE8 -->
+
+
+        <!-- DESARROLLO PLE8 -->
+
+<select>
+<columns>
+    cempresa.cifemp,
+    cempresa.empname
+</columns>
+<from table='cempresa' />
+<where>
+    cempresa.empcode = '125'
+</where>
+</select>
+
 
 
 <select>
 <columns>
-    '20231000'                                          campo1,
-    '00000000'                                          campo2,
-    'A00000000'                                         campo3,
-    TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')     campo4,
-    TO_CHAR(cefectos.fecven, '%d/%m/%Y')                campo5,
-    gcomfach.dockey                                     campo6,
-    SUBSTR(ctax_move_head.taxh_docser, 0, 5) campo7,
+    '20100121809'                                                                       campo1,
+    'ADMINISTRADORA CLINICA RICARDO PALMA S.A'                                          campo2,
+    ctax_move_head.taxh_ejefis || LPAD(ctax_move_head.taxh_perfis, 2, '0') || '3'       campo3,
+    ''                                                                                  campo4,
+    TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')                                     campo5,
+    TO_CHAR(cefectos.fecven, '%d/%m/%Y')                                                campo6,
+    ctax_move_head.taxh_tipdoc                                                          campo7,
+    SUBSTR(ctax_move_head.taxh_docser, 0, CHARINDEX('-', ctax_move_head.taxh_docser)-1) campo8,
+
+
     '0' campo8,
     SUBSTR(ctax_move_head.taxh_docser, CHARINDEX('-', ctax_move_head.taxh_docser)+1) campo9,
     '' campo10,
@@ -112,12 +129,13 @@
 </from>
 <where>
     cenllote.tabname = 'gcomfach'
-    <!-- AND taxh_jusser = 'FCTC0000090' -->
+    <!-- taxh_jusser = 'FV12523-000058' -->
 </where>
 <order>
     1
 </order>
 </select>
 
-        <!-- 33,105 -->
+        <!-- 30,345 -->
+
         <!-- 33,075 con efectos -->
