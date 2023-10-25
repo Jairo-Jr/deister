@@ -3,43 +3,16 @@ function PLE7_1() {
      * Name: pe_sunat_ple07_1_rep
      */
 
-        // ===============================================================
-        // Tipo de reporte y año del periodo informado
-        // ===============================================================
+    // ===============================================================
+    // Tipo de reporte y año del periodo informado
+    // ===============================================================
     var pStrCondicion   = Ax.context.variable.TIPO;
     var mIntYear        = Ax.context.variable.YEAR;
 
     // ===============================================================
-    // Definición del valor de tipo de cambio
-    // de la moneda extranjera al finalizar el periodo
+    // DEFINICIÓN DE CAMPOS PERSONALIZADOS
     // ===============================================================
-    var mCambioUSD = 0.00;
-    var mCambioEUR = 0.00;
-
-    var mArrayTipCambio = Ax.db.executeQuery(`
-        <select>
-            <columns>
-                ccambios.moneda,
-                ccambios.cambio
-            </columns>
-            <from table='ccambios'/>
-            <where>
-                tipcam = 'D'
-                AND monori = 'PEN'
-                AND fecha = '31-12-${mIntYear}'
-            </where>
-        </select>
-    `).toJSONArray();
-
-    mArrayTipCambio.forEach(mObjTipCambio => {
-
-        if (mObjTipCambio.moneda == 'USD') {
-            mCambioUSD = mObjTipCambio.cambio;
-        }
-        if (mObjTipCambio.moneda == 'EUR') {
-            mCambioEUR = mObjTipCambio.cambio;
-        }
-    });
+    var mStrColumn = pStrCondicion == 'F' ? '' : `cinmelem.codele`;
 
     // ===============================================================
     // TABLA TEMPORAL PARA ACTIVOS FIJOS
@@ -56,7 +29,9 @@ function PLE7_1() {
                 cperiodo.codigo,
                 cperiodo.nomper,
                 MAX(cinmcomp.loteid) loteid,
-                SUM(CASE WHEN cinmamor.estado = 'C' THEN cinmamor.impmax END) <alias name='impmax' />
+                SUM(CASE WHEN cinmamor.estado = 'C' THEN cinmamor.impmax END) <alias name='impmax' />,
+                SUM(CASE WHEN cinmamor.estado = 'C' AND cinmcomp.tipcom = 'B' THEN cinmamor.impmax ELSE 0 END) <alias name='imp_depre_bajas' />,
+                SUM(CASE WHEN cinmamor.estado = 'C' AND cinmcomp.tipcom = 'J' THEN cinmamor.impmax ELSE 0 END) <alias name='imp_depre_ajustes' />
             </columns>
             <from table='cinmhead'>
                 <join table='cinmelem'>
@@ -84,23 +59,79 @@ function PLE7_1() {
             <group>
                 1, 2, 3, 4, 5
             </group>
-            <order>
-                3, 2, 4
-            </order>
         </select>
     `);
 
+
     // ===============================================================
-    // RESULTSET DE LOS MOVIMIENTOS CONTABLES PARA EL PLE 7.3
+    // TABLA TEMPORAL PARA VALORES DE COMPONENTE
     // ===============================================================
-    var mRsPle7_3 = Ax.db.executeQuery(` 
+    let mTmpTableCinmcval = Ax.db.getTempTableName(`tmp_cinmelem_cinmcval`);
+    Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableCinmcval}`);
+
+    Ax.db.execute(`
+        <select intotemp='${mTmpTableCinmcval}'>
+            <columns>
+                cinmelem.seqno,
+                SUM(CASE WHEN YEAR(cinmcomp.fecbaj) = YEAR(TODAY) AND cinmcomp.tipcom = 'B' THEN ABS(cinmcval.inicom)
+                     WHEN YEAR(cinmcomp.fecha) &lt; YEAR(TODAY) THEN cinmcval.invcom
+                END)                                                                    <alias name='imp_saldo_inicial' />,
+                SUM(CASE WHEN YEAR(cinmcomp.fecha) = YEAR(TODAY)
+                        AND cinmcomp.tipcom != 'J'
+                        AND cinmcomp.docser NOT LIKE 'FINV%' THEN cinmcval.invcom
+                    ELSE 0
+                END)                                                                    <alias name='imp_adq_y_adic' />,
+        
+                SUM(CASE WHEN cinmcomp.tipcom = 'M' THEN cinmcval.invcom
+                    ELSE 0
+                    END)                                                                <alias name='imp_mejoras'/>,
+                SUM(CASE WHEN cinmcomp.tipcom = 'B' THEN ABS(cinmcval.inicom) * -1
+                    ELSE 0   
+                END)                                                                     <alias name='imp_ret_baj' />,
+                SUM(CASE WHEN cinmcomp.tipcom = 'J' THEN cinmcval.invcom
+                    WHEN cinmcomp.docser LIKE 'FINV%' THEN cinmcval.invcom
+                    ELSE 0   
+                END)                                                                     <alias name='imp_otros_ajus' />,
+                MIN(cinmcomp.fecfac) <alias name='fecha_adq' />,
+                MIN(cinmcomp.fecini) <alias name='fecha_uso' />,
+                MIN(cinmftab.porcen) <alias name='porc_deprec' />
+            </columns>
+            <from table='cinmelem'>
+                    <join table='cinmcomp'>
+                        <on>cinmelem.empcode = cinmcomp.empcode</on>
+                        <on>cinmelem.codinm = cinmcomp.codinm</on>
+                        <on>cinmelem.codele = cinmcomp.codele</on>
+                        <join table='cinmcval'>
+                            <on>cinmcomp.empcode = cinmcval.empcode</on>
+                            <on>cinmcomp.codinm = cinmcval.codinm</on>
+                            <on>cinmcomp.codele = cinmcval.codele</on>
+                            <on>cinmcomp.codcom = cinmcval.codcom</on>
+                            <on>cinmcomp.numhis = cinmcomp.numhis</on>
+                        </join>
+                        <join type='left' table='cinmftab'>
+                            <on>cinmcomp.codfis = cinmftab.codigo</on>
+                        </join>
+                    </join>
+            </from>
+            <group>
+                1
+            </group>
+        </select>
+    `);
+
+
+
+    // ===============================================================
+    // RESULTSET DE LOS MOVIMIENTOS CONTABLES PARA EL PLE 7.1
+    // ===============================================================
+    var mRsPle7_1 = Ax.db.executeQuery(` 
         <select>
             <columns>
                 YEAR(TODAY) || '0000'   <alias name='periodo' />,
                 'M' || crp_asiento_activofijo.nro_asien_ch  <alias name='cuo' />,
                 crp_asiento_activofijo.nro_asien_ch ||'.'|| crp_asiento_activofijo.seqno<alias name='corr_asiento' />,
                 '9'  <alias name='cod_catalogo' />,
-                cinmelem.auxchr1  <alias name='cod_activo' />,
+                cinmelem_ppe.ppe_label_id  <alias name='cod_activo' />,
                 ''  <alias name='codigo_del_catalogo_utilizado' />,
                 ''  <alias name='cod_existencia' />,
                 '1'  <alias name='tipo_activo' />,
@@ -110,39 +141,42 @@ function PLE7_1() {
                 gartmarc.nommar  <alias name='marca' />,
                 gartmode.nommod  <alias name='modelo' />,
                 cinmelem_ppe.ppe_numser  <alias name='nro_serie' />,
-                CASE WHEN ${mTmpTableActivos}.ejerci &gt; YEAR(TODAY) THEN ${mTmpTableActivos}.impmax ELSE 0 END  <alias name='imp_saldo_inicial' />,
-                0  <alias name='imp_adq_y_adic' />,
-                0  <alias name='imp_mejoras' />,
-                0  <alias name='imp_bajas' />,
-                0  <alias name='imp_ajustes' />,
+                tmp_cinmcval.imp_saldo_inicial              <alias name='imp_saldo_inicial' />,
+                tmp_cinmcval.imp_adq_y_adic                 <alias name='imp_adq_y_adic' />,
+                tmp_cinmcval.imp_mejoras                    <alias name='imp_mejoras' />,
+                tmp_cinmcval.imp_ret_baj                    <alias name='imp_bajas' />,
+                tmp_cinmcval.imp_otros_ajus                 <alias name='imp_ajustes' />,
                 0  <alias name='imp_revaluac_volunt' />,
                 0  <alias name='imp_revaluac_reorg' />,
                 0  <alias name='imp_revaluac_otras' />,
                 0  <alias name='imp_ajuste_inflac' />,
-                ''  <alias name='fecha_adq' />,
-                ''  <alias name='fecha_uso' />,
+                tmp_cinmcval.fecha_adq                      <alias name='fecha_adq' />,
+                tmp_cinmcval.fecha_uso                      <alias name='fecha_uso' />,
                 '1'  <alias name='metodo_calc' />,
                 '00000'  <alias name='nro_autoriz_camb_calc' />,
-                ''  <alias name='porc_deprec' />,
-                ''  <alias name='imp_depre_acumulada' />,
-                CASE WHEN ${mTmpTableActivos}.ejerci = YEAR(TODAY) THEN ${mTmpTableActivos}.impmax ELSE 0 END <alias name='imp_depre_sin_revaluac' />,
-                0  <alias name='imp_depre_bajas' />,
-                0  <alias name='imp_depre_ajustes' />,
+                tmp_cinmcval.porc_deprec                    <alias name='porc_deprec' />,
+                CASE WHEN tmp_activos_fijos.ejerci = YEAR(TODAY)-1 THEN tmp_activos_fijos.impmax ELSE 0 END  <alias name='imp_depre_acumulada' />,
+                CASE WHEN tmp_activos_fijos.ejerci = YEAR(TODAY) THEN tmp_activos_fijos.impmax ELSE 0 END <alias name='imp_depre_sin_revaluac' />,
+                tmp_activos_fijos.imp_depre_bajas  <alias name='imp_depre_bajas' />,
+                tmp_activos_fijos.imp_depre_ajustes  <alias name='imp_depre_ajustes' />,
                 0  <alias name='imp_depre_revaluac_volunt' />,
                 0  <alias name='imp_depre_revaluac_reorg' />,
                 0  <alias name='imp_depre_revaluac_otras' />,
                 0  <alias name='imp_depre_ajuste_inflac' />,
-                '1'  <alias name='estado_ope' />
+                '1'  <alias name='estado_ope' />,
+                
+                ${mStrColumn}
+                <whitespace/>
             </columns>
             <from table='cinmhead'>
                 <join table='cinmelem'>
                     <on>cinmhead.empcode = cinmelem.empcode</on>
                     <on>cinmhead.codinm = cinmelem.codinm</on>
-                    <join type='left' table='${mTmpTableActivos}'>
-                        <on>cinmelem.codinm = ${mTmpTableActivos}.codinm</on>
-                        <on>cinmelem.codele = ${mTmpTableActivos}.codele</on>
+                    <join type='left' table='${mTmpTableActivos}' alias='tmp_activos_fijos'>
+                        <on>cinmelem.codinm = tmp_activos_fijos.codinm</on>
+                        <on>cinmelem.codele = tmp_activos_fijos.codele</on>
                         <join type='left' table='crp_asiento_activofijo'>
-                            <on>${mTmpTableActivos}.loteid = crp_asiento_activofijo.ref</on>
+                            <on>tmp_activos_fijos.loteid = crp_asiento_activofijo.ref</on>
                         </join>
                     </join>
                     <join type='left' table='cinmelem_ppe'>
@@ -155,8 +189,16 @@ function PLE7_1() {
                             </join>
                         </join>
                     </join>
+        
+                    <join type='left' table='${mTmpTableCinmcval}' alias='tmp_cinmcval'>
+                        <on>cinmelem.seqno = tmp_cinmcval.seqno</on>
+                    </join>
+        
                 </join>
             </from>
+            <where>
+                tmp_activos_fijos.ejerci = '${mIntYear}'
+            </where>
         </select>
     `);
     // ===============================================================
@@ -170,9 +212,9 @@ function PLE7_1() {
 
     // ===============================================================
     // Estructura de nombre del archivo txt de salida:
-    // LERRRRRRRRRRRAAAA000007030000OIM1.txt
+    // LERRRRRRRRRRRAAAA000007010000OIM1.TXT
     // ===============================================================
-    var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007030000' + mIntIndOperacion + mIntContLibro + mIntMoneda + '1.txt';
+    var mStrNameFile = 'LE' + mStrRuc + mStrYear + '000007010000' + mIntIndOperacion + mIntContLibro + mIntMoneda + '1.txt';
 
     // ===============================================================
     // Si la condición del reporte es Fichero (F)
@@ -187,7 +229,7 @@ function PLE7_1() {
         // ===============================================================
         // Definición del archivo txt
         // ===============================================================
-        new Ax.rs.Writer(mRsPle7_3).csv(options => {
+        new Ax.rs.Writer(mRsPle7_1).csv(options => {
             options.setHeader(false);
             options.setDelimiter("|");
             options.setResource(blob);
@@ -223,6 +265,6 @@ function PLE7_1() {
         // Si la condición del reporte es Informe (I)
         // ===============================================================
     } else if (pStrCondicion == 'I') {
-        return mRsPle7_3;
+        return mRsPle7_1;
     }
 }
