@@ -24,8 +24,8 @@
  * -----------------------------------------------------------------------------
  *
  *  JS:  Name Function
- *  Version     : v1.2
- *  Date        : 16-08-2023
+ *  Version     : v1.4
+ *  Date        : 26-10-2023
  *  Description : Procesa el archivo de texto de respuesta SUNAT,
  *                generando gestiones para observados y aprobados.
  *
@@ -203,21 +203,36 @@ function crp_semt_respuesta(p_fileid, pStrFileName) {
         /**
          * SCRIPT PARA LEER ARCHIVOS CSV - TXT
          */
-        var blob = new Ax.sql.Blob();
-        blob.setContent(mObjBlobData.file_data);
+        // var blob = new Ax.sql.Blob();
+        // blob.setContent(mObjBlobData.file_data);
 
-        var mRsFichero = new Ax.rs.Reader().csv(options => {
-            options.setBlob(blob);
-            options.setDelimiter("|");
-            options.setHeader(false);
-            options.setQuoteChar(7);
-            options.setCharset("ISO-8859-15");
+        // var mRsFichero = new Ax.rs.Reader().csv(options => {
+        //     options.setBlob(blob);
 
-            // Definición de tipo de datos a columnas
-            // options.setColumnType("Numero de Comprobante",  Ax.sql.Types.CHAR);
-            // options.setColumnType("Serie de Comprobante",  Ax.sql.Types.CHAR);
+        //     options.setDelimiter("|");
+        //     options.setHeader(false);
+        //     options.setQuoteChar(7);
+        //     options.setCharset("ISO-8859-15");
 
-        })
+        //     // Definición de tipo de datos a columnas
+        //     // options.setColumnType("Numero de Comprobante",  Ax.sql.Types.CHAR);
+        //     // options.setColumnType("Serie de Comprobante",  Ax.sql.Types.CHAR);
+
+        // })
+
+        /**
+         * Conversion del fichero byte a string
+         */
+        var mFileTmp = Ax.io.File.createTempFile();
+        mFileTmp.write(mObjBlobData.file_data);
+
+        /**
+         * readString() por sí solo genera error cuando el contenido no se encuentra
+         * codificado con UTF-8, por lo que se especifica la codificación ISO-8859-1
+         */
+        var mRsFichero = mFileTmp.readString("ISO-8859-1");
+        mRsFichero = mRsFichero.trimRight().replace(/\n$/, "");
+        mRsFichero = mRsFichero.split(/\r\n|\n/);
 
         /**
          * Efectos - Pagos
@@ -253,9 +268,24 @@ function crp_semt_respuesta(p_fileid, pStrFileName) {
 
         mRsFichero.forEach(mRowFile => {
 
-            mIntNumEnvio = mRowFile['Column_0'];
+            mRowFile = mRowFile.split('|');
+            var mObjRowFile = {
+                'Column_0': mRowFile[0],
+                'Column_1': mRowFile[1],
+                'Column_2': mRowFile[2],
+                'Column_3': mRowFile[3],
+                'Column_4': mRowFile[4],
+                'Column_5': mRowFile[5],
+                'Column_6': mRowFile[6],
+                'Column_7': mRowFile[7],
+                'Column_8': mRowFile[8],
+                'Column_9': mRowFile[9],
+                'Column_10': mRowFile[10]
+            }
 
-            var mStrFecReg = mRowFile['Column_5'];
+            mIntNumEnvio = mObjRowFile['Column_0'];
+
+            var mStrFecReg = mObjRowFile['Column_5'];
             mStrFecReg = mStrFecReg.replaceAll('/', '-');
 
             var mStrCodCal = Ax.db.executeGet(`SELECT codcal 
@@ -274,19 +304,19 @@ function crp_semt_respuesta(p_fileid, pStrFileName) {
              */
             Ax.db.insert('crp_registro_semt', {
                 file_seqno:     p_fileid,
-                nmr_envio:      mRowFile['Column_0'],
-                nmr_operacion:  mRowFile['Column_1'],
-                ruc_crp:        mRowFile['Column_2'],
-                ruc_tercer:     mRowFile['Column_3'],
-                razon:          mRowFile['Column_4'],
-                // fec_registro:   mRowFile['Column_5'],
+                nmr_envio:      mObjRowFile['Column_0'],
+                nmr_operacion:  mObjRowFile['Column_1'],
+                ruc_crp:        mObjRowFile['Column_2'],
+                ruc_tercer:     mObjRowFile['Column_3'],
+                razon:          mObjRowFile['Column_4'],
+                // fec_registro:   mObjRowFile['Column_5'],
                 fec_registro:   date_1,
-                monto_pagar:    parseFloat(mRowFile['Column_6']),
-                estado_reg:     mRowFile['Column_7'],
-                desc_estado:    mRowFile['Column_8'],
+                monto_pagar:    parseFloat(mObjRowFile['Column_6']),
+                estado_reg:     mObjRowFile['Column_7'],
+                desc_estado:    mObjRowFile['Column_8'],
                 fec_limite:     date_2,
-                res_coactiva:   mRowFile['Column_9'],
-                observado:      mRowFile['Column_7'] == 1 ? 0 : 1
+                res_coactiva:   mObjRowFile['Column_9'],
+                observado:      mObjRowFile['Column_7'] == 1 ? 0 : 1
             });
 
             /**
@@ -294,28 +324,28 @@ function crp_semt_respuesta(p_fileid, pStrFileName) {
              */
             mObjRemesas.forEach(mObjRemesa => {
 
-                if(mObjRemesa.cif == mRowFile['Column_3']){
+                if(mObjRemesa.cif == mObjRowFile['Column_3']){
 
                     /**
                      * Registro del numero de operacion en el efecto
                      */
-                    var resUpd = Ax.db.execute(`UPDATE cefectos SET auxnum1 = ${mRowFile['Column_1']}
+                    var resUpd = Ax.db.execute(`UPDATE cefectos SET auxnum1 = ${mObjRowFile['Column_1']}
                                     WHERE numero = ${mObjRemesa.numero} 
                                     AND auxnum1 IS NULL`);
 
                     /**
                      * Tiene deuda - Agrupa Gestion con esatdo POBS
                      */
-                    // if(resUpd.count == 1 && mRowFile['Column_7'] == 1) {
-                    if(mRowFile['Column_7'] == 1) {
+                    // if(resUpd.count == 1 && mObjRowFile['Column_7'] == 1) {
+                    if(mObjRowFile['Column_7'] == 1) {
                         mArrPOBS.push(mObjRemesa.numero)
                     }
 
                     /**
                      * No tiene deuda - Agrupa Gestion con esatdo PAUS
                      */
-                    // if(resUpd.count == 1 && mRowFile['Column_7'] == 0) {
-                    if(mRowFile['Column_7'] == 0) {
+                    // if(resUpd.count == 1 && mObjRowFile['Column_7'] == 0) {
+                    if(mObjRowFile['Column_7'] == 0) {
                         mArrPAUS.push(mObjRemesa.numero)
                     }
                 }
@@ -383,16 +413,10 @@ function crp_semt_respuesta(p_fileid, pStrFileName) {
             mIntIdGestionPAUS = __setEfectosToGestion(mIntIdGestionPAUS, mArrPAUS);
 
         }
+
         /**
          * Actualiza las notas
          */
-        // Ax.db.execute(`
-        //         UPDATE crp_embargo_telematico_respuesta
-        //         SET file_memo = 'Gestion de POBS [${mIntIdGestionPOBS}] - Gestion de PAUS [${mIntIdGestionPAUS}]',
-        //             file_status = 'C'
-        //         WHERE file_seqno = ?
-        //     `, p_fileid);
-
         Ax.db.update(`crp_embargo_telematico_respuesta`,
             {
                 file_status: 'C',
