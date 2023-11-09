@@ -1,0 +1,140 @@
+<select>
+    <columns>
+        cefectos.empcode, cempresa.empname, cefectos.tercer,  ctercero.nombre,
+        ctertipo.tiprel, cefectos.cuenta,  ctercero.codare,  ctercero.codcla,
+        ctipocla.nomcla, cefectos.clase,
+        CASE WHEN ccomfach.dockey IS NOT NULL THEN ccomfach.dockey
+        WHEN gcomfach.dockey IS NOT NULL THEN gcomfach.dockey
+        WHEN cvenfach.dockey IS NOT NULL THEN cvenfach.dockey
+        WHEN gvenfach.dockey IS NOT NULL THEN gvenfach.dockey END <alias name='dockey' />,
+        cefectos.docser,
+
+        CASE WHEN ccomfach.docser IS NOT NULL THEN ccomfacd.nomdoc
+        WHEN gcomfach.docser IS NOT NULL THEN gcomfacd.nomdoc
+        WHEN cvenfach.docser IS NOT NULL THEN cvenfacd.nomdoc
+        WHEN gvenfach.docser IS NOT NULL THEN gvenfacd.nomdoc END <alias name='Tipo_doc' />,
+
+        cefecges_pcs.pcs_seqno,
+
+        cefectos.tipdoc auto_quiron,
+
+        cefectos.numefe,  cefectos.fecha,
+        cefectos.fecven,  cefectos.moneda,
+
+        CASE
+        WHEN cefectos.clase = 'P' THEN
+        -cefectos.impdiv
+        ELSE
+        cefectos.impdiv
+        END <alias name='impdiv' />,
+
+        CASE
+        WHEN cefectos.clase = 'P' THEN
+        -cefectos.import
+        ELSE
+        cefectos.import
+        END <alias name='import' />,
+
+        CASE
+        WHEN cefectos.clase = 'P' THEN
+        -cefectos.import
+        ELSE
+        cefectos.import
+        END <alias name='salacu' />,
+
+        cefectos.proyec, cefectos.seccio, cefectos.tipefe, cefectos.estado,
+        cefectos.ctafin, cefectos.remesa, cremesas.fecrem, cefectos.numero, cefectos.apteid,
+        cefectos.fecaux,
+        <!--Datos asistenciales-->
+        cefectos.auxchr3,
+        cefectos.auxnum5,
+        cefectos.auxnum3,
+        cefectos.auxchr5,
+        <!--Datos admisión-->
+        cefectos.auxchr1,
+        cefectos.auxchr2,
+        cefectos.auxnum2,
+        <!--cefectos_ext-->
+        cefectos_ext.fecing,
+        cefectos_ext.fecalt,
+        cefectos_ext.fecdev,
+        cefectos_ext.fecrec,
+        '' <alias name='días_ven' />,
+        cefectos.coment <alias name='notas' />,
+        CASE
+        WHEN cper_empleado.catlab = 'S' THEN
+        'Internacional'
+        ELSE
+        'Nacional'
+        END <alias name='origen' />,
+
+        '' <alias name='situ_cont' />,
+        ctercero.gestor,
+        (cper_empleado.nomemp || ' - ' || cper_empleado.apeemp) empleado,
+        CASE
+        WHEN (cefectos.clase = 'P' AND cper_empleado.catlab = 'S')THEN
+        ((cefectos.impdiv * cefectos.cambio )* 0.20)
+        END <alias name='porcen20' />
+
+    </columns>
+    <from table="cefecges_pcs">
+        <join table='cefecges_det'>
+            <on>cefecges_pcs.pcs_seqno = cefecges_det.pcs_seqno</on>
+            <join table='cefectos'>
+                <on>cefecges_det.det_numero = cefectos.numero</on>
+                <join type="left" table="cempresa">
+                    <on>cefectos.empcode = cempresa.empcode</on>
+                </join>
+                <join table="ctercero">
+                    <on>cefectos.tercer  = ctercero.codigo</on>
+                    <join type="left" table="ctipocla">
+                        <on>ctercero.codcla = ctipocla.codigo</on>
+                    </join>
+                    <join type="left" table="ctertipo">
+                        <on>ctertipo.cuenta = cefectos.cuenta</on>
+                        <on>ctercero.codigo = ctertipo.codigo</on>
+                    </join>
+                    <join type="left" table="cper_empleado">
+                        <on>ctercero.gestor = cper_empleado.codigo</on>
+                    </join>
+                </join>
+                <join type='left' table="cremesas">
+                    <on>cefectos.remesa = cremesas.numrem</on>
+                </join>
+                <join type='left' table='ccomfach'>
+                    <on>cefectos.jusser = ccomfach.docser</on>
+                    <join type='left' table='ccomfacd'>
+                        <on>ccomfach.tipdoc = ccomfacd.codigo</on>
+                    </join>
+                </join>
+                <join type='left' table='gcomfach'>
+                    <on>cefectos.docser = gcomfach.refter</on>
+                    <on>cefectos.codper = gcomfach.tercer</on>
+                    <join type='left' table='gcomfacd'>
+                        <on>gcomfach.tipdoc = gcomfacd.codigo</on>
+                    </join>
+                </join>
+                <join type='left' table='cvenfach'>
+                    <on>cefectos.docser = cvenfach.docser</on>
+                    <join type='left' table='cvenfacd'>
+                        <on>cvenfach.tipdoc = cvenfacd.codigo</on>
+                    </join>
+                </join>
+                <join type='left' table='gvenfach'>
+                    <on>cefectos.docser = gvenfach.docser</on>
+                    <join type='left' table='gvenfacd'>
+                        <on>gvenfach.tipdoc = gvenfacd.codigo</on>
+                    </join>
+                </join>
+                <join type='left' table='cefectos_ext'>
+                    <on>cefectos.numero = cefectos_ext.numero</on>
+                </join>
+            </join>
+        </join>
+    </from>
+    <where>
+        cefecges_pcs.pcs_accion IN ('PAUT', 'CAUT')
+        AND cefectos.caduca != 'S'
+        AND $0
+    </where>
+</select>

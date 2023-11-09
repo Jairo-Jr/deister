@@ -102,7 +102,7 @@ let mTmpTable = Ax.db.getTempTableName(`tmp_opening_balance`);
 Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTable}`);
 Ax.db.execute(`
         SELECT DISTINCT *
-          FROM (SELECT gcomfach.docser, 
+          FROM (SELECT gcomfach.docser,
                     -- gcomsolh.depart depart_sol  2023 03 28 CBF por instruccion de MRA
                        NVL(gcomsoll.auxchr2, gcomsolh.depart) depart_sol, gcomsoll.orden
                   FROM gcomfach,
@@ -115,27 +115,27 @@ Ax.db.execute(`
                        gcompedl_lnk,
                        gcomsolh,
                        gcomsoll
-                 WHERE gcomfach.cabid = gcomfacl.cabid AND 
-                       gcomfacl.cabori = gcommovh.cabid AND 
-                       gcomfacl.tabori = 'gcommovh' AND 
-                       gcommovh.cabid = gcommovl.cabid AND 
-                       gcommovl.cabori = gcompedh.cabid AND 
-                       gcommovl.tabori = 'gcompedh' AND 
+                 WHERE gcomfach.cabid = gcomfacl.cabid AND
+                       gcomfacl.cabori = gcommovh.cabid AND
+                       gcomfacl.tabori = 'gcommovh' AND
+                       gcommovh.cabid = gcommovl.cabid AND
+                       gcommovl.cabori = gcompedh.cabid AND
+                       gcommovl.tabori = 'gcompedh' AND
                        gcompedh.tipdoc = gcompedd.codigo AND
-                       gcompedh.cabid = gcompedl.cabid AND 
-                       gcompedl.linid = gcompedl_lnk.linid AND 
-                       gcompedl_lnk.lnk_cabori = gcomsolh.cabid AND 
-                       gcompedl_lnk.lnk_tabori = 'gcomsolh' AND 
-                       gcomsolh.cabid = gcomsoll.cabid AND 
+                       gcompedh.cabid = gcompedl.cabid AND
+                       gcompedl.linid = gcompedl_lnk.linid AND
+                       gcompedl_lnk.lnk_cabori = gcomsolh.cabid AND
+                       gcompedl_lnk.lnk_tabori = 'gcomsolh' AND
+                       gcomsolh.cabid = gcomsoll.cabid AND
                        gcompedd.circui = 'LOG'
-                   AND    
+                   AND
                        gcomfach.cabid IN (SELECT g.cabid
                                             FROM gcomfach g
                                            WHERE g.docser IN (SELECT cinmcomp.docser
                                                                 FROM cinmcomp
                                                                WHERE ${mSqlCond}))
           UNION ALL
-          SELECT gcomfach.docser, 
+          SELECT gcomfach.docser,
               -- gcomsolh.depart depart_sol  2023 03 28 CBF por instruccion de MRA
                  NVL(gcomsoll.auxchr2, gcomsolh.depart) depart_sol, gcomsoll.orden
             FROM gcomfacl,
@@ -147,28 +147,28 @@ Ax.db.execute(`
                  gcomsoll_dist,
                  gcomsolh,
                  gcomsoll
-           WHERE gcomfacl.cabid  = gcomfach.cabid AND 
-                 gcomfacl.tabori = 'gcommovh' AND 
-                 gcomfacl.cabori = gcomalbl.cabid AND 
-                 gcomfacl.linori = gcomalbl.linid AND 
-                 gcomalbl.tabori = 'gcompedh' AND 
-                 gcomalbl.cabori = gcompedl.cabid AND 
-                 gcomalbl.linori = gcompedl.linid AND 
-                 gcompedl.cabid  = gcomsoll_dist.cabid AND 
-                 gcompedl.codart = gcomsoll_dist.codart AND 
+           WHERE gcomfacl.cabid  = gcomfach.cabid AND
+                 gcomfacl.tabori = 'gcommovh' AND
+                 gcomfacl.cabori = gcomalbl.cabid AND
+                 gcomfacl.linori = gcomalbl.linid AND
+                 gcomalbl.tabori = 'gcompedh' AND
+                 gcomalbl.cabori = gcompedl.cabid AND
+                 gcomalbl.linori = gcompedl.linid AND
+                 gcompedl.cabid  = gcomsoll_dist.cabid AND
+                 gcompedl.codart = gcomsoll_dist.codart AND
                  gcompedl.cabid  = gcompedh.cabid AND
-                 gcompedh.tipdoc = gcompedd.codigo AND 
-                 gcomsoll_dist.tabname = 'gcompedh' AND 
-                 gcomsoll_dist.cabsol  = gcomsolh.cabid AND 
-                 gcomsolh.cabid  = gcomsoll.cabid AND 
+                 gcompedh.tipdoc = gcompedd.codigo AND
+                 gcomsoll_dist.tabname = 'gcompedh' AND
+                 gcomsoll_dist.cabsol  = gcomsolh.cabid AND
+                 gcomsolh.cabid  = gcomsoll.cabid AND
                  gcompedd.circui = 'LOG'
-             AND    
+             AND
                  gcomfach.cabid IN (SELECT g.cabid
                                       FROM gcomfach g
                                      WHERE g.docser IN (SELECT cinmcomp.numfac
                                                           FROM cinmcomp
                                                          WHERE ${mSqlCond})))
-           
+
           INTO TEMP ${mTmpTable} WITH NO LOG
     `);
 
@@ -184,7 +184,7 @@ Ax.db.execute(`
                 cinmcomp.codinm                                             <alias name='crp_grupo_bien' />,
                 cinmhead.nominm                                             <alias name='crp_descripcion_bien' />,
                 cinmctas.ccamor,
-                ccuentas2.nombre                                            <alias name='crp_description1' />, 
+                ccuentas2.nombre                                            <alias name='crp_description1' />,
                 crp_chv_mapcta2.ctaori                                      <alias name='crp_cuenta_depre_chv'/>,
                 crp_chv_mapcta2.concep                                      <alias name='crp_descri_cuenta_chv'/>,
                 cinmctas.ccdota,
@@ -203,7 +203,7 @@ Ax.db.execute(`
                 YEAR(cinmcomp.fecha) || LPAD(MONTH(cinmcomp.fecha), 2, '0') <alias name='crp_periodo' />,
                 cinmcomp.fecbaj,
                 cinmcomp.auxchr4                                            <alias name='crp_causal' />,
-                cinmcomp.motivo, 
+                cinmcomp.motivo,
                 cinmcomp.tercer                                             <alias name='crp_cod_proveedor' />,
                 ctercero.nombre,
                 ctercero.cif,
@@ -243,7 +243,7 @@ Ax.db.execute(`
                 cpar_parpreh.nompre                                         <alias name='crp_descri_inversion' />,
                 cinmelem.codpar                                             <alias name='crp_partida' />,
                 cpar_parprel.nompar                                                     <alias name='crp_descri_partida' />,
-    
+
                 CASE WHEN cinmctas.ccinmo LIKE '322%' THEN cinmcomp.docser END          <alias name='nro_contrato_arr'/>,
                 CASE WHEN cinmctas.ccinmo LIKE '322%' THEN cinmcomp.fecfac END          <alias name='fecha_contrato_arr'/>,
                 CASE WHEN cinmctas.ccinmo LIKE '322%' THEN cinmftab.numeje END          <alias name='nro_cuotas_arr'/>,
@@ -272,15 +272,15 @@ Ax.db.execute(`
                     ELSE 0
                     END, 0)                                                                 <alias name='imp_mejoras'/>,
                 NVL(CASE WHEN cinmcomp.tipcom = 'B' THEN ABS(cinmcval.inicom) * -1
-                    ELSE 0   
+                    ELSE 0
                 END, 0)                                                                     <alias name='imp_ret_baj' />,
                 NVL(CASE WHEN cinmcomp.tipcom = 'J' THEN cinmcval.invcom
                      WHEN cinmcomp.docser LIKE 'FINV%' THEN cinmcval.invcom
-                    ELSE 0   
+                    ELSE 0
                 END, 0)                                                                     <alias name='imp_otros_ajus' />,
                 NVL(cinmcval.inicom, 0)                                                         <alias name='imp_dep_acum_ejerc' />,
                 NVL(CASE WHEN cinmcomp.tipcom = 'B' THEN ABS(cinmcval.inicom) * -1
-                    ELSE 0   
+                    ELSE 0
                 END, 0)                                                                     <alias name='imp_dep_ret_baj' />,
                 0                                                                      <alias name='imp_dep_otr_ajus' />,
                 cinmcval.netcom                                                         <alias name='neto' />,
@@ -302,7 +302,7 @@ Ax.db.execute(`
                 END                                                                     <alias name='deprec_trib_anual' />,
                 cinmcomp.auxnum5                                                        <alias name='deprec_trib_acum' />,
                 CASE WHEN cinmcomp.tipcom = 'B' THEN ABS(cinmcval.inicom) * -1
-                    ELSE 0   
+                    ELSE 0
                 END                                                                     <alias name='deprec_trib_baja' />,
                 <!-- Inventariable -->
                 CASE WHEN cinmelem.auxchr3 = 1 THEN 'Si'
@@ -310,7 +310,7 @@ Ax.db.execute(`
                 END                                                                     <alias name='inventariable' />,
                 <!-- Grupo Inmovilizado -->
                 cinmhead.codgrp                                                         <alias name='grp_inmovilizado' />,
-                
+
                 ${mTmpTableCinmamorxMeses}.codigo codigo1,
                 ${mTmpTableCinmamorxMeses}.codigo codigo2,
                 ${mTmpTableCinmamorxMeses}.codigo codigo3,
@@ -377,7 +377,7 @@ Ax.db.execute(`
                         <join type='left' table='cinmftab'>
                             <on>cinmcomp.codgru = cinmftab.codgrp</on>
                             <on>cinmcomp.codfis = cinmftab.codigo</on>
-                        </join>        
+                        </join>
                         <join type="left" table="cinmelem_ppe">
                             <on>cinmcomp.seqno = cinmelem_ppe.ppe_seqno_compon</on>
                             <join type='left' table='cper_empleado'>
@@ -496,7 +496,7 @@ var rsComponentes = Ax.db.executeQuery(`
                 crp_periodo,
                 fecbaj,
                 crp_causal,
-                motivo, 
+                motivo,
                 crp_cod_proveedor,
                 nombre,
                 cif,
@@ -525,7 +525,7 @@ var rsComponentes = Ax.db.executeQuery(`
                 crp_descri_inversion,
                 crp_partida,
                 crp_descri_partida,
-    
+
                 nro_contrato_arr,
                 fecha_contrato_arr,
                 nro_cuotas_arr,
@@ -541,10 +541,10 @@ var rsComponentes = Ax.db.executeQuery(`
                 imp_dep_acum_ejerc,
                 imp_dep_ret_baj,
                 imp_dep_otr_ajus,
-                
+
                 ((crp_saldo_inicial+crp_imp_adqui+imp_mejoras+imp_ret_baj+imp_otros_ajus)
                  - (imp_dep_acum_ejerc+dep_39+imp_dep_ret_baj+imp_dep_otr_ajus)) neto,
-                 
+
                 cod_quiron,
                 nro_aut_obra_quiron,
                 estado,
@@ -556,7 +556,7 @@ var rsComponentes = Ax.db.executeQuery(`
                 deprec_trib_baja,
                 inventariable,
                 grp_inmovilizado,
-                
+
                 codigo1,
                 codigo2,
                 codigo3,

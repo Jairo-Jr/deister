@@ -26,8 +26,8 @@
  *
  *  JS:  crp_carga_extracto_bcp
  *
- *  Version     : v1.7
- *  Date        : 2023-10-16
+ *  Version     : v1.8
+ *  Date        : 2023-10-24
  *  Description : Generación de extractos bancarios para cuentas BCP, a partir
  *                de la lectura de archivo Excel.
  *
@@ -61,7 +61,7 @@ function crp_carga_extracto_bcp(pIntFileId) {
         }
     }
 
-    function __validaConceptoPropio(pStrConcepProp, pStrCodBanc) {
+    function __validaConceptoPropio(pStrConcepProp, pStrCodBanc, pStrDescripConcep) {
         var mStrConcepProp = Ax.db.executeGet(`
             <select>
                 <columns>
@@ -74,7 +74,18 @@ function crp_carga_extracto_bcp(pIntFileId) {
                 </where>
             </select>
         `, pStrCodBanc, pStrConcepProp);
-        return (mStrConcepProp != null) ? true : false;
+        var mBoolCodValido = (mStrConcepProp != null) ? true : false;
+
+        if (!mBoolCodValido) {
+            Ax.db.insert('tconprop', {
+                codban: pStrCodBanc,
+                codpro: pStrConcepProp,
+                nompro: pStrDescripConcep,
+                coddom: pStrConcepProp
+            });
+        }
+
+        // return (mStrConcepProp != null) ? true : false;
     }
 
     /**
@@ -233,10 +244,11 @@ function crp_carga_extracto_bcp(pIntFileId) {
             /**
              *  Validacion de concepto propio
              */
-            var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan);
-            if(!mBoolConcepValido) {
-                throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
-            }
+            __validaConceptoPropio(mRowSheet.J, mStrCodBan, mRowSheet.C);
+            // var mBoolConcepValido = __validaConceptoPropio(mRowSheet.J, mStrCodBan, mRowSheet.C);
+            // if(!mBoolConcepValido) {
+            //     throw `Concepto propio [${mRowSheet.J}] no contemplado en [tconprop] para el código de banco [${mStrCodBan}].`;
+            // }
 
 
             var mObjTextract = {
