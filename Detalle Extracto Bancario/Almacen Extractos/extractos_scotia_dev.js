@@ -89,6 +89,65 @@ function crp_carga_extracto_scotia(pIntFileId) {
                 mStrDivisa = mObjDivisa[mArrayColA.pop()];
                 console.log(mArrayColA);
                 console.log(mFloatSaldoApertura, mStrDivisa);
+
+                /**
+                 * Validacion de Cod. Bancario y Cta. Financiera
+                 */
+                var mArrayCbancPro = Ax.db.executeQuery(`
+                    <select>
+                        <columns>
+                            ctafin, codban, salext, fecext
+                        </columns>
+                        <from table='cbancpro'/>
+                        <where>
+                            bban = ?
+                            AND moneda = ?
+                            AND estado = 'A'
+                        </where>
+                    </select>
+                `, mStrNumCta, mStrDivisa).toJSONArray();
+
+                if(mArrayCbancPro.length == 0) {
+                    throw `No existe una cuenta financiera con BBAN [${mStrNumCta}] y Moneda [${mStrDivisa}], en Estado [Abierta] y Tipo [Cuenta corriente]`;
+                } else if(mArrayCbancPro.length > 1) {
+                    throw `Existe más de una cuenta financiera con BBAN [${mStrNumCta}] y Moneda [${mStrDivisa}], en Estado [Abierta] y Tipo [Cuenta corriente]`;
+                } else {
+                    mStrCodCtaFin    = mArrayCbancPro[0].ctafin;
+                    mStrCodBan       = mArrayCbancPro[0].codban;
+                }
+            }
+
+            if(mObjRow.Row >= 9) {
+                var mStrFecOpe = mObjRow["A"];
+                var mStrRefer1 = mObjRow["B"];
+                var mFloatImport = mObjRow["C"];
+                var mStrRefer2 = mObjRow["D"];
+                var mStrConPro = mObjRow["E"];
+
+                var mObjTextract = {
+                    file_seqno: pIntFileId,
+                    fecope: mStrFecOpe,
+                    fecval: mStrFecOpe,
+                    refer1: mStrRefer1,
+                    import: mFloatImport,
+                    refer2: mStrRefer2,
+                    // docume: mRowSheet.G,//
+                    // concep: mStrConcep,
+                    ctafin: mStrCodCtaFin,
+                    empcode: '125',
+                    codban: mStrCodBan,
+                    ccc1: '00',
+                    ccc2: '00',
+                    ctacte: mStrNumCta,
+                    concom: '00',
+                    conpro: mStrConPro,
+                    divisa: mStrDivisa
+                }
+                console.log(mObjTextract);
+                /**
+                 * Registro del extracto bancario
+                 */
+                Ax.db.insert("textract", mObjTextract);
             }
 
             // var mStrFecOpe = mObjRow.substring(16, 24); // Fecha de Operacion
