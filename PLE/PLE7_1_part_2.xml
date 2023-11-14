@@ -1,0 +1,103 @@
+
+<union type='all'>
+    <select>
+        <columns>
+            cinmelem.codele,
+            cinmcomp.docser,
+            SUM(cpar_premovi.import) imp_adq_y_adic,
+            0 imp_otros_ajus
+        </columns>
+
+        <!-- Inversiones -->
+        <from table="cpar_parpreh">
+
+            <!-- Partidas de Inversion -->
+            <join table="cpar_parprel">
+                <on>cpar_parpreh.empcode = cpar_parprel.empcode</on>
+                <on>cpar_parpreh.codpre  = cpar_parprel.codpre</on>
+
+                <!-- Ingresos y gastos -->
+                <join table="cpar_premovi">
+                    <on>cpar_parprel.empcode = cpar_premovi.empcode</on>
+                    <on>cpar_parprel.codpre = cpar_premovi.codpre</on>
+                    <on>cpar_premovi.codpar IN (cpar_parprel.codpar, cpar_parprel.paract)</on>
+
+                    <!-- Componente -->
+                    <join table='cinmcomp'>
+                        <on>cpar_premovi.auxfec1 = cinmcomp.seqno</on>
+
+                        <!-- Elemento -->
+                        <join table="cinmelem">
+
+                            <on>cinmcomp.empcode = cinmelem.empcode</on>
+                            <on>cinmcomp.codinm = cinmelem.codinm</on>
+                            <on>cinmcomp.codele = cinmelem.codele</on>
+                            <join table="cinmhead">
+                                <on>cinmhead.empcode = cinmelem.empcode</on>
+                                <on>cinmhead.codinm = cinmelem.codinm</on>
+                            </join>
+                        </join>
+                    </join>
+                </join>
+            </join>
+        </from>
+        <where>
+            cpar_premovi.estado = 'A'
+            AND cinmhead.codgrp NOT IN ('12')
+        </where>
+        <group>
+            1,2
+        </group>
+    </select>
+
+    <select>
+        <columns>
+            cinmelem.codele,
+            cinmcomp.docser,
+            0 imp_adq_y_adic,
+            SUM(ABS(cpar_premovi.import)*-1) imp_otros_ajus
+        </columns>
+
+        <!-- Inversiones -->
+        <from table="cpar_parpreh">
+
+            <!-- Partidas de Inversion -->
+            <join table="cpar_parprel">
+                <on>cpar_parpreh.empcode = cpar_parprel.empcode</on>
+                <on>cpar_parpreh.codpre  = cpar_parprel.codpre</on>
+
+                <!-- Ingresos y gastos -->
+                <join table="cpar_premovi">
+                    <on>cpar_parprel.empcode = cpar_premovi.empcode</on>
+                    <on>cpar_parprel.codpre = cpar_premovi.codpre</on>
+                    <on>cpar_premovi.codpar IN (cpar_parprel.codpar, cpar_parprel.paract)</on>
+
+                    <!-- Componente -->
+                    <join table='cinmcomp'>
+                        <on>cpar_premovi.auxfec1 = cinmcomp.seqno</on>
+
+                        <!-- Elemento -->
+                        <join table="cinmelem">
+
+                            <on>cinmcomp.empcode = cinmelem.empcode</on>
+                            <on>cinmcomp.codinm = cinmelem.codinm</on>
+                            <on>cinmcomp.codele = cinmelem.codele</on>
+                            <join table="cinmhead">
+                                <on>cinmhead.empcode = cinmelem.empcode</on>
+                                <on>cinmhead.codinm = cinmelem.codinm</on>
+                            </join>
+                        </join>
+                    </join>
+                </join>
+            </join>
+        </from>
+        <where>
+            cpar_premovi.estado IN ('J', 'T')
+            AND cinmhead.codgrp NOT IN ('12')
+        </where>
+        <group>
+            1,2
+        </group>
+    </select>
+
+</union>

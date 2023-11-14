@@ -12,7 +12,7 @@ var mIntYear        = 2023;
 // ===============================================================
 // DEFINICIÓN DE CAMPOS PERSONALIZADOS
 // ===============================================================
-var mStrColumn = pStrCondicion == 'F' ? 'tmp_cinmelem.codele' : `tmp_cinmelem.codele,tmp_cinmelem.fec_depre,tmp_cinmelem.loteid`;
+var mStrColumn = pStrCondicion == 'F' ? 'tmp_cinmelem.codele' : `tmp_cinmelem.codele,tmp_cinmelem.fec_depre,tmp_cinmelem.loteid,tmp_cinmelem.docser`;
 
 // ===============================================================
 // TABLA TEMPORAL PARA ACTIVOS FIJOS
@@ -27,11 +27,15 @@ Ax.db.execute(`
             <columns>
                 cinmelem.codinm,
                 cinmelem.codele,
+                cinmcomp.docser,
                 2022 ejerci,
                 -5 codigo,
                 'imp_adq_y_adic' nomper,
                 0 loteid,
-                SUM(cinmcval.invcom) <alias name='imp_adq_y_adic' />,
+                SUM(CASE WHEN cinmelem.codinm = '999999' THEN ABS(cinmcval.invcom)
+                         WHEN cinmelem.codinm = '777777' THEN ABS(cinmcval.invcom)*-1
+                         ELSE 0
+                    END) <alias name='imp_adq_y_adic' />,
                 0 <alias name='impmax' />,
                 0 <alias name='imp_depre_bajas' />,
                 0 <alias name='imp_depre_ajustes' />,
@@ -57,15 +61,14 @@ Ax.db.execute(`
             </from>
             <where>
                 cinmcomp.tipcom NOT IN ('E', 'D')
-                AND YEAR(cinmcomp.fecha) = 2023 
-                <!-- AND MONTH(cinmcomp.fecha) &gt;= 4 -->
-
+                AND cinmcomp.fecha BETWEEN '01-04-2023' AND '31-10-2023'
                 AND cinmcomp.tipcom != 'J'
                 AND cinmcomp.docser NOT LIKE 'FINV%'
-                <!--AND (cinmcomp.docser LIKE 'FACT%' OR cinmcomp.docser LIKE 'FINV%' OR cinmcomp.docser LIKE 'FVAR%' OR cinmcomp.docser LIKE 'RFIN%' OR cinmcomp.docser LIKE 'SFIN%')-->
+
+                AND cinmelem.codinm IN ('999999', '777777')
             </where>
             <group>
-                1, 2
+                1, 2, 3
             </group>
         </select>
         
@@ -75,6 +78,7 @@ Ax.db.execute(`
             <columns>
                 cinmelem.codinm,
                 cinmelem.codele,
+                cinmcomp.docser,
                 2022 ejerci,
                 0 codigo,
                 'imp_otros_ajus' nomper,
@@ -87,9 +91,9 @@ Ax.db.execute(`
 
                 0 <alias name='imp_saldo_inicial' />,
                 0 <alias name='imp_ret_baj' />,
-                SUM(CASE WHEN cinmcomp.tipcom = 'J' THEN cinmcval.invcom
-                        WHEN cinmcomp.docser LIKE 'FINV%' THEN cinmcval.invcom
-                        ELSE 0   
+                SUM(CASE WHEN cinmelem.codinm = '999999' THEN ABS(cinmcval.invcom)
+                         WHEN cinmelem.codinm = '777777' THEN ABS(cinmcval.invcom)*-1
+                         ELSE 0
                     END) <alias name='imp_otros_ajus' />,
                 DATE('01-01-2022') <alias name='fec_depre' />
             </columns>
@@ -109,12 +113,12 @@ Ax.db.execute(`
             </from>
             <where>
                 cinmcomp.tipcom NOT IN ('E', 'D')
-                AND (cinmcomp.tipcom = 'J'
-                    OR cinmcomp.docser LIKE 'FINV%')
-                <!--AND (cinmcomp.docser LIKE 'FACT%' OR cinmcomp.docser LIKE 'FINV%' OR cinmcomp.docser LIKE 'FVAR%' OR cinmcomp.docser LIKE 'RFIN%' OR cinmcomp.docser LIKE 'SFIN%')-->
+                AND cinmcomp.fecha BETWEEN '01-04-2023' AND '31-10-2023'
+                AND cinmcval.estado IN ('A', 'J')
+                AND cinmcomp.docser LIKE 'FINV%'
             </where>
             <group>
-                1, 2
+                1, 2, 3
             </group>
         </select>
     </union>
@@ -183,31 +187,6 @@ Ax.db.execute(`
         </select>
     `);
 
-
-let mTmpTableElemComp = Ax.db.getTempTableName(`tmp_elem_comp`);
-Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTableElemComp}`);
-
-Ax.db.execute(`
-        <select intotemp='${mTmpTableElemComp}'>
-            <columns>
-                cinmelem.seqno
-            </columns>
-            <from table='cinmelem'>
-                <join table='cinmcomp'>
-                    <on>cinmcomp.empcode= cinmelem.empcode</on>
-                    <on>cinmcomp.codinm = cinmelem.codinm</on>
-                    <on>cinmcomp.codele = cinmelem.codele</on>
-                </join>
-            </from>
-            <where>
-                cinmcomp.tipcom NOT IN ('E', 'D')
-                <!--AND (cinmcomp.docser LIKE 'FACT%' OR cinmcomp.docser LIKE 'FINV%' OR cinmcomp.docser LIKE 'FVAR%' OR cinmcomp.docser LIKE 'RFIN%' OR cinmcomp.docser LIKE 'SFIN%')-->
-            </where>
-            <group>
-                1
-            </group>
-        </select>
-    `);
 
 /**
  * AGRUPA EQUIPO-MAQUINA
@@ -292,16 +271,22 @@ Ax.db.execute(`
                 CASE WHEN tmp_activos_fijos.codigo = -4 THEN tmp_activos_fijos.imp_saldo_inicial 
                         ELSE 0 
                 END                                                                                         <alias name='imp_saldo_inicial' />,
-                CASE WHEN tmp_activos_fijos.codigo = -5 THEN tmp_activos_fijos.imp_adq_y_adic 
+
+                CASE WHEN cinmelem.codinm = '999999' THEN ABS(tmp_activos_fijos.imp_adq_y_adic)
+                     WHEN cinmelem.codinm = '777777' THEN ABS(tmp_activos_fijos.imp_adq_y_adic)*-1
                         ELSE 0 
                 END                                                                                         <alias name='imp_adq_y_adic' />,
+
                 tmp_cinmcval.imp_mejoras                                                                    <alias name='imp_mejoras' />,
                 CASE WHEN tmp_activos_fijos.codigo = -3 THEN tmp_activos_fijos.imp_ret_baj
                         ELSE 0
                 END                                                                                         <alias name='imp_bajas' />,
-                CASE WHEN tmp_activos_fijos.codigo = 0 THEN tmp_activos_fijos.imp_otros_ajus
+
+                CASE WHEN cinmelem.codinm = '999999' THEN ABS(tmp_activos_fijos.imp_otros_ajus)
+                     WHEN cinmelem.codinm = '777777' THEN ABS(tmp_activos_fijos.imp_otros_ajus)*-1
                         ELSE 0
-                END                                                                 <alias name='imp_ajustes' />,
+                END                                                                                         <alias name='imp_ajustes' />,
+
                 '0.00'                                                                                      <alias name='imp_revaluac_volunt' />,
                 '0.00'                                                                                      <alias name='imp_revaluac_reorg' />,
                 '0.00'                                                                                      <alias name='imp_revaluac_otras' />,
@@ -335,6 +320,7 @@ Ax.db.execute(`
                 tmp_activos_fijos.loteid,
                 tmp_activos_fijos.codigo,
                 tmp_activos_fijos.fec_depre,
+                tmp_activos_fijos.docser,
                 cinmelem.seqno
             </columns>
             <from table='cinmhead'>
@@ -358,17 +344,17 @@ Ax.db.execute(`
                         <on>cinmelem.seqno = tmp_cinmcval.seqno</on>
                     </join>
 
-                    <join table='${mTmpTableElemComp}' alias='tmp_elem_comp'>
-                        <on>cinmelem.seqno = tmp_elem_comp.seqno</on>
-                    </join>
-
                 </join>
             </from>
             <where>
                 tmp_activos_fijos.ejerci &gt;= ${mIntYear} - 1
-                AND cinmelem.codinm IN ('999999', '777777')
-                <!--AND cinmelem.codcta NOT LIKE '8888%'
-                AND cinmelem.codcta != '040305'-->
+
+                <!--AND cinmhead.codgrp NOT IN ('12')-->
+                <!--AND cinmelem.codinm IN ('999999', '777777')-->
+
+
+
+
                 <!--AND cinmhead.codgrp IN ('02', '03', '04', '05', '06', '07', '08', '09')-->
                 <!-- AND cinmelem.seqno = 16248 -->
                 <!--AND cinmelem.codele = '125014528'-->
@@ -389,7 +375,6 @@ var mStringPle7_1 = Ax.db.executeQuery(`
                             WHEN tmp_cinmelem.fec_depre &gt;= '01-04-${mIntYear}' THEN tmp_cinmelem.nro_asien_ch
                             WHEN (imp_saldo_inicial != 0 OR imp_adq_y_adic != 0 OR imp_mejoras != 0 OR imp_bajas != 0 OR imp_ajustes != 0) AND tmp_cinmelem.auxchr2 IS NOT NULL THEN tmp_cinmelem.auxchr2
                             WHEN (imp_depre_acumulada != 0 OR imp_depre_sin_revaluac != 0 OR imp_depre_bajas != 0 OR imp_depre_ajustes != 0) AND tmp_cinmelem.nro_asien_ch IS NOT NULL THEN tmp_cinmelem.nro_asien_ch
-                            WHEN crp_ple7_1.asient_depre IS NOT NULL THEN crp_ple7_1.asient_depre
                             ELSE '0'
                     END
                 ) AS VARCHAR(40)) cuo,                                                     
@@ -434,7 +419,7 @@ var mStringPle7_1 = Ax.db.executeQuery(`
                 ${mStrColumn}
             </columns>
             <from table='${mTmpTableCinmelem}' alias='tmp_cinmelem'>
-                <join table='cempresa'>
+                <join type='left' table='cempresa'>
                     <on>tmp_cinmelem.empcode = cempresa.empcode</on>
                     <on>tmp_cinmelem.codcta  = cinmctas.codigo</on>
                     <join type='left' table='cinmctas'>
@@ -446,10 +431,6 @@ var mStringPle7_1 = Ax.db.executeQuery(`
                             <on>cinmctas.ccamor = crp_chv_mapcta2.cuenta</on>
                         </join>
                     </join>
-                </join>
-                <join type='left' table='crp_ple7_1'>
-                    <on>tmp_cinmelem.codele = crp_ple7_1.codele</on>
-                    <on>tmp_cinmelem.fec_depre = crp_ple7_1.fecfac</on>
                 </join>
             </from>
             <order>
