@@ -80,7 +80,51 @@
     var mStrNameFile = 'LE' + mStrRuc + mStrYear + mStrMonth + '0005030000' + mIntIndOperacionO + mIntContLibroI + mIntMonedaM + '1.txt'; 
     
     // ===============================================================
-    // Si la condición del reporte es Fichero (F)
+    // Si la condición del reporte es Fichero (F)if (mArrayCodCuentas.length > 0) {
+    //             throw new Ax.ext.Exception(`El/los códigos de Cuentas Contables, deben tener entre 3 y 24 dígitos: [${mArrayCodCuentas}]`);
+    //         }
+    //
+    //         // ===============================================================
+    //         // Definición del blob
+    //         // ===============================================================
+    //         var mBlob = new Ax.sql.Blob(mStrNameFile);
+    //
+    //         // ===============================================================
+    //         // Definición del archivo txt
+    //         // ===============================================================
+    //         new Ax.rs.Writer(mRsPle5_3).csv(options => {
+    //             options.setHeader(false);
+    //             options.setDelimiter("|");
+    //             options.setResource(mBlob);
+    //         });
+    //
+    //         mRsPle5_3.close();
+    //
+    //         // ===============================================================
+    //         // Definición de file zip
+    //         // ===============================================================
+    //         var mFicheroZip  = new Ax.io.File("/tmp/ziptest.zip");
+    //         var mZip         = new Ax.util.zip.Zip(mFicheroZip);
+    //
+    //         mZip.zipFile(mBlob);
+    //         mZip.close();
+    //
+    //         // ===============================================================
+    //         // Definición blob del archivo zip
+    //         // ===============================================================
+    //         var mDestino    = new Ax.io.File(mFicheroZip.getAbsolutePath());
+    //         var mFichero    = new Ax.sql.Blob(mDestino);
+    //
+    //         // ===============================================================
+    //         // Definición ResultSet temporal
+    //         // ===============================================================
+    //         var mRsFile = new Ax.rs.Reader().memory(options => {
+    //             options.setColumnNames(["nombre", "archivo"]);
+    //             options.setColumnTypes([Ax.sql.Types.CHAR, Ax.sql.Types.BLOB]);
+    //         });
+    //         mRsFile.rows().add([mStrNameFile, mFichero.getBytes()]);
+    //
+    //         return mRsFile;
     // ===============================================================
     if (mStrCondicion == 'F') { 
         if (mArrayCodCuentas.length > 0) {

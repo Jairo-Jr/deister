@@ -1,0 +1,112 @@
+<!-- DESARROLLO PLE8 -->
+
+<select intotemp='@tmp_ctax_cefectos'>
+    <columns>
+        ctax_move_head.taxh_seqno,
+        MAX(cefectos.fecven) fecven,
+        MAX(cefectos.impdiv) impdiv
+    </columns>
+    <from table='ctax_move_head'>
+        <join table='cefectos'>
+            <on>cefectos.auxnum4 = ctax_move_head.taxh_loteid</on>
+        </join>
+    </from>
+    <group>
+        1
+    </group>
+</select>
+
+
+
+<select>
+<columns>
+    ctax_move_head.taxh_seqno,
+    ctax_move_head.taxh_docrec,
+    ctax_move_head.taxh_docser,
+    ctax_move_head.taxh_jusser,
+
+
+    cempresa.cifemp                                                                                     campo1,     <!-- Campo 01 -->
+    cempresa.empname                                                                                    campo2,     <!-- Campo 02 -->
+    ctax_move_head.taxh_ejefis || LPAD(ctax_move_head.taxh_perfis, 2, '0') || '00'                      campo3,     <!-- Campo 03 -->
+    ''                                                                                                  campo4,     <!-- Campo 04 -->
+    TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')                                                     campo5,     <!-- Campo 05 -->
+    TO_CHAR(tmp_cefectos.fecven, '%d/%m/%Y')                                                            campo6,     <!-- Campo 06 -->
+    ctax_move_head.taxh_tipdoc                                                                          campo7,     <!-- Campo 07 -->
+    SUBSTR(ctax_move_head.taxh_docser, 0, CHARINDEX('-', ctax_move_head.taxh_docser)-1)                 campo8,     <!-- Campo 08 -->
+
+    LPAD(SUBSTR(ctax_move_head.taxh_docser, CHARINDEX('-', ctax_move_head.taxh_docser)+1), 8, '0')      campo9,     <!-- Campo 09 -->
+    ''                                                                                                  campo10,    <!-- Campo 10 -->
+    ctax_move_head.taxh_ciftyp                                                                          campo11,    <!-- Campo 11 -->
+    ctax_move_head.taxh_cifter                                                                          campo12,    <!-- Campo 12 -->
+    ctax_move_head.taxh_nombre                                                                          campo13,    <!-- Campo 13 -->
+    ''                                                                                                  campo14,    <!-- Campo 14 -->
+
+    CASE WHEN ctax_move_line.taxl_type = 'N' AND ctax_move_line.taxl_porcen &gt; 0 THEN ctax_move_line.taxl_basimp
+    END                                                                                                 campo15,    <!-- Campo 15 -->
+    0                                                                                                   campo16,    <!-- Campo 16 -->
+    CASE WHEN ctax_move_line.taxl_type = 'N' AND ctax_move_line.taxl_porcen &gt; 0 THEN ctax_move_line.taxl_cuoded
+    END                                                                                                 campo17,    <!-- Campo 17 -->
+    ''                                                                                                  campo18,    <!-- Campo 18 -->
+
+    CASE WHEN ctax_move_line.taxl_code = 'IGVE' THEN ctax_move_line.taxl_basimp
+    END                                                                                                 campo19,    <!-- Campo 19 -->
+
+    CASE WHEN ctax_move_line.taxl_code = 'IGVI' THEN ctax_move_line.taxl_basimp
+    END                                                                                                 campo20,    <!-- Campo 20 -->
+
+    ''                                                                                                  campo21,    <!-- Campo 21 -->
+    ''                                                                                                  campo22,    <!-- Campo 22 -->
+    ''                                                                                                  campo23,    <!-- Campo 23 -->
+    ''                                                                                                  campo24,    <!-- Campo 24 -->
+    ''                                                                                                  campo25,    <!-- Campo 25 -->
+    ctax_move_head.taxh_import                                                                          campo26,    <!-- Campo 26 -->
+    ctax_move_head.taxh_moneda                                                                          campo27,    <!-- Campo 27 -->
+    ctax_move_head.taxh_cambio                                                                          campo28,    <!-- Campo 28 -->
+
+    <!-- Rectificacion -->
+    ctax_move_recti.taxh_fecha                                                                          campo29,    <!-- Campo 29 -->
+    ctax_move_recti.taxh_tipdoc                                                                         campo30,    <!-- Campo 30 -->
+    SUBSTR(ctax_move_recti.taxh_docser, 0, CHARINDEX('-', ctax_move_recti.taxh_docser)-1)               campo31,    <!-- Campo 31 -->
+    LPAD(SUBSTR(ctax_move_recti.taxh_docser, CHARINDEX('-', ctax_move_recti.taxh_docser)+1), 8, '0')    campo32,    <!-- Campo 32 -->
+    ''                                                                                                  campo33     <!-- Campo 33 -->
+
+    <!-- <whitespace /> campo34 -->
+</columns>
+<from table='ctax_move_head'>
+    <join type='left' table='ctax_move_line'>
+        <on>ctax_move_head.taxh_seqno = ctax_move_line.taxh_seqno</on>
+    </join>
+
+    <join type='left' table='@tmp_ctax_cefectos' alias='tmp_cefectos'>
+        <on>ctax_move_head.taxh_seqno = tmp_cefectos.taxh_seqno</on>
+    </join>
+    <join table='cenllote'>
+        <on>ctax_move_head.taxh_loteid = cenllote.loteid</on>
+    </join>
+    <join table='gvenfach'>
+        <on>ctax_move_head.taxh_loteid = gvenfach.loteid</on>
+        <join table='ctercero'>
+            <on>gvenfach.tercer = ctercero.codigo</on>
+        </join>
+    </join>
+    <join type='left' table='cempresa'>
+        <on>ctax_move_head.taxh_empcode = cempresa.empcode</on>
+    </join>
+
+    <!-- Rectificacion -->
+    <join type='left' table='ctax_move_head' alias='ctax_move_recti'>
+        <on>ctax_move_head.taxh_docrec = ctax_move_recti.taxh_docser</on>
+        <on>ctax_move_head.taxh_tercer = ctax_move_recti.taxh_tercer</on>
+        <on>ctax_move_head.taxh_fecrec = ctax_move_recti.taxh_fecha</on>
+    </join>
+</from>
+<where>
+    cenllote.tabname = 'gvenfach'
+    <!-- AND ctax_move_head.taxh_jusser IN ('FMAN0000414', 'FMAN0000415', 'FMAN0000416', 'FACT0000065', 'NCSE0000005', 'FREL0000992') -->
+</where>
+</select>
+
+        <!-- 30,345 -->
+
+        <!-- 33,075 con efectos -->

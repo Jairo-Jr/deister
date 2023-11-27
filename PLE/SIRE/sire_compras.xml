@@ -24,15 +24,18 @@
     ctax_move_head.taxh_docrec,
     ctax_move_head.taxh_docser,
     ctax_move_head.taxh_jusser,
-    cempresa.cifemp                                                                     campo1,
-    cempresa.empname                                                                    campo2,
-    ctax_move_head.taxh_ejefis || LPAD(ctax_move_head.taxh_perfis, 2, '0') || '00'              campo3,
+    cempresa.cifemp                                                                                     campo1,
+    cempresa.empname                                                                                    campo2,
+    ctax_move_head.taxh_ejefis || LPAD(ctax_move_head.taxh_perfis, 2, '0') || '00'                      campo3,
     ''                                                                                                  campo4,
     TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')                                                     campo5,
     TO_CHAR(tmp_cefectos.fecven, '%d/%m/%Y')                                                            campo6,
     ctax_move_head.taxh_tipdoc                                                                          campo7,
     SUBSTR(ctax_move_head.taxh_docser, 0, CHARINDEX('-', ctax_move_head.taxh_docser)-1)                 campo8,
-    ''                                                                                                  campo9,
+
+    CASE WHEN ctax_move_head.taxh_tipdoc IN ('50' , '51', '52', '53', '54') THEN YEAR(gcomfach.fecope)
+    END                                                                                                 campo9,
+
     LPAD(SUBSTR(ctax_move_head.taxh_docser, CHARINDEX('-', ctax_move_head.taxh_docser)+1), 8, '0')      campo10,
     ''                                                                                                  campo11,
     ctax_move_head.taxh_ciftyp                                                                          campo12,
@@ -69,7 +72,7 @@
     ctax_move_head.taxh_cambio campo27,
 
     <!-- Rectificacion -->
-    ctax_move_head.taxh_fecrec campo28,
+    ctax_move_recti.taxh_fecha campo28,
     ctax_move_recti.taxh_tipdoc campo29,
     SUBSTR(ctax_move_recti.taxh_docser, 0, CHARINDEX('-', ctax_move_recti.taxh_docser)-1) campo30,
     '' campo31,
@@ -107,11 +110,13 @@
     <!-- Rectificacion -->
     <join type='left' table='ctax_move_head' alias='ctax_move_recti'>
         <on>ctax_move_head.taxh_docrec = ctax_move_recti.taxh_docser</on>
+        <on>ctax_move_head.taxh_tercer = ctax_move_recti.taxh_tercer</on>
+        <on>ctax_move_head.taxh_fecrec = ctax_move_recti.taxh_fecha</on>
     </join>
 </from>
 <where>
     cenllote.tabname = 'gcomfach'
-    AND ctax_move_head.taxh_jusser IN ('FMAN0000414', 'FMAN0000415', 'FMAN0000416', 'FACT0000065', 'NCSE0000005', 'FREL0000992')
+    <!-- AND ctax_move_head.taxh_jusser IN ('FMAN0000414', 'FMAN0000415', 'FMAN0000416', 'FACT0000065', 'NCSE0000005', 'FREL0000992') -->
 </where>
 </select>
 
