@@ -1,5 +1,5 @@
 
-<!-- DEV 19/10 -->
+<!-- DEV 04/11 -->
 
 <!-- Agrupado de cpar_premovi_ext (Dat. Complemento de Ingreso Gasto) -->
 <select intotemp='@tmp_cpar_premovi_ext_sinv'>
@@ -33,419 +33,436 @@
 
         <!-- Agrupado de autorizacion QS -->
 <union intotemp='@tmp_gcomalbh_aut_qs'>
-<!-- 1 CONDICION -->
-<select>
-    <columns>
-        gcomfach.cabid,
-        MAX(gcomalbh.auxchr1) aut_qs
-    </columns>
-    <from table='gcomfach'>
-        <join table='gcomfacl'>
-            <on>gcomfach.cabid = gcomfacl.cabid</on>
-            <on>gcomfacl.tabori = 'gcommovh'</on>
+    <!-- 1 CONDICION -->
+    <select>
+        <columns>
+            gcomfach.cabid,
+            MAX(gcomalbh.auxchr1) aut_qs
+        </columns>
+        <from table='gcomfach'>
+            <join table='gcomfacl'>
+                <on>gcomfach.cabid = gcomfacl.cabid</on>
+                <on>gcomfacl.tabori = 'gcommovh'</on>
 
-            <join table='gcomalbh'>
-                <on>gcomfacl.cabori = gcomalbh.cabid</on>
+                <join table='gcomalbh'>
+                    <on>gcomfacl.cabori = gcomalbh.cabid</on>
+                </join>
             </join>
-        </join>
-    </from>
-    <group>1</group>
-</select>
+        </from>
+        <group>1</group>
+    </select>
 
-<!-- 2 CONDICION -->
-<select>
-    <columns>
-        gcomfach.cabid,
-        MAX(gcomalbh.auxchr1) aut_qs
-    </columns>
-    <from table='gcomfach'>
-        <join table='gcomalbl'>
-            <on>gcomfach.cabid = gcomalbl.cabori</on>
-            <on>gcomalbl.tabori = 'gcomfach'</on>
+    <!-- 2 CONDICION -->
+    <select>
+        <columns>
+            gcomfach.cabid,
+            MAX(gcomalbh.auxchr1) aut_qs
+        </columns>
+        <from table='gcomfach'>
+            <join table='gcomalbl'>
+                <on>gcomfach.cabid = gcomalbl.cabori</on>
+                <on>gcomalbl.tabori = 'gcomfach'</on>
 
-            <join table='gcomalbh'>
-                <on>gcomalbl.cabid = gcomalbh.cabid</on>
+                <join table='gcomalbh'>
+                    <on>gcomalbl.cabid = gcomalbh.cabid</on>
+                </join>
             </join>
-        </join>
-    </from>
-    <group>1</group>
-</select>
+        </from>
+        <group>1</group>
+    </select>
 </union>
 
 
 
         <!-- Agrupado Asiento Chavin -->
 <select intotemp='@tmp_asiento_activofijo'>
-<columns>
-    ref,
-    MAX(nro_asien_ch) nro_asien_ch
-</columns>
-<from table='crp_asiento_activofijo'/>
-<group>1</group>
+    <columns>
+        ref,
+        MAX(nro_asien_ch) nro_asien_ch
+    </columns>
+    <from table='crp_asiento_activofijo'/>
+    <group>1</group>
+</select>
+
+        <!-- Agrupado de Id. Lote Contable -->
+<select intotemp='@tmp_cinmelem_inmov'>
+    <columns>
+        cinmelem.seqno,
+        MAX(cinmtras_pcs.pcs_loteid) pcs_loteid
+    </columns>
+    <from table='cinmelem'>
+        <!-- Elementos Inmovilizado -->
+        <join type='left' table='cinmtras_det'>
+            <on>cinmelem.seqno  = cinmtras_det.det_seqno</on>
+
+            <!-- Traspaso Elemento -->
+            <join type='left' table='cinmtras_pcs'>
+                <on>cinmtras_det.pcs_seqno  = cinmtras_pcs.pcs_seqno</on>
+
+                <!-- Asiento Activo Fijo -->
+                <join type="left" table="@tmp_asiento_activofijo" alias='asiento_activofijo'>
+                    <on>cinmtras_pcs.pcs_loteid = asiento_activofijo.ref</on>
+                </join>
+            </join>
+        </join>
+    </from>
+    <group>
+        1
+    </group>
 </select>
 
 <select>
-<columns>
-    cpar_parpreh.empcode,       cempresa.empname,
-    cpar_premovi.codpre,        cpar_parpreh.nompre,
-    cpar_premovi.codpar,        cpar_parprel.nompar,
+    <columns>
+        cpar_parpreh.empcode,       cempresa.empname,
+        cpar_premovi.codpre,        cpar_parpreh.nompre,
+        cpar_premovi.codpar,        cpar_parprel.nompar,
 
 
 
-    <!-- Localizacion (Inversion) -->
-    cpar_parpreh.auxchr3 locpri,
+        <!-- Localizacion (Inversion) -->
+        cpar_parpreh.auxchr3 locpri,
 
-    <!-- Desc. Localizacion -->
-    cinmlosu.nomlug nomloc,
+        <!-- Desc. Localizacion -->
+        cinmlosu.nomlug nomloc,
 
-    <!-- cinmelem.locpri,            cinmlopr.nomloc, -->
+        <!-- cinmelem.locpri,            cinmlopr.nomloc, -->
 
-    cpar_parprel.seccio,        cseccion.nomsec,
-    cpar_parpreh.fecinip,       cpar_parpreh.fecfinp,
-    cpar_premovi.feccon,
-    YEAR(cpar_premovi.feccon) || LPAD(MONTH(cpar_premovi.feccon), 2, '0') <alias name='periodo' />,
-    cpar_premovi.fecdoc,
+        cpar_parprel.seccio,        cseccion.nomsec,
+        cpar_parpreh.fecinip,       cpar_parpreh.fecfinp,
+        cpar_premovi.feccon,
+        YEAR(cpar_premovi.feccon) || LPAD(MONTH(cpar_premovi.feccon), 2, '0') <alias name='periodo' />,
+        cpar_premovi.fecdoc,
 
-    <!-- Factura Proveedor -->
-    CASE WHEN gcomfach.refter IS NOT NULL THEN gcomfach.refter
-    ELSE cpar_premovi.docser
-    END refter,
+        <!-- Factura Proveedor -->
+        CASE WHEN gcomfach.refter IS NOT NULL THEN gcomfach.refter
+        ELSE cpar_premovi.docser
+        END refter,
 
-    <!-- Nom. Tipo de Doc. -->
-    INITCAP( CASE WHEN gcomacud.nomdoc     IS NOT NULL THEN gcomacud.nomdoc
-    WHEN gcomsold.nomdoc     IS NOT NULL THEN gcomsold.nomdoc
-    WHEN gcompedd.nomdoc     IS NOT NULL THEN gcompedd.nomdoc
-    WHEN gcommovd_alb.nomdoc IS NOT NULL THEN gcommovd_alb.nomdoc
-    WHEN gcommovd.nomdoc     IS NOT NULL THEN gcommovd.nomdoc
-    WHEN gcomfacd.nomdoc     IS NOT NULL THEN gcomfacd.nomdoc
-    WHEN gvenacud.nomdoc     IS NOT NULL THEN gvenacud.nomdoc
-    WHEN gvenpedd.nomdoc     IS NOT NULL THEN gvenpedd.nomdoc
-    WHEN gvenmovd.nomdoc     IS NOT NULL THEN gvenmovd.nomdoc
-    WHEN cpar_premovi.auxchr1 IS NOT NULL THEN cpar_premovi.auxchr1
-    ELSE ''
-    END ) auxchr1,
+        <!-- Nom. Tipo de Doc. -->
+        INITCAP( CASE WHEN gcomacud.nomdoc     IS NOT NULL THEN gcomacud.nomdoc
+        WHEN gcomsold.nomdoc     IS NOT NULL THEN gcomsold.nomdoc
+        WHEN gcompedd.nomdoc     IS NOT NULL THEN gcompedd.nomdoc
+        WHEN gcommovd_alb.nomdoc IS NOT NULL THEN gcommovd_alb.nomdoc
+        WHEN gcommovd.nomdoc     IS NOT NULL THEN gcommovd.nomdoc
+        WHEN gcomfacd.nomdoc     IS NOT NULL THEN gcomfacd.nomdoc
+        WHEN gvenacud.nomdoc     IS NOT NULL THEN gvenacud.nomdoc
+        WHEN gvenpedd.nomdoc     IS NOT NULL THEN gvenpedd.nomdoc
+        WHEN gvenmovd.nomdoc     IS NOT NULL THEN gvenmovd.nomdoc
+        WHEN cpar_premovi.auxchr1 IS NOT NULL THEN cpar_premovi.auxchr1
+        ELSE ''
+        END ) auxchr1,
 
-    <!-- Tipologia -->
-    CASE WHEN gcomacuh.tipdoc     IS NOT NULL THEN gcomacuh.tipdoc
-    WHEN gcomsolh.tipdoc     IS NOT NULL THEN gcomsolh.tipdoc
-    WHEN gcompedh.tipdoc     IS NOT NULL THEN gcompedh.tipdoc
-    WHEN gcomalbh.tipdoc     IS NOT NULL THEN gcomalbh.tipdoc
-    WHEN gcommovh.tipdoc     IS NOT NULL THEN gcommovh.tipdoc
-    WHEN gcomfach.tipdoc     IS NOT NULL THEN gcomfach.tipdoc
-    WHEN gvenacuh.tipdoc     IS NOT NULL THEN gvenacuh.tipdoc
-    WHEN gvenpedh.tipdoc     IS NOT NULL THEN gvenpedh.tipdoc
-    WHEN gvenalbh.tipdoc     IS NOT NULL THEN gvenalbh.tipdoc
-    ELSE ''
-    END tipologia,
+        <!-- Tipologia -->
+        CASE WHEN gcomacuh.tipdoc     IS NOT NULL THEN gcomacuh.tipdoc
+        WHEN gcomsolh.tipdoc     IS NOT NULL THEN gcomsolh.tipdoc
+        WHEN gcompedh.tipdoc     IS NOT NULL THEN gcompedh.tipdoc
+        WHEN gcomalbh.tipdoc     IS NOT NULL THEN gcomalbh.tipdoc
+        WHEN gcommovh.tipdoc     IS NOT NULL THEN gcommovh.tipdoc
+        WHEN gcomfach.tipdoc     IS NOT NULL THEN gcomfach.tipdoc
+        WHEN gvenacuh.tipdoc     IS NOT NULL THEN gvenacuh.tipdoc
+        WHEN gvenpedh.tipdoc     IS NOT NULL THEN gvenpedh.tipdoc
+        WHEN gvenalbh.tipdoc     IS NOT NULL THEN gvenalbh.tipdoc
+        ELSE ''
+        END tipologia,
 
-    cpar_premovi.docser fact_proveedor,
+        cpar_premovi.docser fact_proveedor,
 
 
 
-    ctercero.cif,               ctercero.nombre,      cpar_premovi.tercer,
-    cpar_premovi.inggas,
+        ctercero.cif,               ctercero.nombre,      cpar_premovi.tercer,
+        cpar_premovi.inggas,
 
-    cpar_premovi.natura,
-    cpar_premovi.codart,        cpar_premovi.nomart,  cpar_premovi.varlog, cpar_premovi.cancon,
-    cpar_premovi.unidad,
+        cpar_premovi.natura,
+        cpar_premovi.codart,        cpar_premovi.nomart,  cpar_premovi.varlog, cpar_premovi.cancon,
+        cpar_premovi.unidad,
 
-    <!--Precio Unitario-->
-    CASE WHEN cpar_premovi.cancon = 0 THEN  cpar_premovi.import
-    ELSE ROUND(NVL(cpar_premovi.import,0) / NVL(cpar_premovi.cancon,1),2)
-    END preuni,
-    CASE WHEN cpar_premovi.inggas = 'I' THEN -cpar_premovi.import ELSE +cpar_premovi.import END <alias name='import' />,
+        <!--Precio Unitario-->
+        CASE WHEN cpar_premovi.cancon = 0 THEN  cpar_premovi.import
+        ELSE ROUND(NVL(cpar_premovi.import,0) / NVL(cpar_premovi.cancon,1),2)
+        END preuni,
+        CASE WHEN cpar_premovi.inggas = 'I' THEN -cpar_premovi.import ELSE +cpar_premovi.import END <alias name='import' />,
 
-    CASE WHEN cpar_premovi.inggas = 'I' THEN - cpar_premovi.totimp ELSE + cpar_premovi.totimp END <alias name='totimp' />,
-    cpar_premovi.codcon,        cpar_premovi.concep,
-    cpar_premovi.fectra,
+        CASE WHEN cpar_premovi.inggas = 'I' THEN - cpar_premovi.totimp ELSE + cpar_premovi.totimp END <alias name='totimp' />,
+        cpar_premovi.codcon,        cpar_premovi.concep,
+        cpar_premovi.fectra,
 
-    cpar_premovi.apteid,        cpar_premovi.auxchr2,
+        cpar_premovi.apteid,        cpar_premovi.auxchr2,
 
-    cpar_premovi.auxchr3,
+        cpar_premovi.auxchr3,
 
-    <!-- Num. Asiento Chavin -->
-    CASE WHEN crp_chv_xdocpro.nro_asien_ch  IS NOT NULL THEN crp_chv_xdocpro.nro_asien_ch
-    WHEN cpar_premovi.auxchr4          IS NOT NULL THEN cpar_premovi.auxchr4
-    ELSE ''
-    END auxchr4,
+        <!-- Num. Asiento Chavin -->
+        CASE WHEN crp_chv_xdocpro.nro_asien_ch  IS NOT NULL THEN crp_chv_xdocpro.nro_asien_ch
+        WHEN cpar_premovi.auxchr4          IS NOT NULL THEN cpar_premovi.auxchr4
+        ELSE ''
+        END auxchr4,
 
-    <!-- Autorizacion QS -->
-    CASE WHEN gcompedh.refter        IS NOT NULL THEN gcompedh.refter
-    WHEN gcomalbh.auxchr1       IS NOT NULL THEN gcomalbh.auxchr1
-    WHEN gcomalbh_aut_qs.aut_qs IS NOT NULL THEN gcomalbh_aut_qs.aut_qs
-    WHEN cpar_premovi.auxchr5   IS NOT NULL THEN cpar_premovi.auxchr5
-    ELSE ''
-    END auxchr5,
+        <!-- Autorizacion QS -->
+        CASE WHEN gcompedh.refter        IS NOT NULL THEN gcompedh.refter
+        WHEN gcomalbh.auxchr1       IS NOT NULL THEN gcomalbh.auxchr1
+        WHEN gcomalbh_aut_qs.aut_qs IS NOT NULL THEN gcomalbh_aut_qs.aut_qs
+        WHEN cpar_premovi.auxchr5   IS NOT NULL THEN cpar_premovi.auxchr5
+        ELSE ''
+        END auxchr5,
 
-    <!-- Componente -->
-    cinmcomp.codcom,
+        <!-- Componente -->
+        cinmcomp.codcom,
 
-    cpar_premovi.auxfec2,       cpar_parprel.ctainv,
-    cpar_premovi.auxnum1,
-
-    <!-- Cuenta Chavin -->
-    CASE WHEN cpar_premovi.auxnum2 IS NOT NULL THEN cpar_premovi.auxnum2
-    ELSE CAST(crp_chv_mapcta.ctaori AS INTEGER)
-    END auxnum2,
-
-    cpar_premovi.auxnum3,
-    <!--Datos del pedido-->
-    cpar_premovi_ext.soltip,    cpar_premovi_ext.soldoc,
-    cpar_premovi_ext.solfec,    cpar_premovi_ext.soldes,
-    cpar_premovi_ext.solusr,    cpar_premovi_ext.solid,
-    cpar_premovi_ext.pedtip,    cpar_premovi_ext.peddoc,
-    cpar_premovi_ext.pedfec,    cpar_premovi_ext.peddes,
-
-    <!--Datos del albarán-->
-    cpar_premovi_ext.albtip,    cpar_premovi_ext.albdoc,
-    cpar_premovi_ext.albfec,    cpar_premovi_ext.albdet,
-
-    cpar_premovi_ext.pedusr,    cpar_premovi_ext.pedid,
-    cpar_premovi_ext.auxchr1 extchr1,   cpar_premovi_ext.auxchr2 extchr2,
-    cpar_premovi_ext.auxchr3 extchr3,   cpar_premovi_ext.auxchr4 extchr4,
-    cpar_premovi_ext.auxchr5 extchr5,   cpar_premovi_ext.auxfec1 extfec1,
-    cpar_premovi_ext.auxfec2 extfec2,   cpar_premovi_ext.auxnum1 extnum1,
-    cpar_premovi_ext.auxnum2 extnum2,   cpar_premovi_ext.auxnum3 extnum3,
-
-    <!-- Asiento alta Axional -->
-    <!-- cinmtras_pcs.pcs_loteid loteid, -->
-    CASE WHEN cpar_premovi.estado != 'T' THEN NULL
-    ELSE cinmtras_pcs.pcs_loteid
-    END     loteid,
-
-    cpar_premovi_ext.seqno,     cpar_premovi_ext.linref,
-    cpar_premovi.linid,
-
-    <!-- Cuenta Inmovilizado -->
-    <!-- cinmctas.ccinmo, -->
-    CASE WHEN cpar_premovi.estado != 'T' THEN ''
-    ELSE cinmctas.ccinmo
-    END     ccinmo,
-
-    cinmelem.codele, cinmelem.nomele,
-
-    <!-- Localizacion (Activo) -->
-    cinmelem_ppe.ppe_codloc ppe_loc_act,
-    <!-- Descripcion Localizacion -->
-    sub_loca_cinmcomp.nomlug,
-
-    <!-- Etiqueta -->
-    cinmelem_ppe.ppe_label_id,
-
-    <!--cinmelem_ppe.ppe_marca,-->
-    gartmarc.nommar ppe_marca,
-
-    <!-- cinmelem_ppe.ppe_modelo, -->
-    gartmode.nommod ppe_modelo,
-
-    cinmelem_ppe.ppe_numser,
-    cpar_parpreh.coment,
-    cpar_premovi.estado
-</columns>
-
-<!-- Inversiones -->
-<from table="cpar_parpreh">
-
-    <!-- Partidas de Inversion -->
-    <join table="cpar_parprel">
-        <on>cpar_parpreh.empcode = cpar_parprel.empcode</on>
-        <on>cpar_parpreh.codpre  = cpar_parprel.codpre</on>
+        cpar_premovi.auxfec2,       cpar_parprel.ctainv,
+        cpar_premovi.auxnum1,
 
         <!-- Cuenta Chavin -->
-        <join type='left' table='crp_chv_mapcta'>
-            <on>cpar_parprel.ctainv  = crp_chv_mapcta.cuenta</on>
-        </join>
+        CASE WHEN cpar_premovi.auxnum2 IS NOT NULL THEN cpar_premovi.auxnum2
+        ELSE CAST(crp_chv_mapcta.ctaori AS INTEGER)
+        END auxnum2,
 
-        <!-- Ingresos y gastos -->
-        <join table="cpar_premovi">
-            <on>cpar_parprel.empcode = cpar_premovi.empcode</on>
-            <on>cpar_parprel.codpre = cpar_premovi.codpre</on>
-            <on>cpar_premovi.codpar IN (cpar_parprel.codpar, cpar_parprel.paract)</on>
+        cpar_premovi.auxnum3,
+        <!--Datos del pedido-->
+        cpar_premovi_ext.soltip,    cpar_premovi_ext.soldoc,
+        cpar_premovi_ext.solfec,    cpar_premovi_ext.soldes,
+        cpar_premovi_ext.solusr,    cpar_premovi_ext.solid,
+        cpar_premovi_ext.pedtip,    cpar_premovi_ext.peddoc,
+        cpar_premovi_ext.pedfec,    cpar_premovi_ext.peddes,
 
-            <!-- Componente -->
-            <join type='left' table='cinmcomp'>
-                <on>cpar_premovi.auxfec1 = cinmcomp.seqno</on>
+        <!--Datos del albarán-->
+        cpar_premovi_ext.albtip,    cpar_premovi_ext.albdoc,
+        cpar_premovi_ext.albfec,    cpar_premovi_ext.albdet,
 
-                <!-- Elemento -->
-                <join table="cinmelem">
+        cpar_premovi_ext.pedusr,    cpar_premovi_ext.pedid,
+        cpar_premovi_ext.auxchr1 extchr1,   cpar_premovi_ext.auxchr2 extchr2,
+        cpar_premovi_ext.auxchr3 extchr3,   cpar_premovi_ext.auxchr4 extchr4,
+        cpar_premovi_ext.auxchr5 extchr5,   cpar_premovi_ext.auxfec1 extfec1,
+        cpar_premovi_ext.auxfec2 extfec2,   cpar_premovi_ext.auxnum1 extnum1,
+        cpar_premovi_ext.auxnum2 extnum2,   cpar_premovi_ext.auxnum3 extnum3,
 
-                    <on>cinmcomp.empcode = cinmelem.empcode</on>
-                    <on>cinmcomp.codinm = cinmelem.codinm</on>
-                    <on>cinmcomp.codele = cinmelem.codele</on>
+        <!-- Asiento alta Axional -->
+        <!-- cinmtras_pcs.pcs_loteid loteid, -->
+        CASE WHEN cpar_premovi.estado != 'T' THEN NULL
+        ELSE cinmelem_inmov.pcs_loteid
+        END     loteid,
 
-                    <!-- Amortizacion Fiscal -->
-                    <join type='left' table='cinmctas'>
-                        <on>cinmelem.codcta  = cinmctas.codigo</on>
+        cpar_premovi_ext.seqno,     cpar_premovi_ext.linref,
+        cpar_premovi.linid,
+
+        <!-- Cuenta Inmovilizado -->
+        <!-- cinmctas.ccinmo, -->
+        CASE WHEN cpar_premovi.estado != 'T' THEN ''
+        ELSE cinmctas.ccinmo
+        END     ccinmo,
+
+        cinmelem.codele, cinmelem.nomele,
+
+        <!-- Localizacion (Activo) -->
+        cinmelem_ppe.ppe_codloc ppe_loc_act,
+        <!-- Descripcion Localizacion -->
+        sub_loca_cinmcomp.nomlug,
+
+        <!-- Etiqueta -->
+        cinmelem_ppe.ppe_label_id,
+
+        <!--cinmelem_ppe.ppe_marca,-->
+        gartmarc.nommar ppe_marca,
+
+        <!-- cinmelem_ppe.ppe_modelo, -->
+        gartmode.nommod ppe_modelo,
+
+        cinmelem_ppe.ppe_numser,
+        cpar_parpreh.coment,
+        cpar_premovi.estado
+    </columns>
+
+    <!-- Inversiones -->
+    <from table="cpar_parpreh">
+
+        <!-- Partidas de Inversion -->
+        <join table="cpar_parprel">
+            <on>cpar_parpreh.empcode = cpar_parprel.empcode</on>
+            <on>cpar_parpreh.codpre  = cpar_parprel.codpre</on>
+
+            <!-- Cuenta Chavin -->
+            <join type='left' table='crp_chv_mapcta'>
+                <on>cpar_parprel.ctainv  = crp_chv_mapcta.cuenta</on>
+            </join>
+
+            <!-- Ingresos y gastos -->
+            <join table="cpar_premovi">
+                <on>cpar_parprel.empcode = cpar_premovi.empcode</on>
+                <on>cpar_parprel.codpre = cpar_premovi.codpre</on>
+                <on>cpar_premovi.codpar IN (cpar_parprel.codpar, cpar_parprel.paract)</on>
+
+                <!-- Componente -->
+                <join type='left' table='cinmcomp'>
+                    <on>cpar_premovi.auxfec1 = cinmcomp.seqno</on>
+
+                    <!-- Elemento -->
+                    <join table="cinmelem">
+
+                        <on>cinmcomp.empcode = cinmelem.empcode</on>
+                        <on>cinmcomp.codinm = cinmelem.codinm</on>
+                        <on>cinmcomp.codele = cinmelem.codele</on>
+
+                        <!-- Amortizacion Fiscal -->
+                        <join type='left' table='cinmctas'>
+                            <on>cinmelem.codcta  = cinmctas.codigo</on>
+                        </join>
+
+                        <!-- Traspaso Elementos Inmovilizado -->
+                        <join type='left' table='@tmp_cinmelem_inmov' alias='cinmelem_inmov'>
+                            <on>cinmelem.seqno  = cinmelem_inmov.seqno</on>
+                        </join>
+
                     </join>
 
-                    <!-- Elementos Inmovilizado -->
-                    <join type='left' table='cinmtras_det'>
-                        <on>cinmelem.seqno  = cinmtras_det.det_seqno</on>
+                    <!-- Equipos y maquinas -->
+                    <join type="left" table="cinmelem_ppe">
+                        <on>cinmcomp.seqno = cinmelem_ppe.ppe_seqno_compon</on>
+                        <!-- Marca -->
+                        <join type='left' table='gartmarc'>
+                            <on>cinmelem_ppe.ppe_marca  = gartmarc.codigo </on>
+                        </join>
+                        <!-- Modelo -->
+                        <join type='left' table='gartmode'>
+                            <on>cinmelem_ppe.ppe_marca  = gartmode.marca </on>
+                            <on>cinmelem_ppe.ppe_modelo  = gartmode.modelo </on>
+                        </join>
 
-                        <!-- Traspaso Elemento -->
-                        <join type='left' table='cinmtras_pcs'>
-                            <on>cinmtras_det.pcs_seqno  = cinmtras_pcs.pcs_seqno</on>
-
-                            <!-- Asiento Activo Fijo -->
-                            <join type="left" table="@tmp_asiento_activofijo" alias='asiento_activofijo'>
-                                <on>cinmtras_pcs.pcs_loteid = asiento_activofijo.ref</on>
-                            </join>
+                        <!-- Descrip. Localizacion fisica -->
+                        <join type='left' table='cinmlosu' alias='sub_loca_cinmcomp'>
+                            <on>cinmelem_ppe.ppe_codloc  = sub_loca_cinmcomp.codigo</on>
                         </join>
                     </join>
 
                 </join>
 
-                <!-- Equipos y maquinas -->
-                <join type="left" table="cinmelem_ppe">
-                    <on>cinmcomp.seqno = cinmelem_ppe.ppe_seqno_compon</on>
-                    <!-- Marca -->
-                    <join type='left' table='gartmarc'>
-                        <on>cinmelem_ppe.ppe_marca  = gartmarc.codigo </on>
+                <!-- Complemento -->
+                <join type='left' table='cpar_premovi_ext'>
+                    <on>cpar_premovi.linid = cpar_premovi_ext.linref</on>
+                </join>
+
+                <!-- Terceros -->
+                <join type="left" table="ctercero">
+                    <on>cpar_premovi.tercer  = ctercero.codigo</on>
+                </join>
+
+                <!-- Seccion Cont -->
+                <join type='left' table='cseccion'>
+                    <on>cpar_parprel.seccio = cseccion.codigo</on>
+                </join>
+
+                <!-- Acuerdos de Compra -->
+                <join type='left' table='gcomacuh'>
+                    <on> cpar_premovi.docser = gcomacuh.docser </on>
+                    <join type='left' table='gcomacud'>
+                        <on>gcomacuh.tipdoc = gcomacud.codigo</on>
                     </join>
-                    <!-- Modelo -->
-                    <join type='left' table='gartmode'>
-                        <on>cinmelem_ppe.ppe_marca  = gartmode.marca </on>
-                        <on>cinmelem_ppe.ppe_modelo  = gartmode.modelo </on>
-                    </join>
+                </join>
 
-                    <!-- Descrip. Localizacion fisica -->
-                    <join type='left' table='cinmlosu' alias='sub_loca_cinmcomp'>
-                        <on>cinmelem_ppe.ppe_codloc  = sub_loca_cinmcomp.codigo</on>
+                <!-- Solicitudes de Compra -->
+                <join type='left' table='gcomsolh'>
+                    <on> cpar_premovi.docser = gcomsolh.docser </on>
+                    <join type='left' table='gcomsold'>
+                        <on>gcomsolh.tipdoc = gcomsold.codigo</on>
                     </join>
                 </join>
 
-            </join>
-
-            <!-- Complemento -->
-            <join type='left' table='cpar_premovi_ext'>
-                <on>cpar_premovi.linid = cpar_premovi_ext.linref</on>
-            </join>
-
-            <!-- Terceros -->
-            <join type="left" table="ctercero">
-                <on>cpar_premovi.tercer  = ctercero.codigo</on>
-            </join>
-
-            <!-- Seccion Cont -->
-            <join type='left' table='cseccion'>
-                <on>cpar_parprel.seccio = cseccion.codigo</on>
-            </join>
-
-            <!-- Acuerdos de Compra -->
-            <join type='left' table='gcomacuh'>
-                <on> cpar_premovi.docser = gcomacuh.docser </on>
-                <join type='left' table='gcomacud'>
-                    <on>gcomacuh.tipdoc = gcomacud.codigo</on>
-                </join>
-            </join>
-
-            <!-- Solicitudes de Compra -->
-            <join type='left' table='gcomsolh'>
-                <on> cpar_premovi.docser = gcomsolh.docser </on>
-                <join type='left' table='gcomsold'>
-                    <on>gcomsolh.tipdoc = gcomsold.codigo</on>
-                </join>
-            </join>
-
-            <!-- Pedidos de Compra -->
-            <join type='left' table='gcompedh'>
-                <on> cpar_premovi.docser = gcompedh.docser </on>
-                <join type='left' table='gcompedd'>
-                    <on>gcompedh.tipdoc       = gcompedd.codigo</on>
-                </join>
-            </join>
-
-            <!-- Albaranes de Compra -->
-            <join type='left' table='gcomalbh'>
-                <on> cpar_premovi.docser = gcomalbh.docser </on>
-                <join type='left' table='gcommovd' alias='gcommovd_alb'>
-                    <on>gcomalbh.tipdoc  = gcommovd_alb.codigo</on>
-                </join>
-            </join>
-
-            <!-- Albaranes de Compra -->
-            <join type='left' table='gcommovh'>
-                <on> cpar_premovi.docser = gcommovh.docser </on>
-                <join type='left' table='gcommovd'>
-                    <on>gcommovh.tipdoc = gcommovd.codigo</on>
-                </join>
-            </join>
-
-            <!-- Factura Comp -->
-            <join type='left' table='gcomfach'>
-                <on>cpar_premovi.docser = gcomfach.docser</on>
-                <join type='left' table='gcomfacd'>
-                    <on>gcomfach.tipdoc = gcomfacd.codigo</on>
+                <!-- Pedidos de Compra -->
+                <join type='left' table='gcompedh'>
+                    <on> cpar_premovi.docser = gcompedh.docser </on>
+                    <join type='left' table='gcompedd'>
+                        <on>gcompedh.tipdoc       = gcompedd.codigo</on>
+                    </join>
                 </join>
 
-                <join type='left' table='crp_chv_xdocpro'>
-                    <on>gcomfach.cabid = crp_chv_xdocpro.cabori</on>
+                <!-- Albaranes de Compra -->
+                <join type='left' table='gcomalbh'>
+                    <on> cpar_premovi.docser = gcomalbh.docser </on>
+                    <join type='left' table='gcommovd' alias='gcommovd_alb'>
+                        <on>gcomalbh.tipdoc  = gcommovd_alb.codigo</on>
+                    </join>
                 </join>
 
-                <join type='left' table='@tmp_gcomalbh_aut_qs' alias='gcomalbh_aut_qs'>
-                    <on>gcomfach.cabid = gcomalbh_aut_qs.cabid</on>
+                <!-- Albaranes de Compra -->
+                <join type='left' table='gcommovh'>
+                    <on> cpar_premovi.docser = gcommovh.docser </on>
+                    <join type='left' table='gcommovd'>
+                        <on>gcommovh.tipdoc = gcommovd.codigo</on>
+                    </join>
                 </join>
+
+                <!-- Factura Comp -->
+                <join type='left' table='gcomfach'>
+                    <on>cpar_premovi.docser = gcomfach.docser</on>
+                    <join type='left' table='gcomfacd'>
+                        <on>gcomfach.tipdoc = gcomfacd.codigo</on>
+                    </join>
+
+                    <join type='left' table='crp_chv_xdocpro'>
+                        <on>gcomfach.cabid = crp_chv_xdocpro.cabori</on>
+                    </join>
+
+                    <join type='left' table='@tmp_gcomalbh_aut_qs' alias='gcomalbh_aut_qs'>
+                        <on>gcomfach.cabid = gcomalbh_aut_qs.cabid</on>
+                    </join>
+                </join>
+
+                <!-- Acuerdos de Venta -->
+                <join type='left' table='gvenacuh'>
+                    <on>cpar_premovi.docser = gvenacuh.docser</on>
+                    <join type='left' table='gvenacud'>
+                        <on>gvenacuh.tipdoc = gvenacud.codigo</on>
+                    </join>
+                </join>
+
+                <!-- Pedido de Venta -->
+                <join type='left' table='gvenpedh'>
+                    <on>cpar_premovi.docser = gvenpedh.docser</on>
+                    <join type='left' table='gvenpedd'>
+                        <on>gvenpedh.tipdoc = gvenpedd.codigo</on>
+                    </join>
+                </join>
+
+                <!-- Albaran de Venta -->
+                <join type='left' table='gvenalbh'>
+                    <on>cpar_premovi.docser = gvenalbh.docser</on>
+                    <join type='left' table='gvenmovd'>
+                        <on>gvenalbh.tipdoc = gvenmovd.codigo</on>
+                    </join>
+                </join>
+
             </join>
 
-            <!-- Acuerdos de Venta -->
-            <join type='left' table='gvenacuh'>
-                <on>cpar_premovi.docser = gvenacuh.docser</on>
-                <join type='left' table='gvenacud'>
-                    <on>gvenacuh.tipdoc = gvenacud.codigo</on>
-                </join>
-            </join>
-
-            <!-- Pedido de Venta -->
-            <join type='left' table='gvenpedh'>
-                <on>cpar_premovi.docser = gvenpedh.docser</on>
-                <join type='left' table='gvenpedd'>
-                    <on>gvenpedh.tipdoc = gvenpedd.codigo</on>
-                </join>
-            </join>
-
-            <!-- Albaran de Venta -->
-            <join type='left' table='gvenalbh'>
-                <on>cpar_premovi.docser = gvenalbh.docser</on>
-                <join type='left' table='gvenmovd'>
-                    <on>gvenalbh.tipdoc = gvenmovd.codigo</on>
-                </join>
-            </join>
 
         </join>
 
+        <!-- Descrip. Localizacion fisica -->
+        <join type='left' table='cinmlosu'>
+            <on>cpar_parpreh.auxchr3  = cinmlosu.codigo</on>
+        </join>
 
-    </join>
-
-    <!-- Descrip. Localizacion fisica -->
-    <join type='left' table='cinmlosu'>
-        <on>cpar_parpreh.auxchr3  = cinmlosu.codigo</on>
-    </join>
-
-    <!-- Empresa -->
-    <join table="cempresa">
-        <on>cpar_parpreh.empcode = cempresa.empcode</on>
-    </join>
-</from>
-<where>
-    cpar_premovi.estado != 'P'
-    AND cpar_premovi.natura  = 'G'
-    AND NOT EXISTS (SELECT * FROM @tmp_cpar_premovi_ext_sinv tmp_ext_sinv
-    WHERE tmp_ext_sinv.codpre = cpar_parpreh.codpre
-    AND tmp_ext_sinv.codpar = cpar_parprel.codpar
-    AND tmp_ext_sinv.soldoc = cpar_premovi.docser)
-    AND ($TIPDOC = '*'
-    OR gcomacuh.tipdoc = $TIPDOC
-    OR gcomsolh.tipdoc = $TIPDOC
-    OR gcompedh.tipdoc = $TIPDOC
-    OR gcomalbh.tipdoc = $TIPDOC
-    OR gcommovh.tipdoc = $TIPDOC
-    OR gcomfach.tipdoc = $TIPDOC
-    OR gvenacuh.tipdoc = $TIPDOC
-    OR gvenpedh.tipdoc = $TIPDOC
-    OR gvenalbh.tipdoc = $TIPDOC
-    )
-    AND cpar_premovi.feccon BETWEEN $FECINI AND $FECFIN
-    AND $0
-</where>
+        <!-- Empresa -->
+        <join table="cempresa">
+            <on>cpar_parpreh.empcode = cempresa.empcode</on>
+        </join>
+    </from>
+    <where>
+        cpar_premovi.estado != 'P'
+        AND cpar_premovi.natura  = 'G'
+        AND NOT EXISTS (SELECT * FROM @tmp_cpar_premovi_ext_sinv tmp_ext_sinv
+        WHERE tmp_ext_sinv.codpre = cpar_parpreh.codpre
+        AND tmp_ext_sinv.codpar = cpar_parprel.codpar
+        AND tmp_ext_sinv.soldoc = cpar_premovi.docser)
+        AND ($TIPDOC = '*'
+        OR gcomacuh.tipdoc = $TIPDOC
+        OR gcomsolh.tipdoc = $TIPDOC
+        OR gcompedh.tipdoc = $TIPDOC
+        OR gcomalbh.tipdoc = $TIPDOC
+        OR gcommovh.tipdoc = $TIPDOC
+        OR gcomfach.tipdoc = $TIPDOC
+        OR gvenacuh.tipdoc = $TIPDOC
+        OR gvenpedh.tipdoc = $TIPDOC
+        OR gvenalbh.tipdoc = $TIPDOC
+        )
+        AND cpar_premovi.feccon BETWEEN $FECINI AND $FECFIN
+        AND $0
+    </where>
 </select>
 

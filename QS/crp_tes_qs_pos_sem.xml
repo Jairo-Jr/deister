@@ -1,0 +1,320 @@
+<!-- ========================================================================================== -->
+<!-- Calcula los saldos iniciales por tramos a partir de la tesoreria a corto plazo (taptcuen)  -->
+<!-- ========================================================================================== -->
+<union intotemp="@tes_qs_pos_sem">
+    <select>
+        <columns>
+            0                 asigid,
+            100               codcon,
+            ''                debhab,
+            ''                opefin,
+            'SALINI'          codflu,
+            ''                cuenta,
+            cbancpro.ctafin,
+
+            NVL(SUM(CASE WHEN numsem =  1 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs01' />,
+            NVL(SUM(CASE WHEN numsem =  2 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs02' />,
+            NVL(SUM(CASE WHEN numsem =  3 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs03' />,
+            NVL(SUM(CASE WHEN numsem =  4 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs04' />,
+            NVL(SUM(CASE WHEN numsem =  5 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs05' />,
+            NVL(SUM(CASE WHEN numsem =  6 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs06' />,
+            NVL(SUM(CASE WHEN numsem =  7 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs07' />,
+            NVL(SUM(CASE WHEN numsem =  8 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs08' />,
+            NVL(SUM(CASE WHEN numsem =  9 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs09' />,
+            NVL(SUM(CASE WHEN numsem = 10 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs10' />,
+            NVL(SUM(CASE WHEN numsem = 11 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs11' />,
+            NVL(SUM(CASE WHEN numsem = 12 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs12' />,
+            NVL(SUM(CASE WHEN numsem = 13 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs13' />,
+            NVL(SUM(CASE WHEN numsem = 14 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs14' />,
+            NVL(SUM(CASE WHEN numsem = 15 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs15' />,
+            NVL(SUM(CASE WHEN numsem = 16 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs16' />,
+            NVL(SUM(CASE WHEN numsem = 17 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs17' />,
+            NVL(SUM(CASE WHEN numsem = 18 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs18' />,
+            NVL(SUM(CASE WHEN numsem = 19 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs19' />,
+            NVL(SUM(CASE WHEN numsem = 20 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs20' />,
+            NVL(SUM(CASE WHEN numsem = 21 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs21' />,
+            NVL(SUM(CASE WHEN numsem = 22 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs22' />,
+            NVL(SUM(CASE WHEN numsem = 23 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs23' />,
+            NVL(SUM(CASE WHEN numsem = 24 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs24' />,
+            NVL(SUM(CASE WHEN numsem = 25 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs25' />,
+            NVL(SUM(CASE WHEN numsem = 26 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs26' />,
+            NVL(SUM(CASE WHEN numsem = 27 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs27' />,
+            NVL(SUM(CASE WHEN numsem = 28 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs28' />,
+            NVL(SUM(CASE WHEN numsem = 29 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs29' />,
+            NVL(SUM(CASE WHEN numsem = 30 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs30' />,
+            NVL(SUM(CASE WHEN numsem = 31 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs31' />,
+            NVL(SUM(CASE WHEN numsem = 32 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs32' />,
+            NVL(SUM(CASE WHEN numsem = 33 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs33' />,
+            NVL(SUM(CASE WHEN numsem = 34 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs34' />,
+            NVL(SUM(CASE WHEN numsem = 35 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs35' />,
+            NVL(SUM(CASE WHEN numsem = 36 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs36' />,
+            NVL(SUM(CASE WHEN numsem = 37 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs37' />,
+            NVL(SUM(CASE WHEN numsem = 38 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs38' />,
+            NVL(SUM(CASE WHEN numsem = 39 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs39' />,
+            NVL(SUM(CASE WHEN numsem = 40 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs40' />,
+            NVL(SUM(CASE WHEN numsem = 41 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs41' />,
+            NVL(SUM(CASE WHEN numsem = 42 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs42' />,
+            NVL(SUM(CASE WHEN numsem = 43 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs43' />,
+            NVL(SUM(CASE WHEN numsem = 44 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs44' />,
+            NVL(SUM(CASE WHEN numsem = 45 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs45' />,
+            NVL(SUM(CASE WHEN numsem = 46 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs46' />,
+            NVL(SUM(CASE WHEN numsem = 47 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs47' />,
+            NVL(SUM(CASE WHEN numsem = 48 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs48' />,
+            NVL(SUM(CASE WHEN numsem = 49 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs49' />,
+            NVL(SUM(CASE WHEN numsem = 50 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs50' />,
+            NVL(SUM(CASE WHEN numsem = 51 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs51' />,
+            NVL(SUM(CASE WHEN numsem = 52 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs52' />,
+            NVL(SUM(CASE WHEN numsem = 53 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs53' />,
+            NVL(SUM(CASE WHEN numsem = 54 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs54' />,
+            NVL(SUM(CASE WHEN numsem = 55 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs55' />,
+            NVL(SUM(CASE WHEN numsem = 56 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs56' />,
+            NVL(SUM(CASE WHEN numsem = 57 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs57' />,
+            NVL(SUM(CASE WHEN numsem = 58 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs58' />,
+            NVL(SUM(CASE WHEN numsem = 59 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs59' />,
+            NVL(SUM(CASE WHEN numsem = 60 AND taptcuen.fecval &lt; crp_tes_qs_calenda.fecini THEN impcta ELSE 0 END),0) <alias name='semqs60' />
+        </columns>
+        <from table="cbancpro">
+            <join type='inner' table="crp_tes_qs_ctafin">
+                <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+            </join>
+            <join table="taptcuen">
+                <on>cbancpro.empcode = taptcuen.empcode</on>
+                <on>cbancpro.ctafin  = taptcuen.ctafin</on>
+            </join>
+            <join table="crp_tes_qs_calenda">
+                <on>2023  = crp_tes_qs_calenda.ejerci</on>
+            </join>
+        </from>
+        <where>
+            1 = 1
+            -- AND taptcuen.tipmov IN ('S','R')
+            -- AND taptcuen.concid IS NOT NULL
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+
+    <select>
+        <columns>
+            crp_tes_qs_asigna.asigid,
+            crp_tes_qs_asigna.codcon,
+            crp_tes_qs_asigna.debhab,
+            crp_tes_qs_asigna.opefin,
+            crp_tes_qs_asigna.codflu,
+            crp_tes_qs_asigna.cuenta,
+            cbancpro.ctafin,
+
+            NVL(SUM(CASE WHEN numsem =  1 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs01' />,
+            NVL(SUM(CASE WHEN numsem =  2 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs02' />,
+            NVL(SUM(CASE WHEN numsem =  3 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs03' />,
+            NVL(SUM(CASE WHEN numsem =  4 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs04' />,
+            NVL(SUM(CASE WHEN numsem =  5 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs05' />,
+            NVL(SUM(CASE WHEN numsem =  6 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs06' />,
+            NVL(SUM(CASE WHEN numsem =  7 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs07' />,
+            NVL(SUM(CASE WHEN numsem =  8 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs08' />,
+            NVL(SUM(CASE WHEN numsem =  9 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs09' />,
+            NVL(SUM(CASE WHEN numsem = 10 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs10' />,
+            NVL(SUM(CASE WHEN numsem = 11 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs11' />,
+            NVL(SUM(CASE WHEN numsem = 12 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs12' />,
+            NVL(SUM(CASE WHEN numsem = 13 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs13' />,
+            NVL(SUM(CASE WHEN numsem = 14 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs14' />,
+            NVL(SUM(CASE WHEN numsem = 15 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs15' />,
+            NVL(SUM(CASE WHEN numsem = 16 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs16' />,
+            NVL(SUM(CASE WHEN numsem = 17 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs17' />,
+            NVL(SUM(CASE WHEN numsem = 18 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs18' />,
+            NVL(SUM(CASE WHEN numsem = 19 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs19' />,
+            NVL(SUM(CASE WHEN numsem = 20 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs20' />,
+            NVL(SUM(CASE WHEN numsem = 21 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs21' />,
+            NVL(SUM(CASE WHEN numsem = 22 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs22' />,
+            NVL(SUM(CASE WHEN numsem = 23 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs23' />,
+            NVL(SUM(CASE WHEN numsem = 24 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs24' />,
+            NVL(SUM(CASE WHEN numsem = 25 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs25' />,
+            NVL(SUM(CASE WHEN numsem = 26 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs26' />,
+            NVL(SUM(CASE WHEN numsem = 27 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs27' />,
+            NVL(SUM(CASE WHEN numsem = 28 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs28' />,
+            NVL(SUM(CASE WHEN numsem = 29 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs29' />,
+            NVL(SUM(CASE WHEN numsem = 30 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs30' />,
+            NVL(SUM(CASE WHEN numsem = 31 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs31' />,
+            NVL(SUM(CASE WHEN numsem = 32 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs32' />,
+            NVL(SUM(CASE WHEN numsem = 33 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs33' />,
+            NVL(SUM(CASE WHEN numsem = 34 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs34' />,
+            NVL(SUM(CASE WHEN numsem = 35 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs35' />,
+            NVL(SUM(CASE WHEN numsem = 36 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs36' />,
+            NVL(SUM(CASE WHEN numsem = 37 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs37' />,
+            NVL(SUM(CASE WHEN numsem = 38 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs38' />,
+            NVL(SUM(CASE WHEN numsem = 39 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs39' />,
+            NVL(SUM(CASE WHEN numsem = 40 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs40' />,
+            NVL(SUM(CASE WHEN numsem = 41 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs41' />,
+            NVL(SUM(CASE WHEN numsem = 42 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs42' />,
+            NVL(SUM(CASE WHEN numsem = 43 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs43' />,
+            NVL(SUM(CASE WHEN numsem = 44 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs44' />,
+            NVL(SUM(CASE WHEN numsem = 45 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs45' />,
+            NVL(SUM(CASE WHEN numsem = 46 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs46' />,
+            NVL(SUM(CASE WHEN numsem = 47 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs47' />,
+            NVL(SUM(CASE WHEN numsem = 48 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs48' />,
+            NVL(SUM(CASE WHEN numsem = 49 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs49' />,
+            NVL(SUM(CASE WHEN numsem = 50 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs50' />,
+            NVL(SUM(CASE WHEN numsem = 51 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs51' />,
+            NVL(SUM(CASE WHEN numsem = 52 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs52' />,
+            NVL(SUM(CASE WHEN numsem = 53 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs53' />,
+            NVL(SUM(CASE WHEN numsem = 54 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs54' />,
+            NVL(SUM(CASE WHEN numsem = 55 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs55' />,
+            NVL(SUM(CASE WHEN numsem = 56 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs56' />,
+            NVL(SUM(CASE WHEN numsem = 57 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs57' />,
+            NVL(SUM(CASE WHEN numsem = 58 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs58' />,
+            NVL(SUM(CASE WHEN numsem = 59 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs59' />,
+            NVL(SUM(CASE WHEN numsem = 60 AND taptcuen.fecval BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN -impflu ELSE 0 END),0) <alias name='semqs60' />
+        </columns>
+        <from table="crp_tes_qs_asigna">
+            <join table="cbancpro">
+                <join type='inner' table="crp_tes_qs_ctafin">
+                    <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                    <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+                </join>
+                <join table="taptcuen">
+                    <on>cbancpro.empcode = taptcuen.empcode</on>
+                    <on>cbancpro.ctafin  = taptcuen.ctafin</on>
+                    <on>NVL(crp_tes_qs_asigna.opefin, taptcuen.opefin) = taptcuen.opefin</on>
+                    <on>crp_tes_qs_asigna.debhab  = taptcuen.debhab</on>
+                    <join table="taptfluj">
+                        <on>taptcuen.apteid = taptfluj.rowenl</on>
+                        <on>crp_tes_qs_asigna.codflu = taptfluj.codflu</on>
+                        <on>NVL(crp_tes_qs_asigna.cuenta,taptfluj.ctaflu) = taptfluj.ctaflu</on>
+                    </join>
+                </join>
+            </join>
+            <join table="crp_tes_qs_calenda">
+                <on>2023  = crp_tes_qs_calenda.ejerci</on>
+            </join>
+        </from>
+        <where>
+            1 = 1
+            AND crp_tes_qs_asigna.codcon != 100
+            AND taptcuen.tipmov = 'R'
+            AND taptcuen.concid IS NOT NULL
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+</union>
+
+
+
+        <!-- ========================================================================================== -->
+        <!-- Salida agrupada por concepto de CashFlow QS                                                -->
+        <!-- ========================================================================================== -->
+<select>
+    <columns>
+        crp_tes_qs_grupos.nomgrp,
+        crp_tes_qs_subgrp.nomsub,
+        crp_tes_qs_bloque.nomblq,
+        crp_tes_qs_concep.ordcon,
+        crp_tes_qs_concep.codcon,
+        crp_tes_qs_concep.nomcon,
+        @tes_qs_pos_sem.debhab,
+        @tes_qs_pos_sem.opefin,
+        @tes_qs_pos_sem.codflu,
+        @tes_qs_pos_sem.cuenta,
+        @tes_qs_pos_sem.ctafin,
+
+        NVL(SUM(@tes_qs_pos_sem.semqs01),0) <alias name='semqs01' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs02),0) <alias name='semqs02' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs03),0) <alias name='semqs03' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs04),0) <alias name='semqs04' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs05),0) <alias name='semqs05' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs06),0) <alias name='semqs06' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs07),0) <alias name='semqs07' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs08),0) <alias name='semqs08' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs09),0) <alias name='semqs09' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs10),0) <alias name='semqs10' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs11),0) <alias name='semqs11' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs12),0) <alias name='semqs12' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs13),0) <alias name='semqs13' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs14),0) <alias name='semqs14' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs15),0) <alias name='semqs15' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs16),0) <alias name='semqs16' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs17),0) <alias name='semqs17' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs18),0) <alias name='semqs18' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs19),0) <alias name='semqs19' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs20),0) <alias name='semqs20' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs21),0) <alias name='semqs21' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs22),0) <alias name='semqs22' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs23),0) <alias name='semqs23' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs24),0) <alias name='semqs24' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs25),0) <alias name='semqs25' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs26),0) <alias name='semqs26' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs27),0) <alias name='semqs27' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs28),0) <alias name='semqs28' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs29),0) <alias name='semqs29' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs30),0) <alias name='semqs30' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs31),0) <alias name='semqs31' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs32),0) <alias name='semqs32' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs33),0) <alias name='semqs33' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs34),0) <alias name='semqs34' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs35),0) <alias name='semqs35' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs36),0) <alias name='semqs36' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs37),0) <alias name='semqs37' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs38),0) <alias name='semqs38' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs39),0) <alias name='semqs39' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs40),0) <alias name='semqs40' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs41),0) <alias name='semqs41' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs42),0) <alias name='semqs42' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs43),0) <alias name='semqs43' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs44),0) <alias name='semqs44' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs45),0) <alias name='semqs45' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs46),0) <alias name='semqs46' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs47),0) <alias name='semqs47' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs48),0) <alias name='semqs48' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs49),0) <alias name='semqs49' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs50),0) <alias name='semqs50' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs51),0) <alias name='semqs51' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs52),0) <alias name='semqs52' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs53),0) <alias name='semqs53' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs54),0) <alias name='semqs54' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs55),0) <alias name='semqs55' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs56),0) <alias name='semqs56' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs57),0) <alias name='semqs57' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs58),0) <alias name='semqs58' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs59),0) <alias name='semqs59' />,
+        NVL(SUM(@tes_qs_pos_sem.semqs60),0) <alias name='semqs60' />
+    </columns>
+    <from table="crp_tes_qs_concep">
+        <join type='left' table="@tes_qs_pos_sem">
+            <on>crp_tes_qs_concep.codcon = @tes_qs_pos_sem.codcon</on>
+        </join>
+        <join table="crp_tes_qs_bloque">
+            <on>crp_tes_qs_concep.codblq = crp_tes_qs_bloque.codblq</on>
+            <join table="crp_tes_qs_subgrp">
+                <on>crp_tes_qs_bloque.codsub  = crp_tes_qs_subgrp.codsub</on>
+                <join table="crp_tes_qs_grupos">
+                    <on>crp_tes_qs_subgrp.codgrp  = crp_tes_qs_grupos.codgrp</on>
+                </join>
+            </join>
+        </join>
+    </from>
+    <where>
+        @tes_qs_pos_sem.ctafin = 'BBVACC5709'
+    </where>
+    <group>
+        nomgrp,
+        nomsub,
+        nomblq,
+        ordcon,
+        codcon,
+        nomcon,
+        debhab,
+        opefin,
+        codflu,
+        cuenta,
+        ctafin
+    </group>
+</select>
+
+
+
+<!--
+    SELECT taptcuen.fecval, taptcuen.impcta, * FROM cbancpro, taptcuen WHERE taptcuen.ctafin = cbancpro.ctafin AND cbancpro.ctafin = 'BBVACC5709' ORDER BY 1;
+-->

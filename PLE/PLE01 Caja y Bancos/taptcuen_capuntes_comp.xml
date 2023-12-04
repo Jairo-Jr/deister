@@ -1,0 +1,46 @@
+'seqno,'     type='serial'                           required='y' />
+'loteid,'    type='serialref'                                     />
+'empcode,'   like='cinmelem.empcode'  default='0'    required='y' />
+'codinm,'    like='cinmelem.codinm'                  required='y' />
+'codele,'    like='cinmelem.codele'                  required='y' />
+'fecha,'     type='date'                             required='y' />
+'fecini,'    type='date'                             required='y' />
+'tercer,'    like='ctercero.codigo'                  required='y' />
+'notas,'     type='varchar'  size='255'                           />
+'codcom,'    type='char'     size='10'               required='y' />
+'numhis,'    type='smallint'                         required='y' />
+'nomcom,'    type='varchar'  size='60'                            />
+'codcta,'    like='cinmctas.codigo'                  required='y' />
+'codgru,'    like='cinmfgrp.codigo'                  required='y' />
+'codfis,'    like='cinmftab.codigo'                  required='y' />
+'jusser,'    type='char'     size='20'               required='y' />
+'docser,'    type='char'     size='20'               required='y' />
+'divisa,'    type='char'     size='3'                required='y' />
+'cambio,'    type='decimal'  size='12,6'             required='y' />
+'impfac,'    type='decimal'  size='14,2'             required='y' />
+'unidad,'    type='integer'  default='0'             required='y' />
+'tipcom,'    type='char'     size='1'   default='I'  required='y' />
+'comori,'    type='char'     size='10'                            />
+'locpri,'    like='cinmlopr.codigo'                               />
+'locsub,'    like='cinmlosu.codigo'                               />
+'numser,'    type='varchar'  size='60'                            />
+'fecfac,'    type='date'                                          />
+'numfac,'    type='varchar'  size='20'                            />
+'valhis,'    type='decimal'  size='14,2'                          />
+'fecbaj,'    type='date'                                          />
+'motivo,'    type='nchar'    size='12'                            />
+'impven,'    type='decimal'  size='14,2'                          />
+'auxchr1,'   type='varchar'  size='20'                            />
+'auxchr2,'   type='varchar'  size='20'                            />
+'auxchr3,'   type='varchar'  size='20'                            />
+'auxchr4,'   type='varchar'  size='20'                            />
+'auxchr5,'   type='varchar'  size='20'                            />
+'auxnum1,'   type='decimal'  size='14,4'                          />
+'auxnum2,'   type='decimal'  size='14,4'                          />
+'auxnum3,'   type='decimal'  size='14,4'                          />
+'auxnum4,'   type='decimal'  size='14,4'                          />
+'auxnum5,'   type='decimal'  size='14,4'                          />
+'user_created,' type='varchar'  size='20' default='user' required='y' />
+'date_created,' type='datetime' size='year to second' default='current' required='y' />
+'user_updated,' type='varchar'  size='20' default='user' required='y' />
+'date_updated,' type='datetime' size='year to second' default='current' required='y' />
