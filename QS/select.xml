@@ -1,0 +1,280 @@
+<select intotemp='@tmp_acum_anual'>
+    <columns>
+        tflujfin.codflu,
+        tflujfin.nomflu,
+
+        SUM(CASE WHEN taptcuen.fecope &gt;= '01-01-2023'
+        AND (MONTH(taptcuen.fecope) &lt;= 12 AND YEAR(taptcuen.fecope) = 2023) THEN impflu
+        ELSE 0
+        END ) total_año
+    </columns>
+    <from table="tflujfin">
+        <join type='left' table="taptfluj">
+            <on>tflujfin.codflu  = taptfluj.codflu</on>
+            <join type='inner' table="taptcuen">
+                <on>taptfluj.rowenl  = taptcuen.apteid</on>
+                <join type='inner' table="cbancpro">
+                    <on>taptcuen.ctafin  = cbancpro.ctafin</on>
+                    <join type='inner' table="crp_tes_qs_ctafin">
+                        <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                        <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+                    </join>
+                </join>
+            </join>
+        </join>
+    </from>
+    <where>
+        taptcuen.empcode          = '125'
+
+        AND taptcuen.tipmov IN ('S','R')
+        AND taptcuen.concid IS NOT NULL
+        AND tflujfin.codflu != 'SALINI'
+    </where>
+    <group>
+        1,2
+    </group>
+</select>
+
+<union type='all'>
+<select>
+    <columns>
+        tflujfin.codflu,
+        tflujfin.nomflu,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 1 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_1,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 2 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_2,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 3 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_3,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 4 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_4,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 5 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_5,
+        SUM(CASE WHEN taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) total_mes,
+
+        SUM(acum_anual.total_año) total_año
+    </columns>
+    <from table="tflujfin">
+        <join type='left' table="taptfluj">
+            <on>tflujfin.codflu  = taptfluj.codflu</on>
+            <join type='inner' table="taptcuen">
+                <on>taptfluj.rowenl  = taptcuen.apteid</on>
+                <join type='inner' table="cbancpro">
+                    <on>taptcuen.ctafin  = cbancpro.ctafin</on>
+                    <join type='inner' table="crp_tes_qs_ctafin">
+                        <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                        <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+                    </join>
+                </join>
+            </join>
+        </join>
+        <join table="@tmp_acum_anual" alias='acum_anual'>
+            <on>tflujfin.codflu = acum_anual.codflu</on>
+            <on>tflujfin.nomflu  = acum_anual.nomflu</on>
+        </join>
+        <join table="crp_tes_qs_calenda"/>
+    </from>
+    <where>
+        taptcuen.empcode          = '125'
+        AND crp_tes_qs_calenda.ejerci =  2023
+        AND crp_tes_qs_calenda.nummes =  12
+
+        AND taptcuen.tipmov IN ('S','R')
+        AND taptcuen.concid IS NOT NULL
+        AND tflujfin.codflu != 'SALINI'
+        <!-- AND tflujfin.codflu = 'COMM' -->
+    </where>
+    <group>
+        1,2
+    </group>
+</select>
+
+<select>
+    <columns>
+        'SALINI',
+        'Saldo inicial',
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 1 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_1,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 2 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_2,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 3 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_3,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 4 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_4,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 5 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_5,
+        SUM(impflu) total_mes,
+        SUM(CASE WHEN taptcuen.fecope BETWEEN '01-01-2023' AND (crp_tes_qs_calenda.fecfin) THEN impflu
+        ELSE 0
+        END ) total_año
+    </columns>
+    <from table="tflujfin">
+        <join type='left' table="taptfluj">
+            <on>tflujfin.codflu  = taptfluj.codflu</on>
+            <join type='inner' table="taptcuen">
+                <on>taptfluj.rowenl  = taptcuen.apteid</on>
+                <join type='inner' table="cbancpro">
+                    <on>taptcuen.ctafin  = cbancpro.ctafin</on>
+                    <join type='inner' table="crp_tes_qs_ctafin">
+                        <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                        <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+                    </join>
+                </join>
+            </join>
+        </join>
+        <join table="crp_tes_qs_calenda"/>
+    </from>
+    <where>
+        taptcuen.empcode          = '125'
+        AND crp_tes_qs_calenda.ejerci =  2023
+        AND crp_tes_qs_calenda.nummes =  12
+
+        AND taptcuen.tipmov IN ('S','R')
+        AND taptcuen.concid IS NOT NULL
+        AND tflujfin.codflu != 'SALINI'
+        AND tflujfin.codflu = 'COMM'
+    </where>
+    <group>
+        1,2
+    </group>
+</select>
+<order>
+    1
+</order>
+</union>
+
+
+
+
+
+<!-- SELECT INICIAL - CALCULO POR MES CORRECTO -->
+
+<union type='all'>
+<select>
+    <columns>
+        tflujfin.codflu,
+        tflujfin.nomflu,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 1 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_1,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 2 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_2,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 3 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_3,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 4 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_4,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 5 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_5,
+        SUM(CASE WHEN taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) total_mes,
+        SUM(CASE WHEN taptcuen.fecope BETWEEN '01-01-${ejerci}' AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END) total_año
+    </columns>
+    <from table="tflujfin">
+        <join type='left' table="taptfluj">
+            <on>tflujfin.codflu  = taptfluj.codflu</on>
+            <join type='inner' table="taptcuen">
+                <on>taptfluj.rowenl  = taptcuen.apteid</on>
+                <join type='inner' table="cbancpro">
+                    <on>taptcuen.ctafin  = cbancpro.ctafin</on>
+                    <join type='inner' table="crp_tes_qs_ctafin">
+                        <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                        <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+                    </join>
+                </join>
+            </join>
+        </join>
+        <join table="crp_tes_qs_calenda"/>
+    </from>
+    <where>
+        taptcuen.empcode          = '${empcode}'
+        AND crp_tes_qs_calenda.ejerci =  ${ejerci}
+        AND crp_tes_qs_calenda.nummes =  ${period}
+
+        AND taptcuen.tipmov IN ('S','R')
+        AND taptcuen.concid IS NOT NULL
+        AND tflujfin.codflu != 'SALINI'
+    </where>
+    <group>
+        1,2
+    </group>
+</select>
+
+<select>
+    <columns>
+        'SALINI',
+        'Saldo inicial',
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 1 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_1,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 2 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_2,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 3 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_3,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 4 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_4,
+        SUM(CASE WHEN crp_tes_qs_calenda.numsem = 5 AND taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) semana_5,
+        SUM(CASE WHEN taptcuen.fecope BETWEEN crp_tes_qs_calenda.fecini AND crp_tes_qs_calenda.fecfin THEN impflu
+        ELSE 0
+        END ) total_mes,
+        SUM(CASE WHEN taptcuen.fecope BETWEEN '01-01-${ejerci}' AND (crp_tes_qs_calenda.fecfin) THEN impflu
+        ELSE 0
+        END ) total_año
+    </columns>
+    <from table="tflujfin">
+        <join type='left' table="taptfluj">
+            <on>tflujfin.codflu  = taptfluj.codflu</on>
+            <join type='inner' table="taptcuen">
+                <on>taptfluj.rowenl  = taptcuen.apteid</on>
+                <join type='inner' table="cbancpro">
+                    <on>taptcuen.ctafin  = cbancpro.ctafin</on>
+                    <join type='inner' table="crp_tes_qs_ctafin">
+                        <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                        <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+                    </join>
+                </join>
+            </join>
+        </join>
+        <join table="crp_tes_qs_calenda"/>
+    </from>
+    <where>
+        taptcuen.empcode          = '${empcode}'
+        AND crp_tes_qs_calenda.ejerci =  ${ejerci}
+        AND crp_tes_qs_calenda.nummes =  ${period}
+
+        AND taptcuen.tipmov IN ('S','R')
+        AND taptcuen.concid IS NOT NULL
+        AND tflujfin.codflu != 'SALINI'
+    </where>
+    <group>
+        1,2
+    </group>
+</select>
+
+<order>
+    1
+</order>
+</union>
