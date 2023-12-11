@@ -278,3 +278,26 @@
     1
 </order>
 </union>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- EXPRESION DEL BOTON NUEVO PARA ANULAR de gcomfach -->
+
+SELECT COUNT(*) FROM wic_dual
+WHERE (SELECT COUNT(*)
+FROM gcomfach, gcomfacl
+WHERE gcomfach.cabid = ${cabid}
+AND gcomfacl.cabid = gcomfach.cabid) = 0 OR ${estcab} = 'P'
