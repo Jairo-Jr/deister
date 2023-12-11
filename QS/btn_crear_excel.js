@@ -1,4 +1,47 @@
-function cxlstemplate2result(bal_code, fdata) {
+/**
+ *  Copyright (c) 1988-2019 deister software, All Rights Reserved.
+ *
+ *  All information contained herein is, and remains the property of deister software.
+ *  The intellectual and technical concepts contained herein are proprietary to
+ *  deister software and may be covered by trade secret or copyright law.
+ *  Dissemination of this information or reproduction of this material is strictly
+ *  forbidden unless prior written permission is obtained from deister software.
+ *  Access to the source code contained herein is hereby forbidden to anyone except
+ *  current deister software employees, managers or contractors who have executed
+ *  "Confidentiality and Non-disclosure" agreements explicitly covering such access.
+ *  The copyright notice above does not evidence any actual or intended publication
+ *  for disclosure of this source code, which includes information that is confidential
+ *  and/or proprietary, and is a trade secret, of deister software
+ *
+ *  ANY REPRODUCTION, MODIFICATION, DISTRIBUTION, PUBLIC  PERFORMANCE,
+ *  OR PUBLIC DISPLAY OF OR THROUGH USE  OF THIS  SOURCE CODE  WITHOUT THE
+ *  EXPRESS WRITTEN CONSENT OF COMPANY IS STRICTLY PROHIBITED, AND IN VIOLATION
+ *  OF APPLICABLE LAWS AND INTERNATIONAL TREATIES.THE RECEIPT OR POSSESSION OF
+ *  THIS SOURCE CODE AND/OR RELATED INFORMATION DOES NOT CONVEY OR IMPLY ANY
+ *  RIGHTS TO REPRODUCE, DISCLOSE OR DISTRIBUTE ITS CONTENTS, OR TO MANUFACTURE,
+ *  USE, OR SELL ANYTHING THAT IT MAY DESCRIBE, IN WHOLE OR IN PART.
+ *
+ *
+ * -----------------------------------------------------------------------------
+ *
+ *  FUNCTION JS: cxlstemplate2result
+ *
+ *  Version:       V1.0
+ *  Date:          2023-12-11
+ *  Description:   Excel sheet evaluation.
+ *
+ *  CALLED FROM:
+ *  ==================
+ *     Obj: cxlstemplate              Through the action 'ACTION_BUTTON_DFIELD'
+ *
+ *  PARAMETERS:
+ *  ==================
+ *
+ *              @param    {String}    bal_code      Row identification code. XLS template.
+ *              @param    {Object}    fdata         JSon object with initial evaluation parameters.
+ *
+ **/
+function crp_cxlstemplate_result(bal_code, fdata) {
 
     // Load module
     var tplLib = require("templates_lib");
@@ -26,6 +69,9 @@ function cxlstemplate2result(bal_code, fdata) {
     var tpl_data = tplLib.makeTemplate(template.bal_datasql);
     var tpl_grp  = tplLib.makeTemplate(template.bal_grpsql);
 
+    // xls treatment
+    var wb = Ax.ms.Excel.load(template.templ_data);
+
     // Blob to save in memory each workbook result.
     var blob = new Ax.sql.Blob("data.txt");
 
@@ -36,13 +82,6 @@ function cxlstemplate2result(bal_code, fdata) {
     if(obj_group.file_name == null)
         return;
 
-    console.log(obj_group);
-    // xls treatment
-    var wb = Ax.ms.Excel.load(template.templ_data);
-
-    // get excel data
-    var rs_data = Ax.db.executeQuery(tpl_data(tplLib.rowMap2JsMap(obj_group))).toMemory();
-    // console.log(rs_data);
     // Update excel label (bal_grpql current row tags)
     for(const campo in obj_group){
 
@@ -52,6 +91,9 @@ function cxlstemplate2result(bal_code, fdata) {
             cell.setCellValue(obj_group[campo]);
     }
 
+    // get excel data
+    var rs_data = Ax.db.executeQuery(tpl_data(tplLib.rowMap2JsMap(obj_group))).toMemory();
+
     // Update excel table label. (bal_datasql resultset)
     wb.update(rs_data, options => {
         options.setTableName("csaldos");
@@ -59,21 +101,22 @@ function cxlstemplate2result(bal_code, fdata) {
         options.setEvaluate(true);
     });
 
+    // Get information for header titles
     var rs_titulo = Ax.db.executeQuery(`
         <select> 
             <columns>
-                MAX(CASE WHEN qs_calenda.numsem = 1 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${obj_group.ejerci}: Sem 1 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
+                MAX(CASE WHEN qs_calenda.numsem = 1 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${fdata.ejerci}: Sem 1 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
                     END) titulo_sem_1,
-                MAX(CASE WHEN qs_calenda.numsem = 2 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${obj_group.ejerci}: Sem 2 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
+                MAX(CASE WHEN qs_calenda.numsem = 2 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${fdata.ejerci}: Sem 2 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
                     END) titulo_sem_2,
-                MAX(CASE WHEN qs_calenda.numsem = 3 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${obj_group.ejerci}: Sem 3 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
+                MAX(CASE WHEN qs_calenda.numsem = 3 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${fdata.ejerci}: Sem 3 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
                     END) titulo_sem_3,
-                MAX(CASE WHEN qs_calenda.numsem = 4 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${obj_group.ejerci}: Sem 4 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
+                MAX(CASE WHEN qs_calenda.numsem = 4 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${fdata.ejerci}: Sem 4 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
                     END) titulo_sem_4,
-                MAX(CASE WHEN qs_calenda.numsem = 5 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${obj_group.ejerci}: Sem 5 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
+                MAX(CASE WHEN qs_calenda.numsem = 5 THEN TRIM(UPPER(cperiodo.nomper)) || ' ${fdata.ejerci}: Sem 5 (' || TO_CHAR(qs_calenda.fecini, '%d') || ' al ' || TO_CHAR(qs_calenda.fecfin, '%d') || ')'
                     END) titulo_sem_5,
-                MAX(TRIM(UPPER(cperiodo.nomper)) || ' ${obj_group.ejerci}') titulo_mes,
-                MAX('CONSOLIDADO ${obj_group.ejerci} (' || 'ENE - ' || SUBSTR(TRIM(UPPER(cperiodo.nomper)), 1, 3) || ')') titulo_consolidado
+                MAX(TRIM(UPPER(cperiodo.nomper)) || ' ${fdata.ejerci}') titulo_mes,
+                MAX('CONSOLIDADO ${fdata.ejerci} (' || 'ENE - ' || SUBSTR(TRIM(UPPER(cperiodo.nomper)), 1, 3) || ')') titulo_consolidado
             </columns>
             <from table='cperiodo' >
                 <join table='cempresa'>
@@ -90,35 +133,21 @@ function cxlstemplate2result(bal_code, fdata) {
                 AND cperiodo.codigo = ?
             </where>
         </select>
-    `, obj_group.ejerci, obj_group.period).toOne();
-    console.log(rs_titulo);
+    `, fdata.ejerci, fdata.period).toOne();
 
-    // Update excel label (bal_grpql current row tags)
+    // Update excel label (rs_titulo current row tags)
     for(const campo in rs_titulo){
 
-        console.log(campo);
         const cell = wb.getCellByName(campo);
         if (cell != null)
             cell.setCellValue(rs_titulo[campo]);
     }
-
-    // Update excel table label. (bal_datasql resultset)
-    // wb.update(rs_titulo, options => {
-    //     options.setTableName("csaldos");
-    //     options.setStartRow(wb.getNamedRow("csaldos") + 1);
-    //     options.setEvaluate(true);
-    // });
-
-
 
     // Evaluate
     wb.evaluate();
 
     // Add workbook to memory blob variable.
     blob.setContent(wb.toBlob().getBytes());
-
-
-
 
     Ax.db.insert("cxlsoutput", {
         xls_execid  : 0,
@@ -129,15 +158,4 @@ function cxlstemplate2result(bal_code, fdata) {
         xls_size    : blob.getTextContent().length(),
         xls_output  : blob.getContent()
     });
-
 }
-
-var fdata = {
-    empcode: '125',
-    ejerci: 2023,
-    period: 12,
-    moneda: 'PEN',
-    unidad: 1
-}
-
-return cxlstemplate2result('cashflow_crp_month', fdata)
