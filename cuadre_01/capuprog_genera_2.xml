@@ -1,0 +1,586 @@
+<!-- ============================================================================ -->
+<!--                                                                              -->
+<!--    capuprog_genera_2( )                                                        -->
+<!--                                                                              -->
+<!--    Proceso para la generación de apuntes automáticos por reparto porcentaje  -->
+<!--                                                                              -->
+<!--                                                                              -->
+<!--  =========================================================================== -->
+<procedure name='capuprog_genera_2'>
+    <args>
+        <arg  name='p_apteid'   type='integer' mode='in'/>
+
+        <arg name='m_arr_apteid'    like='capuntes.concep' mode='out'/>
+    </args>
+
+    <define>
+
+        <!-- ==================================================================== -->
+        <!-- Estructura 'capuntes'                                                -->
+        <!-- ==================================================================== -->
+        <variable name='capuntes_apteid'   type='integer'           />
+        <variable name='capuntes_fecha'    type='date'              />
+        <variable name='capuntes_diario'   like='capuntes.diario'   />
+        <variable name='capuntes_empcode'  like='capuntes.empcode'  />
+        <variable name='capuntes_proyec'   like='capuntes.proyec'   />
+        <variable name='capuntes_seccio'   like='capuntes.seccio'   />
+        <variable name='capuntes_jusser'   like='capuntes.jusser'   />
+        <variable name='capuntes_docser'   like='capuntes.docser'   />
+        <variable name='capuntes_placon'   like='capuntes.placon'   />
+        <variable name='capuntes_cuenta'   type='char' size='18'    />
+        <variable name='capuntes_asient'   like='capuntes.asient'   />
+        <variable name='capuntes_orden'    like='capuntes.orden'    />
+        <variable name='capuntes_codaux'   like='capuntes.codaux'   />
+        <variable name='capuntes_ctaaux'   like='capuntes.ctaaux'   />
+        <variable name='capuntes_dimcode1' like='capuntes.dimcode1' />
+        <variable name='capuntes_dimcode2' like='capuntes.dimcode2' />
+        <variable name='capuntes_sistem'   like='capuntes.sistem'   />
+        <variable name='capuntes_codcon'   like='capuntes.codcon'   />
+        <variable name='capuntes_concep'   like='capuntes.concep'   />
+        <variable name='capuntes_fecval'   like='capuntes.fecval'   />
+        <variable name='capuntes_origen'   like='capuntes.origen'   />
+        <variable name='capuntes_debe'     like='capuntes.debe'     />
+        <variable name='capuntes_haber'    like='capuntes.haber'    />
+        <variable name='capuntes_divdeb'   like='capuntes.divdeb'   />
+        <variable name='capuntes_divhab'   like='capuntes.divhab'   />
+        <variable name='capuntes_cantid1'  like='capuntes.cantid1'  />
+        <variable name='capuntes_cantid2'  like='capuntes.cantid2'  />
+        <variable name='capuntes_loteid'   like='capuntes.loteid'   />
+        <variable name='capuntes_moneda'   like='capuntes.moneda'   />
+        <variable name='capuntes_cambio'   like='capuntes.cambio'   />
+        <variable name='capuntes_contra'   type='char' size='18'    />
+
+        <!-- ==================================================================== -->
+        <!-- Estructura 'capuprog'                                                -->
+        <!-- ==================================================================== -->
+        <variable name='capuprog_empcode'  like='capuprog.empcode'   />
+        <variable name='capuprog_placon'   like='capuprog.placon'    />
+        <variable name='capuprog_cuenta'   type='char' size='18'     />
+        <variable name='capuprog_codaux'   like='capuprog.codaux'    />
+        <variable name='capuprog_ctaaux'   like='capuprog.ctaaux'    />
+        <variable name='capuprog_proyec'   like='capuprog.proyec'    />
+        <variable name='capuprog_seccio'   like='capuprog.seccio'    />
+        <variable name='capuprog_dimcode1' like='capuprog.dimcode1'  />
+        <variable name='capuprog_dimcode2' like='capuprog.dimcode2'  />
+        <variable name='capuprog_sistem'   like='capuprog.sistem'    />
+        <variable name='capuprog_codimp'   like='capuprog.codimp'    />
+
+        <!-- ==================================================================== -->
+        <!-- Estructura 'capuimpl'                                                -->
+        <!-- ==================================================================== -->
+        <variable name='capuimpl_fecha'    like='capuimpl.fecha'     />
+        <variable name='capuimpl_placon'   like='capuimpl.placon'    />
+        <variable name='capuimpl_cuenta'   type='char' size='18'     />
+        <variable name='capuimpl_proyec'   like='capuimpl.proyec'    />
+        <variable name='capuimpl_seccio'   like='capuimpl.seccio'    />
+        <variable name='capuimpl_dimcode1' like='capuimpl.dimcode1'  />
+        <variable name='capuimpl_dimcode2' like='capuimpl.dimcode2'  />
+        <variable name='capuimpl_porcen'   like='capuimpl.porcen'    />
+
+
+        <!-- ==================================================================== -->
+        <!-- Otras variables                                                      -->
+        <!-- ==================================================================== -->
+        <variable name='m_totdeb'         like='capuntes.debe'       />
+        <variable name='m_tothab'         like='capuntes.haber'      />
+        <variable name='m_totdivdeb'      like='capuntes.divdeb'     />
+        <variable name='m_totdivhab'      like='capuntes.divhab'     />
+        <variable name='m_importe'        like='capuntes.haber'      />
+        <variable name='m_importe_div'    like='capuntes.divdeb'     />
+        <variable name='m_tipred'         type='smallint'            />
+
+        <variable name='m_apteid'         type='integer'             />
+        <variable name='m_moneda'         type='char' size='3'       />
+        <variable name='m_cambio'         type='decimal' size='12,6' />
+
+        <!-- <variable name='m_arr_apteid'         type='varchar' /> -->
+    </define>
+
+    <body>
+
+        <!-- ==================================================================== -->
+        <!-- Si el capuntes_apteid esta informado, se recuperan valores del apunte       -->
+        <!-- ==================================================================== -->
+        <if><expr> p_apteid IS NOT NULL </expr>
+            <then>
+                <select>
+                    <columns>
+                        apteid,
+                        fecha,
+                        diario,
+                        empcode,
+                        proyec,
+                        seccio,
+                        jusser,
+                        docser,
+                        placon,
+                        cuenta,
+                        asient,
+                        orden,
+                        codaux,
+                        ctaaux,
+                        dimcode1,
+                        dimcode2,
+                        sistem,
+                        codcon,
+                        concep,
+                        fecval,
+                        origen,
+                        debe,
+                        haber,
+                        divdeb,
+                        divhab,
+                        cantid1,
+                        cantid2,
+                        loteid,
+                        moneda,
+                        cambio,
+                        cuenta contra
+                    </columns>
+                    <into>
+                        capuntes_apteid,
+                        capuntes_fecha,
+                        capuntes_diario,
+                        capuntes_empcode,
+                        capuntes_proyec,
+                        capuntes_seccio,
+                        capuntes_jusser,
+                        capuntes_docser,
+                        capuntes_placon,
+                        capuntes_cuenta,
+                        capuntes_asient,
+                        capuntes_orden,
+                        capuntes_codaux,
+                        capuntes_ctaaux,
+                        capuntes_dimcode1,
+                        capuntes_dimcode2,
+                        capuntes_sistem,
+                        capuntes_codcon,
+                        capuntes_concep,
+                        capuntes_fecval,
+                        capuntes_origen,
+                        capuntes_debe,
+                        capuntes_haber,
+                        capuntes_divdeb,
+                        capuntes_divhab,
+                        capuntes_cantid1,
+                        capuntes_cantid2,
+                        capuntes_loteid,
+                        capuntes_moneda,
+                        capuntes_cambio,
+                        capuntes_contra
+                    </into>
+                    FROM capuntes
+                    WHERE capuntes.apteid = p_apteid
+                </select>
+            </then>
+            <else>
+                <return />
+            </else>
+        </if>
+
+        <if>
+            <expr>
+                capuntes_apteid IS NULL
+            </expr>
+            <then>
+                <return />
+            </then>
+        </if>
+
+        <!-- ==================================================================== -->
+        <!-- Inicia el proceso de imputacion de costes                            -->
+        <!-- ==================================================================== -->
+        <set name='m_importe'>0</set>
+        <set name='m_importe_div'>0</set>
+        <set name='m_tothab'>0</set>
+        <set name='m_totdeb'>0</set>
+        <set name='m_totdivdeb'>0</set>
+        <set name='m_totdivhab'>0</set>
+        <set name='capuprog_codimp'>NULL</set>
+        <set name='capuprog_placon'>NULL</set>
+        <set name='m_apteid'>NULL</set>
+
+        <set name='m_arr_apteid'>p_apteid</set>
+
+        <!-- ==================================================================== -->
+        <!-- Se elige el programa asociado a la linea que mas condiciones tenga   -->
+        <!-- en comun con el origen (cuenta, proyecto, seccion, dimensiones).     -->
+        <!-- ==================================================================== -->
+        <foreach>
+            <select>
+                <columns>
+                    codimp,
+                    placon,
+                    empcode,
+                    sistem,
+                    proyec,
+                    seccio,
+                    codaux,
+                    ctaaux,
+                    dimcode1,
+                    dimcode2
+                </columns>
+                <into>
+                    capuprog_codimp,
+                    capuprog_placon,
+                    capuprog_empcode,
+                    capuprog_sistem,
+                    capuprog_proyec,
+                    capuprog_seccio,
+                    capuprog_codaux,
+                    capuprog_ctaaux,
+                    capuprog_dimcode1,
+                    capuprog_dimcode2
+                </into>
+                FROM capuprog
+                WHERE
+                capuprog.placon     = capuntes_placon                                   AND
+                capuprog.cuenta     = capuntes_cuenta                                   AND
+                (capuprog.codaux    = capuntes_codaux    OR capuprog.codaux   IS NULL)  AND
+                (capuprog.ctaaux    = capuntes_ctaaux    OR capuprog.ctaaux   IS NULL)  AND
+                (capuprog.empcode   = capuntes_empcode   OR capuprog.empcode  IS NULL)  AND
+                (capuprog.proyec    = capuntes_proyec    OR capuprog.proyec   IS NULL)  AND
+                (capuprog.seccio    = capuntes_seccio    OR capuprog.seccio   IS NULL)  AND
+                (capuprog.dimcode1  = capuntes_dimcode1  OR capuprog.dimcode1 IS NULL)  AND
+                (capuprog.dimcode2  = capuntes_dimcode2  OR capuprog.dimcode2 IS NULL)  AND
+                (capuprog.sistem    = capuntes_sistem    OR capuprog.sistem   IS NULL)
+                ORDER BY empcode DESC, proyec DESC, seccio DESC, sistem DESC, codaux DESC, ctaaux DESC, dimcode1 DESC, dimcode2 DESC
+            </select>
+            <exit />
+        </foreach>
+
+        <if>
+            <expr>
+                capuprog_codimp IS NULL
+            </expr>
+            <then>
+                <return />
+            </then>
+        </if>
+
+        <if>
+            <expr>
+                capuprog_placon = 'CH'
+            </expr>
+            <then>
+                <return />
+            </then>
+        </if>
+
+        <set name='m_importe'>capuntes_debe - capuntes_haber</set>
+        <set name='m_importe_div'>capuntes_divdeb - capuntes_divhab</set>
+
+        <!-- ==================================================================== -->
+        <!-- Obtiene el numero de precision de decimales para la moneda local.    -->
+        <!-- ==================================================================== -->
+        <execute-function name='icon_get_moneda' into='m_moneda'>capuntes_empcode</execute-function>
+        <execute-function name='icon_get_cambio' into='m_cambio'>capuntes_empcode, m_moneda, capuntes_fecha</execute-function>
+        <execute-function name='icon_get_divred' into='m_tipred'>m_moneda</execute-function>
+
+        <!-- ==================================================================== -->
+        <!-- Se imputa el programa automático de costes.                          -->
+        <!-- ==================================================================== -->
+        <foreach>
+            <select>
+                <columns>
+                    capuimpl.placon,
+                    capuimpl.cuenta,
+                    capuimpl.proyec,
+                    capuimpl.seccio,
+                    capuimpl.dimcode1,
+                    capuimpl.dimcode2,
+                    capuimpl.porcen
+                </columns>
+                <into>
+                    capuimpl_placon,
+                    capuimpl_cuenta,
+                    capuimpl_proyec,
+                    capuimpl_seccio,
+                    capuimpl_dimcode1,
+                    capuimpl_dimcode2,
+                    capuimpl_porcen
+                </into>
+                FROM  capuimpl
+                WHERE capuimpl.codimp = capuprog_codimp AND
+                capuimpl.fecha  = (SELECT MAX(s.fecha)
+                FROM capuimpl s
+                WHERE s.codimp = capuprog_codimp
+                AND s.fecha  &lt;= capuntes_fecha)
+            </select>
+
+
+            <!-- Si hay definidos valores en capuimpl los toma y si no toma los del apunte origen -->
+            <if>
+                <expr>
+                    <length>capuimpl_proyec</length> &gt; 0
+                </expr>
+                <then>
+                    <set name='capuntes_proyec'>capuimpl_proyec</set>
+                </then>
+            </if>
+            <if>
+                <expr>
+                    <length>capuimpl_seccio</length> &gt; 0
+                </expr>
+                <then>
+                    <set name='capuntes_seccio'>capuimpl_seccio</set>
+                </then>
+            </if>
+            <if>
+                <expr>
+                    <length>capuimpl_cuenta</length>  &gt; 0
+                </expr>
+                <then>
+                    <set name='capuntes_cuenta'>capuimpl_cuenta</set>
+                </then>
+            </if>
+            <if>
+                <expr>
+                    <length>capuimpl_dimcode1</length>  &gt; 0
+                </expr>
+                <then>
+                    <set name='capuntes_dimcode1'>capuimpl_dimcode1</set>
+                </then>
+            </if>
+            <if>
+                <expr>
+                    <length>capuimpl_dimcode2</length>  &gt; 0
+                </expr>
+                <then>
+                    <set name='capuntes_dimcode2'>capuimpl_dimcode2</set>
+                </then>
+            </if>
+
+
+            <!-- ====================================================================== -->
+            <!-- Línea de compensación (-100 %)  79xxx                                  -->
+            <!--       Para un saldo de debe, (Factura) sera  un haber                  -->
+            <!--       Para un saldo de haber, (Abono) sera un debe                     -->
+            <!-- ====================================================================== -->
+            <if><expr>
+                capuimpl_porcen &lt; 0
+            </expr>
+                <then>
+                    <if><expr>
+                        m_importe &gt; 0
+                    </expr>
+                        <then>
+                            <!-- Saldo deudor -->
+                            <set name='capuntes_debe'>ROUND( 1 * m_importe * capuimpl_porcen / 100, m_tipred)</set>
+                            <set name='capuntes_haber'>0</set>
+                        </then>
+                        <else>
+                            <!-- Saldo acreedor -->
+                            <set name='capuntes_debe'>0</set>
+                            <set name='capuntes_haber'>ROUND(-1 * m_importe * capuimpl_porcen / 100, m_tipred)</set>
+                        </else>
+                    </if>
+                    <if><expr>
+                        m_importe_div &gt; 0
+                    </expr>
+                        <then>
+                            <!-- Saldo deudor -->
+                            <set name='capuntes_divdeb'>ROUND( 1 * m_importe_div * capuimpl_porcen / 100, m_tipred)</set>
+                            <set name='capuntes_divhab'>0</set>
+
+                        </then>
+                        <else>
+                            <!-- Saldo acreedor -->
+                            <set name='capuntes_divdeb'>0</set>
+                            <set name='capuntes_divhab'>ROUND(-1 * m_importe_div * capuimpl_porcen / 100, m_tipred)</set>
+
+                        </else>
+                    </if>
+                </then>
+            </if>
+
+            <!-- ====================================================================== -->
+            <!-- Líneas de reparto estino                                               -->
+            <!-- ====================================================================== -->
+            <if><expr>
+                capuimpl_porcen &gt; 0
+            </expr>
+                <then>
+                    <if><expr>
+                        m_importe &gt; 0
+                    </expr>
+                        <then>
+                            <!-- Saldo deudor -->
+                            <set name='capuntes_debe'>ROUND( 1 * m_importe * capuimpl_porcen / 100, m_tipred)</set>
+                            <set name='capuntes_haber'>0</set>
+                        </then>
+                        <else>
+                            <!-- Saldo acreedor -->
+                            <set name='capuntes_debe'>0</set>
+                            <set name='capuntes_haber'>ROUND(-1 * m_importe * capuimpl_porcen / 100, m_tipred)</set>
+                        </else>
+                    </if>
+                    <if><expr>
+                        m_importe_div &gt; 0
+                    </expr>
+                        <then>
+                            <!-- Saldo deudor -->
+                            <set name='capuntes_divdeb'>ROUND( 1 * m_importe_div * capuimpl_porcen / 100, m_tipred)</set>
+                            <set name='capuntes_divhab'>0</set>
+                        </then>
+                        <else>
+                            <!-- Saldo acreedor -->
+                            <set name='capuntes_divdeb'>0</set>
+                            <set name='capuntes_divhab'>ROUND(-1 * m_importe_div * capuimpl_porcen / 100, m_tipred)</set>
+                        </else>
+                    </if>
+
+                    <set name='m_totdeb'>m_totdeb  + capuntes_debe</set>
+                    <set name='m_tothab'>m_tothab  + capuntes_haber</set>
+                    <set name='m_totdivdeb'>m_totdivdeb  + capuntes_divdeb</set>
+                    <set name='m_totdivhab'>m_totdivhab  + capuntes_divhab</set>
+                </then>
+            </if>
+
+            <select>
+                <columns>
+                    MAX(orden) + 1 orden
+                </columns>
+                <into>
+                    capuntes_orden
+                </into>
+                FROM capuntes
+                WHERE empcode = capuntes_empcode
+                AND fecha   = capuntes_fecha
+                AND asient  = capuntes_asient
+            </select>
+
+            <insert table='capuntes'>
+                <column name='apteid'>0</column>
+                <column name='diario'>capuntes_diario</column>
+                <column name='moneda'>capuntes_moneda</column>
+                <column name='cambio'>capuntes_cambio</column>
+                <column name='empcode'>capuntes_empcode</column>
+                <column name='proyec'>capuntes_proyec</column>
+                <column name='seccio'>capuntes_seccio</column>
+                <column name='jusser'>capuntes_jusser</column>
+                <column name='docser'>capuntes_docser</column>
+                <column name='fecha'>capuntes_fecha</column>
+                <column name='asient'>capuntes_asient</column>
+                <column name='orden'>capuntes_orden</column>
+                <column name='placon'>capuntes_placon</column>
+                <column name='cuenta'>capuntes_cuenta</column>
+                <column name='dimcode1'>capuntes_dimcode1</column>
+                <column name='dimcode2'>capuntes_dimcode2</column>
+                <column name='codcon'>capuntes_codcon</column>
+                <column name='concep'>capuntes_concep</column>
+                <column name='debe'>capuntes_debe</column>
+                <column name='haber'>capuntes_haber</column>
+                <column name='divdeb'>capuntes_divdeb</column>
+                <column name='divhab'>capuntes_divhab</column>
+                <column name='cantid1'>capuntes_cantid1</column>
+                <column name='cantid2'>capuntes_cantid2</column>
+                <column name='sistem'>capuntes_sistem</column>
+                <column name='fecval'>capuntes_fecval</column>
+                <column name='origen'>capuntes_origen</column>
+                <column name='loteid'>capuntes_loteid</column>
+                <column name='contra'>capuntes_contra</column>
+                <column name='user_created'>USER</column>
+                <column name='date_created'><current/></column>
+                <column name='user_updated'>USER</column>
+                <column name='date_updated'><current/></column>
+            </insert>
+
+            <set name='m_apteid'><sqlca.serial/></set>
+            <set name='m_arr_apteid'>m_arr_apteid||','||m_apteid</set>
+        </foreach>
+
+        <!-- ==================================================================== -->
+        <!-- Si los registros insertados tienen un descuadre producido por        -->
+        <!-- redondeo, se modifica para hacerlo cuadrar con el importe total      -->
+        <!-- que proviene del apunte                                              -->
+        <!-- ==================================================================== -->
+        <if>
+            <expr>m_apteid IS NOT NULL</expr>
+            <then>
+                <if>
+                    <expr>
+                        m_importe != (m_totdeb - m_tothab) AND m_totdeb != 0 AND m_tothab != 0
+                    </expr>
+                    <then>
+                        <if><expr>
+                            capuntes_debe != 0 AND capuntes_haber = 0
+                        </expr>
+                            <then>
+                                <update table='capuntes'>
+                                    <column name='debe'>debe + (ABS(m_importe) - ABS(m_totdeb))</column>
+                                    <column name='user_updated'>USER</column>
+                                    <column name='date_updated'><current/></column>
+                                    <where>
+                                        apteid = m_apteid
+                                    </where>
+                                </update>
+                            </then>
+                        </if>
+
+                        <if><expr>
+                            capuntes_debe = 0 AND capuntes_haber != 0
+                        </expr>
+                            <then>
+                                <update table='capuntes'>
+                                    <column name='haber'>haber + (ABS(m_importe) - ABS(m_tothab))</column>
+                                    <column name='user_updated'>USER</column>
+                                    <column name='date_updated'><current/></column>
+                                    <where>
+                                        apteid = m_apteid
+                                    </where>
+                                </update>
+                            </then>
+                        </if>
+                    </then>
+                </if>
+
+                <if>
+                    <expr>
+                        m_importe_div != (m_totdivdeb - m_totdivhab) AND m_totdivdeb != 0 AND m_totdivhab != 0
+                    </expr>
+                    <then>
+                        <if><expr>
+                            capuntes_divdeb != 0 AND capuntes_divhab = 0
+                        </expr>
+                            <then>
+                                <update table='capuntes'>
+                                    <column name='divdeb'>divdeb + (ABS(m_importe_div) - ABS(m_totdivdeb))</column>
+                                    <column name='user_updated'>USER</column>
+                                    <column name='date_updated'><current/></column>
+                                    <where>
+                                        apteid = m_apteid
+                                    </where>
+                                </update>
+                            </then>
+                        </if>
+
+                        <if><expr>
+                            capuntes_divdeb = 0 AND capuntes_divhab != 0
+                        </expr>
+                            <then>
+                                <update table='capuntes'>
+                                    <column name='divhab'>divhab + (ABS(m_importe_div) - ABS(m_totdivhab))</column>
+                                    <column name='user_updated'>USER</column>
+                                    <column name='date_updated'><current/></column>
+                                    <where>
+                                        apteid = m_apteid
+                                    </where>
+                                </update>
+                            </then>
+                        </if>
+                    </then>
+                </if>
+
+                <update table='capuntes'>
+                    <column name='punteo'>'S'</column>
+                    <where>
+                        apteid = p_apteid
+                    </where>
+                </update>
+            </then>
+        </if>
+        <return/>
+    </body>
+</procedure>
