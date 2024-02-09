@@ -67,6 +67,7 @@ function crp_cashflow_qs_week(bal_code, fdata) {
             Ax.db.insert(mTmpNumSemQS, { num_mes: i, num_sem: j });
         }
     }
+
     fdata.mTmpNumSemQS = mTmpNumSemQS;
     console.log(fdata);
     /** FLUJOS */
@@ -215,7 +216,7 @@ function crp_cashflow_qs_week(bal_code, fdata) {
     for (let array of mRsPivot_2.toArray()) {
         mRsOutput.rows().add(array);
     }
-
+// return mRsOutput
     /** CUENTAS BANC */
 
 
@@ -231,24 +232,20 @@ function crp_cashflow_qs_week(bal_code, fdata) {
     var rs_titulo = Ax.db.executeQuery(`
         <select>
             <columns>
-                qs_calenda.ejerci,
-                qs_calenda.nummes||qs_calenda.numsem codigo,
-                qs_calenda.semana
+                NVL(crp_calenda.ejerci, '${fdata.ejerci}') ejerci,
+                (NVL(crp_calenda.nummes, ${mTmpNumSemQS}.num_mes)||NVL(crp_calenda.numsem, ${mTmpNumSemQS}.num_sem))::INTEGER codigo,
+                NVL(crp_calenda.semana, '') semana
             </columns>
-            <from table='cperiodo' >
-                <join table='cempresa'>
-                    <on>cperiodo.empcode = cempresa.empcode</on>
-                </join>
-                <join table="crp_tes_qs_calenda" alias='qs_calenda'>
-                    <on>cperiodo.ejerci = qs_calenda.ejerci</on>
-                    <on>cperiodo.codigo = qs_calenda.nummes</on>
+            <from table='${mTmpNumSemQS}' >
+                <join type='left' table='crp_tes_qs_calenda' alias='crp_calenda'>
+                    <on>crp_calenda.nummes = ${mTmpNumSemQS}.num_mes</on>
+                    <on>crp_calenda.numsem = ${mTmpNumSemQS}.num_sem</on>
                 </join>
             </from>
             <where>
-                cempresa.empcode MATCHES ('${fdata.empcode}')
-                AND cperiodo.ejerci = ?
+                crp_calenda.ejerci = ?
             </where>
-            <order>qs_calenda.nummes, qs_calenda.numsem, qs_calenda.fecini</order>
+            <order>1, 2</order>
         </select>
     `, fdata.ejerci).toJSONArray();
 
@@ -282,8 +279,7 @@ function crp_cashflow_qs_week(bal_code, fdata) {
 
 var fdata = {
     empcode: '125',
-    ejerci: 2023,
-    period: 12,
+    ejerci: 2024,
     moneda: 'PEN',
     unidad: 1
 }
