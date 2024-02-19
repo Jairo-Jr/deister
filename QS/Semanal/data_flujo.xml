@@ -1,0 +1,44 @@
+<select>
+    <columns>
+        tflujfin.codflu,
+        tflujfin.nomflu,
+
+        NVL(crp_calenda.semana, ${mTmpNumSemQS}.num_mes || '_' || ${mTmpNumSemQS}.num_sem) semana,
+
+        CASE WHEN taptcuen.fecope BETWEEN crp_calenda.fecini AND crp_calenda.fecfin THEN impflu/1
+        ELSE 0
+        END impflu
+
+    </columns>
+    <from table="tflujfin">
+        <join type='left' table="taptfluj">
+            <on>tflujfin.codflu  = taptfluj.codflu</on>
+            <join type='inner' table="taptcuen">
+                <on>taptfluj.rowenl  = taptcuen.apteid</on>
+                <join type='inner' table="cbancpro">
+                    <on>taptcuen.ctafin  = cbancpro.ctafin</on>
+                    <join type='inner' table="crp_tes_qs_ctafin">
+                        <on>cbancpro.empcode = crp_tes_qs_ctafin.empcode</on>
+                        <on>cbancpro.ctafin  = crp_tes_qs_ctafin.ctafin</on>
+                    </join>
+                </join>
+            </join>
+        </join>
+        <join table="${mTmpNumSemQS}">
+            <join type='left' table='crp_tes_qs_calenda' alias='crp_calenda'>
+                <on>crp_calenda.nummes = ${mTmpNumSemQS}.num_mes</on>
+                <on>crp_calenda.numsem = ${mTmpNumSemQS}.num_sem</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        taptcuen.empcode          = '${empcode}'
+        AND crp_calenda.ejerci =  ${ejerci}
+        AND taptcuen.tipmov IN ('S','R')
+        AND taptcuen.concid IS NOT NULL
+        AND tflujfin.codflu != 'SALINI'
+    </where>
+    <order>
+        1, 2, crp_calenda.ejerci, crp_calenda.fecini
+    </order>
+</select>
