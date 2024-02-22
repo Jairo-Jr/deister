@@ -39,6 +39,6 @@
         AND tflujfin.codflu != 'SALINI'
     </where>
     <order>
-        1, 2, crp_calenda.ejerci, crp_calenda.fecini
+        1, 2, ${mTmpNumSemQS}.num_mes, ${mTmpNumSemQS}.num_sem
     </order>
 </select>
