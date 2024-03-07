@@ -1,0 +1,121 @@
+<!-- ========================================================================== -->
+<!--                                                                            -->
+<!--    crp_get_cambio()                                                        -->
+<!--                                                                            -->
+<!--    Devuelve el cambio compra/venta de la divisa respecto a la divisa       -->
+<!--    de la empresa.                                                          -->
+<!--                                                                            -->
+<!-- ========================================================================== -->
+<function name='crp_get_cambio'>
+    <test>
+        <unit id='1'>
+            SELECT cempresa.empcode, cmonedas.codigo, crp_get_cambio(cempresa.empcode, cmonedas.codigo, <today/>)
+            FROM cempresa, cmonedas
+            ORDER BY cempresa.empcode, cmonedas.codigo;
+        </unit>
+    </test>
+    <args>
+        <arg name='p_empcode' like='cempresa.empcode' />
+        <arg name='p_moneda'  like='cempresa.divemp'  />
+        <arg name='p_fecha'   type='date'             />
+        <arg name='p_tipo'    type='varchar'          />
+    </args>
+    <returns like='ccambios.cambio' />
+    <define>
+        <variable name='cempresa_divemp' like='cempresa.divemp' />
+        <variable name='cempresa_camemp' like='cempresa.camemp' />
+        <variable name='ccambios_cambio' like='ccambios.cambio' />
+        <variable name='ccambios_camcom' like='ccambios.camcom' />
+    </define>
+    <body>
+
+        <if>
+            <expr>p_empcode IS NULL</expr>
+            <then>
+                <exception>'crp_get_cambio: Código de sociedad no informado !'</exception>
+            </then>
+        </if>
+        <if>
+            <expr>p_moneda IS NULL</expr>
+            <then>
+                <exception>'crp_get_cambio: Código de moneda no informada !'</exception>
+            </then>
+        </if>
+        <if>
+            <expr>p_fecha IS NULL</expr>
+            <then>
+                <exception>'crp_get_cambio: Fecha no informada !'</exception>
+            </then>
+        </if>
+        <if>
+            <expr>p_tipo != 'C' AND p_tipo != 'V'</expr>
+            <then>
+                <exception>'crp_get_cambio: Tipo de cambio soportado Compra[C]/Venta[V] !'</exception>
+            </then>
+        </if>
+
+        <select>cempresa.divemp, cempresa.camemp
+            <into>cempresa_divemp, cempresa_camemp</into>
+            FROM cempresa
+            WHERE cempresa.empcode = p_empcode
+        </select>
+        <if>
+            <expr>cempresa_divemp IS NULL</expr>
+            <then>
+                <exception>'crp_get_cambio: [' || p_empcode || '] Sociedad no encontrada en [cempresa] !'</exception>
+            </then>
+        </if>
+
+        <if>
+            <expr>p_moneda != cempresa_divemp</expr>
+            <then>
+                <select>ccambios.cambio, ccambios.camcom
+                    <into>ccambios_cambio, ccambios_camcom</into>
+                    FROM ccambios
+                    WHERE tipcam = cempresa_camemp
+                    AND monori = cempresa_divemp
+                    AND moneda = p_moneda
+                    AND fecha  = (SELECT MAX(fecha)
+                    FROM ccambios
+                    WHERE tipcam = cempresa_camemp
+                    AND monori = cempresa_divemp
+                    AND moneda = p_moneda
+                    AND fecha &lt;= p_fecha)
+                </select>
+                <if>
+                    <expr>ccambios_cambio IS NULL AND p_tipo = 'V'</expr>
+                    <then>
+                        <exception>'crp_get_cambio: [' || cempresa_camemp || '/' || cempresa_divemp || '/' || p_moneda || '/' || <char>p_fecha</char> ||
+                            '] Cambio venta no encontrado !'</exception>
+                    </then>
+                </if>
+                <if>
+                    <expr>ccambios_camcom IS NULL AND p_tipo = 'C'</expr>
+                    <then>
+                        <exception>'crp_get_cambio: [' || cempresa_camemp || '/' || cempresa_divemp || '/' || p_moneda || '/' || <char>p_fecha</char> ||
+                            '] Cambio compra no encontrado !'</exception>
+                    </then>
+                </if>
+
+                <if>
+                    <expr>p_tipo = 'V'</expr>
+                    <then>
+                        <set name='ccambios_cambio'>ccambios_cambio</set>
+                    </then>
+                </if>
+                <if>
+                    <expr>p_tipo = 'C'</expr>
+                    <then>
+                        <set name='ccambios_cambio'>ccambios_camcom</set>
+                    </then>
+                </if>
+
+            </then>
+            <else>
+                <set name='ccambios_cambio'>1</set>
+            </else>
+        </if>
+
+        <return>ccambios_cambio</return>
+    </body>
+</function>
