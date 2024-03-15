@@ -1,0 +1,29 @@
+-- COPIA DEV [08-03-2024]
+
+CREATE FUNCTION icon_get_implocal(
+    p_monori LIKE cempresa.empcode,
+    p_moneda LIKE cempresa.divemp,
+    p_fecha LIKE ccambios.fecha,
+    p_cambio LIKE ccambios.cambio,
+    p_camope  smallint,
+    p_impdiv LIKE capuntes.divdeb,
+    p_tipred LIKE cmonedas.tipred
+)
+    RETURNING  decimal(20,8);
+    DEFINE GLOBAL gl_debug   SMALLINT DEFAULT 0;
+    IF gl_debug > 1 THEN
+        TRACE ON;
+    END IF
+    IF p_cambio IS NULL OR p_camope IS NULL THEN
+      EXECUTE PROCEDURE icon_get_cambio_ope(p_monori,p_moneda,p_fecha) INTO p_cambio,p_camope;
+    END IF;
+    IF p_tipred IS NULL AND p_monori IS NOT NULL THEN
+      SELECT
+					tipred
+					 INTO p_tipred
+					FROM cmonedas
+					WHERE codigo = p_monori
+				;
+    END IF;
+    RETURN ROUND(CASE WHEN p_camope = 1 THEN p_impdiv / p_cambio ELSE p_impdiv * p_cambio END, NVL(p_tipred, 2));
+END FUNCTION

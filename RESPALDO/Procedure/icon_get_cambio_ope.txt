@@ -1,0 +1,63 @@
+-- COMPILADO DEV [08-03-2024]
+
+
+CREATE PROCEDURE icon_get_cambio_ope(
+    p_monori LIKE cempresa.divemp,
+    p_moneda LIKE cempresa.divemp,
+    p_fecha date
+)
+    RETURNING
+        decimal(12, 6) AS o_cambio
+        ,smallint AS o_camope
+    ;
+    DEFINE o_cambio decimal(12, 6);
+    DEFINE o_camope smallint;
+    DEFINE GLOBAL gl_debug   SMALLINT DEFAULT 0;
+    IF gl_debug > 1 THEN
+        TRACE ON;
+    END IF
+    LET o_cambio = NULL;
+    LET o_camope = NULL;
+    IF p_monori IS NULL THEN
+      RAISE EXCEPTION -746, 0, 'icon_get_cambio_ope: Moneda origen no informada!';
+    END IF;
+    IF p_monori = p_moneda THEN
+      LET o_cambio = 1;
+      LET o_camope = 1;
+    ELSE
+          SELECT
+                    1/cambio cambio,
+                    0 camope
+				     INTO o_cambio, o_camope
+					FROM ccambios
+				   WHERE monori = p_monori
+				     AND moneda = p_moneda
+					 AND fecha  = (SELECT MAX(b.fecha)
+                                     FROM ccambios b
+									WHERE b.monori = ccambios.monori
+									  AND b.moneda = ccambios.moneda
+									  AND b.fecha <= p_fecha
+                                      AND b.fecha >= p_fecha - 366 UNITS DAY)
+				;
+      IF o_cambio IS NULL THEN
+        SELECT
+                            cambio,
+                            0
+                             INTO o_cambio, o_camope
+                            FROM ccambios
+                           WHERE monori = p_moneda
+                             AND moneda = p_monori
+                             AND fecha  = (SELECT MAX(b.fecha)
+                                             FROM ccambios b
+                                            WHERE b.monori = ccambios.monori
+                                              AND b.moneda = ccambios.moneda
+                                              AND b.fecha <= p_fecha
+                                              AND b.fecha >= p_fecha - 366 UNITS DAY)
+                        ;
+      END IF;
+    END IF;
+    RETURN
+        o_cambio
+        ,o_camope
+    ;
+END PROCEDURE
