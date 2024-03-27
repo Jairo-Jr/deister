@@ -1,0 +1,141 @@
+<select intotemp='@tmp_ctax_cefectos'>
+    <columns>
+        ctax_move_head.taxh_seqno,
+        MAX(cefectos.fecven) fecven,
+        MAX(cefectos.impdiv) impdiv
+    </columns>
+    <from table='ctax_move_head'>
+        <join table='cefectos'>
+            <on>cefectos.auxnum4 = ctax_move_head.taxh_loteid</on>
+        </join>
+    </from>
+    <group>
+        1
+    </group>
+</select>
+
+<select intotemp='@tmp_ctax_recti'>
+<columns>
+    DISTINCT
+    ctax_move_recti.taxh_docser,
+    ctax_move_recti.taxh_tipdoc
+</columns>
+<from table='ctax_move_head'>
+    <join table='ctax_move_head' alias='ctax_move_recti'>
+        <on>ctax_move_head.taxh_docrec = ctax_move_recti.taxh_docser</on>
+        <on>ctax_move_head.taxh_tercer = ctax_move_recti.taxh_tercer</on>
+    </join>
+</from>
+</select>
+
+<select>
+<columns>
+    cempresa.cifemp                                                                                                     ruc_emp,            <!-- Campo 01 -->
+    cempresa.empname                                                                                                    nombre_emp,         <!-- Campo 02 -->
+    ctax_move_head.taxh_ejefis || LPAD(ctax_move_head.taxh_perfis, 2, '0') || '00'                                      periodo,            <!-- Campo 03 -->
+    ''                                                                                                                  car_sunat,          <!-- Campo 04 -->
+    TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')                                                                     fecha_emision,      <!-- Campo 05 -->
+    TO_CHAR(tmp_cefectos.fecven, '%d/%m/%Y')                                                                            fecha_vencimiento,  <!-- Campo 06 -->
+    ctax_move_head.taxh_tipdoc                                                                                          tipo_documento,     <!-- Campo 07 -->
+    SUBSTR(ctax_move_head.taxh_docser, 0, CHARINDEX('-', ctax_move_head.taxh_docser)-1)                                 serie_documento,    <!-- Campo 08 -->
+
+    LPAD(SUBSTR(ctax_move_head.taxh_docser, CHARINDEX('-', ctax_move_head.taxh_docser)+1), 8, '0')                      num_documento,      <!-- Campo 09 -->
+    ''                                                                                                                  nro_final,          <!-- Campo 10 -->
+    ctax_move_head.taxh_ciftyp                                                                                          tipo_doc_tercer,    <!-- Campo 11 -->
+    ctax_move_head.taxh_cifter                                                                                          nro_doc_tercer,     <!-- Campo 12 -->
+    ctax_move_head.taxh_nombre                                                                                          nom_tercer,         <!-- Campo 13 -->
+    ''                                                                                                                  val_exportacion,    <!-- Campo 14 -->
+
+    CASE WHEN ctax_move_line.taxl_type = 'N' AND ctax_move_line.taxl_porcen &gt; 0 THEN ctax_move_line.taxl_basimp
+    END                                                                                                                 bi_gravada,         <!-- Campo 15 -->
+    0                                                                                                                   dscto_bi,           <!-- Campo 16 -->
+    CASE WHEN ctax_move_line.taxl_type = 'N' AND ctax_move_line.taxl_porcen &gt; 0 THEN ctax_move_line.taxl_cuoded
+    END                                                                                                                 igv_ipm,            <!-- Campo 17 -->
+    ''                                                                                                                  dscto_igv_ipm,      <!-- Campo 18 -->
+
+    CASE WHEN ctax_move_line.taxl_code = 'IGVE' THEN ctax_move_line.taxl_basimp
+    END                                                                                                                 val_exonerado,      <!-- Campo 19 -->
+
+    CASE WHEN ctax_move_line.taxl_code = 'IGVI' THEN ctax_move_line.taxl_basimp
+    END                                                                                                                 val_inafecto,       <!-- Campo 20 -->
+
+    ''                                                                                                                  isc,                <!-- Campo 21 -->
+    ''                                                                                                                  bi_grav_ivap,       <!-- Campo 22 -->
+    ''                                                                                                                  ivap,               <!-- Campo 23 -->
+    ''                                                                                                                  icbper,             <!-- Campo 24 -->
+    ''                                                                                                                  otros_tributos,     <!-- Campo 25 -->
+    ctax_move_head.taxh_import                                                                                          total_cp,           <!-- Campo 26 -->
+    ctax_move_head.taxh_moneda                                                                                          moneda,             <!-- Campo 27 -->
+    ctax_move_head.taxh_cambio                                                                                          tipo_cambio,        <!-- Campo 28 -->
+
+    <!-- Rectificacion -->
+    ctax_move_head.taxh_fecha                                                                                          fec_emision_rect,   <!-- Campo 29 -->
+    ctax_move_recti.taxh_tipdoc                                                                                        tip_doc_rect,       <!-- Campo 30 -->
+    SUBSTR(ctax_move_head.taxh_docrec, 0, CHARINDEX('-', ctax_move_head.taxh_docrec)-1)                                serie_doc_rect,     <!-- Campo 31 -->
+    LPAD(SUBSTR(ctax_move_head.taxh_docrec, CHARINDEX('-', ctax_move_head.taxh_docrec)+1), 8, '0')                     num_doc_rect,       <!-- Campo 32 -->
+    ''                                                                                                                 id_contrato         <!-- Campo 33 -->
+
+    <!-- <whitespace /> campo34 -->
+</columns>
+<from table='ctax_move_head'>
+    <join type='left' table='ctax_move_line'>
+        <on>ctax_move_head.taxh_seqno = ctax_move_line.taxh_seqno</on>
+    </join>
+
+    <join type='left' table='@tmp_ctax_cefectos' alias='tmp_cefectos'>
+        <on>ctax_move_head.taxh_seqno = tmp_cefectos.taxh_seqno</on>
+    </join>
+
+    <join type='left' table='gvenfach'>
+        <on>ctax_move_head.taxh_loteid = gvenfach.loteid</on>
+        <join table='ctercero'>
+            <on>gvenfach.tercer = ctercero.codigo</on>
+        </join>
+    </join>
+    <join type='left' table='cempresa'>
+        <on>ctax_move_head.taxh_empcode = cempresa.empcode</on>
+    </join>
+
+    <!-- Rectificacion -->
+    <join type='left' table='@tmp_ctax_recti' alias='ctax_move_recti'>
+        <on>ctax_move_head.taxh_docrec = ctax_move_recti.taxh_docser</on>
+    </join>
+</from>
+<where>
+    ctax_move_head.taxh_natfac = 'V'
+    AND ctax_move_line.taxl_type IN ('N', 'R')
+    AND ctax_move_head.taxh_ejefis = 2023
+    AND ctax_move_head.taxh_perfis = 12
+</where>
+</select>
+
+
+
+
+
+
+
+
+        <!-- SELECT SUMATORIA -->
+<select>
+    <columns>
+        ctax_move_head.taxh_tipdoc
+    </columns>
+    <from table='ctax_move_head' >
+        <join  table='ctax_move_line'>
+            <on>ctax_move_head.taxh_seqno = ctax_move_line.taxh_seqno</on>
+        </join>
+
+    </from>
+    <where>
+        ctax_move_head.taxh_natfac = 'V'
+        AND ctax_move_line.taxl_type IN ('N', 'R')
+        <!-- AND ctax_move_line.taxl_code IN ('IGVG', 'IGVE', 'IGVX', 'IGVI', 'IGVH', 'IGVS', 'R4C', 'R4C0')
+        AND ctax_move_head.taxh_tipdoc NOT IN ('91', '97', '98')-->
+        AND ctax_move_head.taxh_ejefis = 2023
+        AND ctax_move_head.taxh_perfis = 12
+
+
+    </where>
+
+</select>

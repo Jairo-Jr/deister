@@ -23,7 +23,7 @@
     ctax_move_head.taxh_ejefis || LPAD(ctax_move_head.taxh_perfis, 2, '0') || '00'                      periodo,            <!-- Campo 03 -->
     ''                                                                                                  car_sunat,          <!-- Campo 04 -->
     TO_CHAR(ctax_move_head.taxh_fecdoc, '%d/%m/%Y')                                                     fecha_emision,      <!-- Campo 05 -->
-    TO_CHAR(tmp_cefectos.fecven, '%d/%m/%Y')                                                            fecha_vencimiento,  <!-- Campo 06 -->
+
     ctax_move_head.taxh_tipdoc                                                                          tipo_documento,     <!-- Campo 07 -->
     SUBSTR(ctax_move_head.taxh_docser, 0, CHARINDEX('-', ctax_move_head.taxh_docser)-1)                 serie_documento,    <!-- Campo 08 -->
     CASE WHEN ctax_move_head.taxh_tipdoc IN ('50' , '51', '52', '53', '54') THEN YEAR(gcomfach.fecope)
@@ -34,38 +34,26 @@
     ctax_move_head.taxh_cifter                                                                          nro_doc_tercer,     <!-- Campo 13 -->
     ctax_move_head.taxh_nombre                                                                          nom_tercer,         <!-- Campo 14 -->
 
-    CASE WHEN ctax_move_line.taxl_code IN ('IGVG', 'IGVH')
-    THEN (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-    NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0))
+    CASE WHEN ctax_move_line.taxl_code IN ('IGVG', 'IGVH') THEN NVL(ctax_move_line.taxl_basimp, 0)
     ELSE 0
     END                                                                                                 bi_gravado_dg,      <!-- Campo 15 -->
-    CASE WHEN ctax_move_line.taxl_code IN ('IGVG', 'IGVH')
-    THEN (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-    NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0))
+    CASE WHEN ctax_move_line.taxl_code IN ('IGVG', 'IGVH') THEN NVL(ctax_move_line.taxl_cuoded, 0)
     ELSE 0
     END                                                                                                 igv_dg,             <!-- Campo 16 -->
 
 
-    CASE WHEN ctax_move_line.taxl_code IN ('IGVE', 'IGVI')
-    THEN (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-    NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0))
+    CASE WHEN ctax_move_line.taxl_code IN ('IGVE', 'IGVI') THEN NVL(ctax_move_line.taxl_basimp, 0)
     ELSE 0
     END                                                                                                 bi_gravado_dgng,    <!-- Campo 17 -->
-    CASE WHEN ctax_move_line.taxl_code IN ('IGVE', 'IGVI')
-    THEN (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-    NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0))
+    CASE WHEN ctax_move_line.taxl_code IN ('IGVE', 'IGVI') THEN NVL(ctax_move_line.taxl_cuoded, 0)
     ELSE 0
     END                                                                                                 igv_dgng,           <!-- Campo 18 -->
 
 
-    CASE WHEN ctax_move_line.taxl_code IN ('R4C', 'R4C0')
-    THEN (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-    NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0))
+    CASE WHEN ctax_move_line.taxl_code IN ('R4C', 'R4C0') THEN NVL(ctax_move_line.taxl_basimp, 0)
     ELSE 0
     END                                                                                                 bi_gravado_dng,     <!-- Campo 19 -->
-    CASE WHEN ctax_move_line.taxl_code IN ('R4C', 'R4C0')
-    THEN (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-    NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0))
+    CASE WHEN ctax_move_line.taxl_code IN ('R4C', 'R4C0') THEN NVL(ctax_move_line.taxl_cuoded, 0)
     ELSE 0
     END                                                                                                 igv_dng,            <!-- Campo 20 -->
 
@@ -98,13 +86,11 @@
     <whitespace /> campo38
 </columns>
 <from table='ctax_move_head'>
-    <join type='left' table='ctax_move_line'>
+    <join  table='ctax_move_line'>
         <on>ctax_move_head.taxh_seqno = ctax_move_line.taxh_seqno</on>
     </join>
 
-    <join type='left' table='@tmp_ctax_cefectos' alias='tmp_cefectos'>
-        <on>ctax_move_head.taxh_seqno = tmp_cefectos.taxh_seqno</on>
-    </join>
+
 
     <join type='left' table='gcomfach'>
         <on>ctax_move_head.taxh_loteid = gcomfach.loteid</on>
@@ -132,7 +118,9 @@
     AND ctax_move_head.taxh_ejefis = 2024
     AND ctax_move_head.taxh_perfis = 1
 
-    AND ctax_move_head.taxh_tipdoc = '01'
+    AND ctax_move_head.taxh_tipdoc = '07'
+
+    AND ctax_move_head.taxh_seqno IN (127589, 150922)
 </where>
 <order>1</order>
 </select>
@@ -144,30 +132,40 @@
 
 
 
-<!-- SELECT SUMATORIA -->
+
+
+
+
+
+
+
+
+        <!-- SELECT SUMATORIA -->
+        <!-- SELECT SUMATORIA -->
 <select>
-    <columns>
-        <!-- SUM((NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-                          NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0))) -->
+<columns>
+    NVL(ctax_move_line.taxl_basimp, 0),
+    NVL(ctax_move_line.taxl_cuoded, 0),
 
-        (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
-        NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0)),
-        ctax_move_head.*
-    </columns>
-    <from table='ctax_move_head' >
-        <join  table='ctax_move_line'>
-            <on>ctax_move_head.taxh_seqno = ctax_move_line.taxh_seqno</on>
-        </join>
+    (NVL(ctax_move_line.taxl_basimp, 0) + NVL(ctax_move_line.taxl_basnimp, 0) +
+    NVL(ctax_move_line.taxl_cuoded, 0) + NVL(ctax_move_line.taxl_cuonded, 0)),
+    ctax_move_head.*
+</columns>
+<from table='ctax_move_head' >
+    <join  table='ctax_move_line'>
+        <on>ctax_move_head.taxh_seqno = ctax_move_line.taxh_seqno</on>
+    </join>
 
-    </from>
-    <where>
-        ctax_move_head.taxh_natfac = 'C'
-        AND ctax_move_line.taxl_code IN ('IGVG', 'IGVE', 'IGVX', 'IGVI', 'IGVH', 'IGVS', 'R4C', 'R4C0')
-        AND ctax_move_line.taxl_type IN ('N', 'R')
-        AND ctax_move_head.taxh_tipdoc NOT IN ('91', '97', '98')
-        AND ctax_move_head.taxh_ejefis = 2024
-        AND ctax_move_head.taxh_perfis = 1
+</from>
+<where>
+    ctax_move_head.taxh_natfac = 'C'
+    AND ctax_move_line.taxl_code IN ('IGVG', 'IGVE', 'IGVX', 'IGVI', 'IGVH', 'IGVS', 'R4C', 'R4C0')
+    AND ctax_move_line.taxl_type IN ('N', 'R')
+    AND ctax_move_head.taxh_tipdoc NOT IN ('91', '97', '98')
+    AND ctax_move_head.taxh_ejefis = 2024
+    AND ctax_move_head.taxh_perfis = 1
 
-        AND ctax_move_head.taxh_tipdoc = '01'
-    </where>
+    AND ctax_move_head.taxh_tipdoc = '07'
+</where>
+<order>4</order>
 </select>
