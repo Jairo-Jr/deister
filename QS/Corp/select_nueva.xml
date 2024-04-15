@@ -1,0 +1,96 @@
+<!-- 12/04/2024 -->
+<!-- DESARROLLADO EN DEV -->
+
+<!-- AGRUPACION -->
+<select>
+    <columns>
+        DISTINCT
+        cempresa.empcode,
+        ctercero.cif,
+        cempresa.empname nombre,
+        MDY(${period},1,${ejerci}) fecini,
+        LAST_DAY(MDY(${period},1,${ejerci})) fecfin,
+        ${ejerci} ejerci,
+        ${period} period,
+        '${proyec}' proyec,
+        '${seccio}' seccio,
+        '${sistem}' sistem,
+        cempresa.empcode file_name,
+        (<nvl>cterdire.direcc,""</nvl> || ", " || <nvl>cterdire.codpos,""</nvl> || ", " || <nvl>cterdire.poblac,""</nvl>) direcc,
+        ctercero.nombre rrazon,
+        "CENTRO" nompro,
+        <nvl>ccontact.nombre,""</nvl> || " " || <nvl>ccontact.apelli,""</nvl> responsable,
+        "GERENTE CENTRO" gerente,
+        "RESPONSABLE ADMINISTRACIÓN" admin,
+        <nvl>cterdire.telef1,""</nvl> admtel
+    </columns>
+    <from table='cperiodo' >
+        <join table='cempresa'>
+            <on>cperiodo.empcode = cempresa.empcode</on>
+            <join type='left' table='ccontact'>
+                <on>cempresa.codcon = ccontact.codigo</on>
+            </join>
+            <join table='ctercero'>
+                <on>cempresa.tercer = ctercero.codigo</on>
+            </join>
+            <join type='left' table='cterdire'>
+                <on>cempresa.tipdir = cterdire.tipdir AND cempresa.tercer = cterdire.codigo</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        cempresa.empcode MATCHES ('${empcode}')  AND
+        cperiodo.ejerci = ${ejerci}
+    </where>
+</select>
+
+
+<!-- CONSULTA DATOS -->
+<select>
+    <columns>
+        capuntes.cuenta,
+        ccuentas.nombre,
+        NVL(SUM(
+        (
+        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
+        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN debe  ELSE 0 END
+        )-(
+        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
+        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN haber ELSE 0 END
+        )
+        ), 0) ape,
+        NVL(SUM(CASE WHEN capuntes.fecha &gt;= '01-${period}-${ejerci}' THEN capuntes.debe ELSE 0 END), 0) debe,
+        NVL(SUM(CASE WHEN capuntes.fecha &gt;= '01-${period}-${ejerci}' THEN capuntes.haber ELSE 0 END), 0) haber,
+        NVL(SUM(
+        (
+        (
+        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
+        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN debe  ELSE 0 END
+        )-(
+        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
+        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN haber ELSE 0 END
+        )
+        )+(
+        CASE WHEN capuntes.fecha &gt;= '01-${period}-${ejerci}' THEN capuntes.debe ELSE 0 END
+        )-(
+        CASE WHEN capuntes.fecha &gt;= '01-${period}-${ejerci}' THEN capuntes.haber ELSE 0 END
+        )
+        ),0) cierre
+    </columns>
+    <from table='capuntes'>
+        <join type="left" table="ccuentas">
+            <on>capuntes.placon = ccuentas.placon</on>
+            <on>capuntes.cuenta = ccuentas.codigo</on>
+        </join>
+    </from>
+    <where>
+        capuntes.empcode MATCHES ('${empcode}')
+        AND capuntes.fecha &gt;= '01-01-${ejerci}'
+        AND capuntes.fecha &lt; '01-${period+1}-${ejerci}'
+        AND capuntes.proyec MATCHES ('${proyec}')
+        AND capuntes.seccio MATCHES ('${seccio}')
+        AND capuntes.sistem MATCHES ('${sistem}')
+    </where>
+    <group>1,2</group>
+    <order>1</order>
+</select>
