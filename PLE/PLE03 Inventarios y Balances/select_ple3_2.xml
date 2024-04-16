@@ -1,0 +1,33 @@
+<select >
+    <columns>
+        capuntes.fecha                                                                              <alias name='period' />,                <!-- Campo 01 -->
+        capuntes.cuenta                                                                             <alias name='cod_cuenta' />,            <!-- Campo 02 -->
+        cbancdom.idriad                                                                             <alias name='cod_entid_financiera' />,  <!-- Campo 03 -->
+        cbancpro.bban                                                                               <alias name='num_cuenta' />,            <!-- Campo 04 -->
+        cbancpro.moneda                                                                             <alias name='moneda' />,                <!-- Campo 05 -->
+        SUM(CASE WHEN capuntes.debe - capuntes.haber &gt; 0 THEN capuntes.debe - capuntes.haber
+        ELSE 0
+        END)                                                                                        <alias name='sald_deudor' />,           <!-- Campo 06 -->
+        SUM(CASE WHEN capuntes.debe - capuntes.haber &lt; 0 THEN capuntes.debe - capuntes.haber
+        ELSE 0
+        END)                                                                                        <alias name='sald_acreedor' />,         <!-- Campo 07 -->
+        '1'                                                                                         <alias name='estado_operacion' />,      <!-- Campo 08 -->
+        <whitespace/>
+    </columns>
+    <from table='capuntes'>
+        <join table='cbancpro'>
+            <on>capuntes.cuenta = cbancpro.cuenta</on>
+            <join table="cbancdom">
+                <on>cbancpro.codban  = cbancdom.codban</on>
+            </join>
+        </join>
+    </from>
+    <where>
+        capuntes.empcode = '125'
+        AND capuntes.sistem = 'A'
+        AND capuntes.cuenta LIKE '10%'
+        AND capuntes.fecha &gt;= '01-04-2024'
+        AND capuntes.fecha &lt; '05-04-2024'
+    </where>
+    <group>1,2,3,4,5</group>
+</select>
