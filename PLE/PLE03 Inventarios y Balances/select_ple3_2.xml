@@ -4,7 +4,7 @@
         capuntes.cuenta                                                                             <alias name='cod_cuenta' />,            <!-- Campo 02 -->
         cbancdom.idriad                                                                             <alias name='cod_entid_financiera' />,  <!-- Campo 03 -->
         cbancpro.bban                                                                               <alias name='num_cuenta' />,            <!-- Campo 04 -->
-        cbancpro.moneda                                                                             <alias name='moneda' />,                <!-- Campo 05 -->
+        cempresa.divemp                                                                             <alias name='moneda' />,                <!-- Campo 05 -->
         SUM(CASE WHEN capuntes.debe - capuntes.haber &gt; 0 THEN capuntes.debe - capuntes.haber
         ELSE 0
         END)                                                                                        <alias name='sald_deudor' />,           <!-- Campo 06 -->
@@ -20,6 +20,9 @@
             <join table="cbancdom">
                 <on>cbancpro.codban  = cbancdom.codban</on>
             </join>
+        </join>
+        <join type="left" table="cempresa">
+            <on>capuntes.empcode = cempresa.empcode</on>
         </join>
     </from>
     <where>
