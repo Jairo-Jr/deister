@@ -1,0 +1,33 @@
+<select >
+    <columns>
+        TO_CHAR(capuntes.fecha, '%Y%m%d')                                                                   <alias name='period' />,        <!-- Campo 01 -->
+        LPAD(capuntes.asient,9,'0')||'.'||capuntes.orden                                                    <alias name='cuo' />,           <!-- Campo 02 -->
+        CASE WHEN capuntes.period = 0 AND capuntes.origen = 'A' THEN 'A'||LPAD(capuntes.asient,9,'0')
+        WHEN capuntes.period = 99 THEN 'C'||LPAD(capuntes.asient,9,'0')
+        ELSE 'M'||LPAD(capuntes.asient,9,'0')
+        END                                                                                                 <alias name='corr_asient' />,   <!-- Campo 03 -->
+
+
+        ctax_move_head.taxh_ciftyp                                                                          <alias name='tip_doc_cliente' />,            <!-- Campo 04 -->
+        ctax_move_head.taxh_cifter                                                                          <alias name='num_doc_cliente' />,            <!-- Campo 05 -->
+        ctax_move_head.taxh_nombre                                                                          <alias name='nombre_cliente' />,  <!-- Campo 06 -->
+        ctax_move_head.taxh_fecha                                                                           <alias name='fecha_emision' />,            <!-- Campo 07 -->
+        ctax_move_head.taxh_import                                                                          <alias name='monto' />,                <!-- Campo 08 -->
+        '1'                                                                                         <alias name='estado_operacion' />,      <!-- Campo 08 -->
+        <whitespace/>
+    </columns>
+    <from table='capuntes'>
+        <join table='ctax_move_head'>
+            <on>ctax_move_head.taxh_apteid = capuntes.apteid</on>
+        </join>
+    </from>
+    <where>
+        (capuntes.cuenta LIKE '12%'
+        OR capuntes.cuenta LIKE '13%')
+        AND capuntes.empcode = '125'
+        AND capuntes.sistem = 'A'
+        AND capuntes.fecha &gt;= '01-12-2023'
+        AND capuntes.fecha &lt; '31-12-2023'
+    </where>
+    <!-- <group>1,2,3,4,5</group> -->
+</select>
