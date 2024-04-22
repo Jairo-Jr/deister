@@ -1,33 +1,184 @@
-<select >
-    <columns>
-        TO_CHAR(capuntes.fecha, '%Y%m%d')                                                                   <alias name='period' />,        <!-- Campo 01 -->
-        LPAD(capuntes.asient,9,'0')||'.'||capuntes.orden                                                    <alias name='cuo' />,           <!-- Campo 02 -->
-        CASE WHEN capuntes.period = 0 AND capuntes.origen = 'A' THEN 'A'||LPAD(capuntes.asient,9,'0')
-        WHEN capuntes.period = 99 THEN 'C'||LPAD(capuntes.asient,9,'0')
-        ELSE 'M'||LPAD(capuntes.asient,9,'0')
-        END                                                                                                 <alias name='corr_asient' />,   <!-- Campo 03 -->
+<union type='all'>
+    <!-- APUNTES ASOCIADOS A UNA FACTURA DE COMPRA -->
+    <select>
+        <columns>
+            TO_CHAR(capuntes.fecha, '%Y%m%d')                                                                   <alias name='period' />,        <!-- Campo 01 -->
+            LPAD(capuntes.asient,9,'0')||'.'||capuntes.orden                                                    <alias name='cuo' />,           <!-- Campo 02 -->
+            CASE WHEN capuntes.period = 0 AND capuntes.origen = 'A' THEN 'A'||LPAD(capuntes.asient,9,'0')
+            WHEN capuntes.period = 99 THEN 'C'||LPAD(capuntes.asient,9,'0')
+            ELSE 'M'||LPAD(capuntes.asient,9,'0')
+            END                                                                                                 <alias name='corr_asient' />,   <!-- Campo 03 -->
+            CASE WHEN NVL(gcomfach.ciftyp, ctercero.ciftyp) IN (2,3) THEN '0'
+            WHEN NVL(gcomfach.ciftyp, ctercero.ciftyp) = 8 THEN 'A'
+            ELSE NVL(gcomfach.ciftyp, ctercero.ciftyp)::CHAR(1)
+            END                                                                                                 <alias name='tip_doc_cliente' />,            <!-- Campo 04 -->
+            REPLACE(REPLACE(
+            NVL(gcomfach.cif,ctercero.cif)
+            , ' ', ''), '-', '')                                                                                <alias name='num_doc_cliente' />,            <!-- Campo 05 -->
 
+            ctercero.nombre                                                                                                 <alias name='nombre_cliente' />,  <!-- Campo 06 -->
+            gcomfach.fecha                                                                                                 <alias name='fecha_emision' />,            <!-- Campo 07 -->
+            gcomfach.imptot*gcomfach.cambio                                                                                                 <alias name='monto' />,                <!-- Campo 08 -->
+            '1'                                                                                                 <alias name='estado_operacion' />,      <!-- Campo 08 -->
+            <whitespace/>
+        </columns>
+        <from table='capuntes'>
+            <join table='gcomfach'>
+                <on>gcomfach.loteid = capuntes.loteid</on>
+                <join type='left' table='ctercero'>
+                    <on>gcomfach.tercer = ctercero.codigo</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            (capuntes.cuenta LIKE '12%'
+            OR capuntes.cuenta LIKE '13%')
+            AND capuntes.empcode = '125'
+            AND capuntes.sistem = 'A'
+            AND capuntes.fecha &gt;= '09-04-2024'
+            AND capuntes.fecha &lt; '11-04-2024'
+        </where>
+    </select>
 
-        ctax_move_head.taxh_ciftyp                                                                          <alias name='tip_doc_cliente' />,            <!-- Campo 04 -->
-        ctax_move_head.taxh_cifter                                                                          <alias name='num_doc_cliente' />,            <!-- Campo 05 -->
-        ctax_move_head.taxh_nombre                                                                          <alias name='nombre_cliente' />,  <!-- Campo 06 -->
-        ctax_move_head.taxh_fecha                                                                           <alias name='fecha_emision' />,            <!-- Campo 07 -->
-        ctax_move_head.taxh_import                                                                          <alias name='monto' />,                <!-- Campo 08 -->
-        '1'                                                                                         <alias name='estado_operacion' />,      <!-- Campo 08 -->
-        <whitespace/>
-    </columns>
-    <from table='capuntes'>
-        <join table='ctax_move_head'>
-            <on>ctax_move_head.taxh_apteid = capuntes.apteid</on>
-        </join>
-    </from>
-    <where>
-        (capuntes.cuenta LIKE '12%'
-        OR capuntes.cuenta LIKE '13%')
-        AND capuntes.empcode = '125'
-        AND capuntes.sistem = 'A'
-        AND capuntes.fecha &gt;= '01-12-2023'
-        AND capuntes.fecha &lt; '31-12-2023'
-    </where>
-    <!-- <group>1,2,3,4,5</group> -->
-</select>
+    <!-- APUNTES ASOCIADOS A UNA FACTURA DE VENTA -->
+    <select >
+        <columns>
+            TO_CHAR(capuntes.fecha, '%Y%m%d')                                                                   <alias name='period' />,        <!-- Campo 01 -->
+            LPAD(capuntes.asient,9,'0')||'.'||capuntes.orden                                                    <alias name='cuo' />,           <!-- Campo 02 -->
+            CASE WHEN capuntes.period = 0 AND capuntes.origen = 'A' THEN 'A'||LPAD(capuntes.asient,9,'0')
+            WHEN capuntes.period = 99 THEN 'C'||LPAD(capuntes.asient,9,'0')
+            ELSE 'M'||LPAD(capuntes.asient,9,'0')
+            END                                                                                                 <alias name='corr_asient' />,   <!-- Campo 03 -->
+            CASE WHEN NVL(cvenfach.ciftyp, ctercero.ciftyp) IN (2,3) THEN '0'
+            WHEN NVL(cvenfach.ciftyp, ctercero.ciftyp) = 8 THEN 'A'
+            ELSE NVL(cvenfach.ciftyp, ctercero.ciftyp)::CHAR(1)
+            END                                                                                                 <alias name='tip_doc_cliente' />,            <!-- Campo 04 -->
+            REPLACE(REPLACE(
+            NVL(cvenfach.cif,ctercero.cif)
+            , ' ', ''), '-', '')                                                                                <alias name='num_doc_cliente' />,            <!-- Campo 05 -->
+            NVL(cvenfach.nombre, ctercero.nombre)                                                               <alias name='nombre_cliente' />,  <!-- Campo 06 -->
+            cvenfach.fecfac                                                                                     <alias name='fecha_emision' />,            <!-- Campo 07 -->
+            cvenfach.imptot*cvenfach.cambio                                                                     <alias name='monto' />,                <!-- Campo 08 -->
+            '1'                                                                                                 <alias name='estado_operacion' />,      <!-- Campo 08 -->
+            <whitespace/>
+        </columns>
+        <from table='capuntes'>
+            <join table='cvenfach'>
+                <on>cvenfach.loteid = capuntes.loteid</on>
+                <join type='left' table='ctercero'>
+                    <on>cvenfach.tercer = ctercero.codigo</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            (capuntes.cuenta LIKE '12%'
+            OR capuntes.cuenta LIKE '13%')
+            AND capuntes.empcode = '125'
+            AND capuntes.sistem = 'A'
+            AND capuntes.fecha &gt;= '09-04-2024'
+            AND capuntes.fecha &lt; '11-04-2024'
+        </where>
+    </select>
+
+    <!-- APUNTES ASOCIADOS A UNA GESTION -->
+    <select >
+        <columns>
+            TO_CHAR(capuntes.fecha, '%Y%m%d')                                                                   <alias name='period' />,            <!-- Campo 01 -->
+            LPAD(capuntes.asient,9,'0')||'.'||capuntes.orden                                                    <alias name='cuo' />,               <!-- Campo 02 -->
+            CASE WHEN capuntes.period = 0 AND capuntes.origen = 'A' THEN 'A'||LPAD(capuntes.asient,9,'0')
+            WHEN capuntes.period = 99 THEN 'C'||LPAD(capuntes.asient,9,'0')
+            ELSE 'M'||LPAD(capuntes.asient,9,'0')
+            END                                                                                                 <alias name='corr_asient' />,       <!-- Campo 03 -->
+            CASE WHEN NVL(ctercero.ciftyp, ctercer_efect.ciftyp) IN (2,3) THEN '0'
+            WHEN NVL(ctercero.ciftyp, ctercer_efect.ciftyp) = 8 THEN 'A'
+            ELSE NVL(ctercero.ciftyp, ctercer_efect.ciftyp)::CHAR(1)
+            END                                                                                                 <alias name='tip_doc_cliente' />,   <!-- Campo 04 -->
+            REPLACE(REPLACE(
+            NVL(ctercero.cif, ctercer_efect.cif)
+            , ' ', ''), '-', '')                                                                                <alias name='num_doc_cliente' />,   <!-- Campo 05 -->
+            NVL(ctercero.nombre, ctercer_efect.nombre)                                                          <alias name='nombre_cliente' />,    <!-- Campo 06 -->
+            cefecges_pcs.pcs_fecpro                                                                             <alias name='fecha_emision' />,     <!-- Campo 07 -->
+            SUM(CASE WHEN cefectos.clase = cefecges_pcs.pcs_clase THEN +cefecges_det.det_impdiv
+            ELSE -cefecges_det.det_impdiv
+            END)                                                                                            <alias name='monto' />,             <!-- Campo 08 -->
+            '1'                                                                                                 <alias name='estado_operacion' />,  <!-- Campo 09 -->
+            <whitespace/>
+        </columns>
+        <from table='capuntes'>
+            <join table='cefecges_pcs'>
+                <on>capuntes.loteid = cefecges_pcs.pcs_loteid</on>
+                <join type='left' table='cefecges_det'>
+                    <on>cefecges_pcs.pcs_seqno = cefecges_det.pcs_seqno</on>
+                    <join table='cefectos'>
+                        <on>cefecges_det.det_numero = cefectos.numero</on>
+                        <join type='left' table="ctercero" alias='ctercer_efect'>
+                            <on>cefectos.tercer = ctercer_efect.codigo</on>
+                        </join>
+                    </join>
+                </join>
+                <join type="left" table="ctercero">
+                    <on>cefecges_pcs.pcs_codper = ctercero.codigo</on>
+                </join>
+            </join>
+        </from>
+        <where>
+            (capuntes.cuenta LIKE '12%'
+            OR capuntes.cuenta LIKE '13%')
+            AND capuntes.empcode = '125'
+            AND capuntes.sistem = 'A'
+            AND capuntes.fecha &gt;= '09-04-2024'
+            AND capuntes.fecha &lt; '11-04-2024'
+        </where>
+        <group>1, 2, 3, 4, 5, 6, 7</group>
+    </select>
+
+    <!-- APUNTES ASOCIADOS A UNA RECLASIFICACIÓN -->
+    <select >
+        <columns>
+            TO_CHAR(capuntes.fecha, '%Y%m%d')                                                                   <alias name='period' />,            <!-- Campo 01 -->
+            LPAD(capuntes.asient,9,'0')||'.'||capuntes.orden                                                    <alias name='cuo' />,               <!-- Campo 02 -->
+            CASE WHEN capuntes.period = 0 AND capuntes.origen = 'A' THEN 'A'||LPAD(capuntes.asient,9,'0')
+            WHEN capuntes.period = 99 THEN 'C'||LPAD(capuntes.asient,9,'0')
+            ELSE 'M'||LPAD(capuntes.asient,9,'0')
+            END                                                                                                 <alias name='corr_asient' />,       <!-- Campo 03 -->
+            CASE WHEN NVL(ctercero.ciftyp, -1) IN (2,3) THEN '0'
+            WHEN NVL(ctercero.ciftyp, -1) = 8 THEN 'A'
+            ELSE NVL(ctercero.ciftyp, '0')::CHAR(1)
+            END                                                                                                 <alias name='tip_doc_cliente' />,   <!-- Campo 04 -->
+            REPLACE(REPLACE(
+            NVL(ctercero.cif, '00000000000')
+            , ' ', ''), '-', '')                                                                                <alias name='num_doc_cliente' />,   <!-- Campo 05 -->
+            NVL(ctercero.nombre, capuntes.concep)                                                               <alias name='nombre_cliente' />,    <!-- Campo 06 -->
+            cefecrec_pcs.pcs_fecpro                                                                             <alias name='fecha_emision' />,     <!-- Campo 07 -->
+            SUM(CASE WHEN cefectos.clase = 'C' THEN +cefectos.import
+            ELSE -cefectos.import
+            END)                                                                                            <alias name='monto' />,             <!-- Campo 08 -->
+            '1'                                                                                                 <alias name='estado_operacion' />,  <!-- Campo 09 -->
+            <whitespace/>
+        </columns>
+        <from table='capuntes'>
+            <join table='cefecrec_pcs'>
+                <on>capuntes.loteid = cefecrec_pcs.pcs_loteid</on>
+                <join type='left' table='cefecrec_ori'>
+                    <on>cefecrec_pcs.pcs_seqno = cefecrec_ori.pcs_seqno</on>
+                    <join table='cefectos'>
+                        <on>cefecrec_ori.ori_numero = cefectos.numero</on>
+                        <on>capuntes.docser = cefectos.docser</on>
+                        <join type='left' table='ctercero'>
+                            <on>cefectos.tercer = ctercero.codigo</on>
+                        </join>
+                    </join>
+                </join>
+            </join>
+        </from>
+        <where>
+            (capuntes.cuenta LIKE '12%'
+            OR capuntes.cuenta LIKE '13%')
+            AND capuntes.empcode = '125'
+            AND capuntes.sistem = 'A'
+            AND capuntes.fecha &gt;= '09-04-2024'
+            AND capuntes.fecha &lt; '11-04-2024'
+        </where>
+        <group>1, 2, 3, 4, 5, 6, 7</group>
+    </select>
+</union>
