@@ -45,18 +45,29 @@
 </select>
 
 
-<!-- CONSULTA DATOS -->
+
+<!-- CONSULTA DATOS (12-04-2024)                                                                                -->
+<!--                                                                                                            -->
+<!-- * ape: La diferencia de debe y haber de lo anterior al primer dia del periodo o al 01-01 del ejercicio     -->
+<!-- * debe: La suma del debe de lo posterior al primer dia del periodo                                         -->
+<!-- * haber: La suma del haber de lo posterior al primer dia del periodo                                       -->
+<!-- * cierre: Es el calculo de la apertura (ape), mas el debe y menos el haber                                 -->
+
 <select>
     <columns>
-        capuntes.cuenta,
+        ccuentas.cta_matriz cuenta,
         ccuentas.nombre,
         NVL(SUM(
         (
-        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
-        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN debe  ELSE 0 END
+        CASE WHEN '01-${period}-${ejerci}' &gt; capuntes.fecha
+        OR (capuntes.period = 0
+        AND capuntes.asient = 0
+        AND capuntes.fecha = '01-01-${ejerci}') THEN debe  ELSE 0 END
         )-(
-        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
-        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN haber ELSE 0 END
+        CASE WHEN '01-${period}-${ejerci}' &gt; capuntes.fecha
+        OR (capuntes.period = 0
+        AND capuntes.asient = 0
+        AND capuntes.fecha = '01-01-${ejerci}') THEN haber ELSE 0 END
         )
         ), 0) ape,
         NVL(SUM(CASE WHEN capuntes.fecha &gt;= '01-${period}-${ejerci}' THEN capuntes.debe ELSE 0 END), 0) debe,
@@ -64,11 +75,15 @@
         NVL(SUM(
         (
         (
-        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
-        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN debe  ELSE 0 END
+        CASE WHEN '01-${period}-${ejerci}' &gt; capuntes.fecha
+        OR (capuntes.period = 0
+        AND capuntes.asient = 0
+        AND capuntes.fecha = '01-01-${ejerci}') THEN debe  ELSE 0 END
         )-(
-        CASE WHEN ('01-${period}-${ejerci}' > capuntes.fecha OR
-        (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-${ejerci}')) THEN haber ELSE 0 END
+        CASE WHEN '01-${period}-${ejerci}' &gt; capuntes.fecha
+        OR (capuntes.period = 0
+        AND capuntes.asient = 0
+        AND capuntes.fecha = '01-01-${ejerci}') THEN haber ELSE 0 END
         )
         )+(
         CASE WHEN capuntes.fecha &gt;= '01-${period}-${ejerci}' THEN capuntes.debe ELSE 0 END
