@@ -1,0 +1,621 @@
+<union type="all" intotemp="@textract_capuntes">
+    <!-- ================================================================================== -->
+    <!-- Extracto bancario                                                                  -->
+    <!-- ================================================================================== -->
+    <select>
+        <columns>
+            cbancpro.empcode, cempresa.empname,
+            cbancpro.ctafin,  cbancpro.nomcta,
+            cbancpro.moneda,  cbancpro.cuenta,
+            'EXT'    origen,
+            NVL(SUM(CASE WHEN ($FECINI > textract.fecope AND 0 > import) THEN -import ELSE 0 END),0)                                          <alias name='inideb' />,  <!-- Saldo inicial ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECINI > textract.fecope AND import > 0) THEN  import ELSE 0 END),0)                                          <alias name='inihab' />,  <!-- Saldo inicial egreso/divhab -->
+            NVL(SUM(CASE WHEN ((textract.fecope BETWEEN $FECINI AND $FECJUS) AND (0 > import)) THEN -import ELSE 0 END),0)                    <alias name='movdeb' />,  <!-- Movimientos período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ((textract.fecope BETWEEN $FECINI AND $FECJUS) AND (import > 0)) THEN  import ELSE 0 END),0)                    <alias name='movhab' />,  <!-- Movimientos período egreso/divhab -->
+            NVL(SUM(CASE WHEN ($FECJUS >= textract.fecope AND 0 > import AND concid IS NULL AND concom != 'AP') THEN -import ELSE 0 END),0)   <alias name='nocdeb' />,  <!-- No conciliado período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECJUS >= textract.fecope AND import > 0 AND concid IS NULL AND concom != 'AP') THEN  import ELSE 0 END),0)   <alias name='nochab' />   <!-- No conciliado período egreso/divhab -->
+        </columns>
+        <from table="cbancpro">
+            <join table="textract">
+                <on>cbancpro.empcode = textract.empcode</on>
+                <on>cbancpro.ctafin  = textract.ctafin</on>
+            </join>
+            <join type="left" table="cempresa">
+                <on>cbancpro.empcode = cempresa.empcode</on>
+            </join>
+        </from>
+        <where>
+            $FECJUS &gt;= textract.fecope
+            AND $0
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+
+    <!-- ================================================================================== -->
+    <!-- Contabilidad cuenta principal del banco 104xxx o 106xxx                            -->
+    <!-- ================================================================================== -->
+    <select>
+        <columns>
+            cbancpro.empcode, cempresa.empname,
+            cbancpro.ctafin,  cbancpro.nomcta,
+            cbancpro.moneda,  cbancpro.cuenta,
+            '104'    origen,
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha OR
+            (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-'||YEAR($FECINI))) THEN debe  ELSE 0 END),0)            <alias name='inideb' />,  <!-- Saldo inicial ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha OR
+            (capuntes.period = 0 AND capuntes.asient = 0 AND capuntes.fecha = '01-01-'||YEAR($FECINI))) THEN haber ELSE 0 END),0)             <alias name='inihab' />,  <!-- Saldo inicial egreso/divhab -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN debe ELSE 0 END),0)                                                             <alias name='movdeb' />,  <!-- Movimientos período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN haber  ELSE 0 END),0)                                                           <alias name='movhab' />,  <!-- Movimientos período egreso/divhab -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) AND (capuntes.origen  = 'M' AND capuntes.diario != '24') THEN debe  ELSE 0 END),0)   <alias name='nocdeb' />,  <!-- Manual no libro 24 período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) AND (capuntes.origen  = 'M' AND capuntes.diario != '24') THEN haber ELSE 0 END),0)   <alias name='nochab' />   <!-- Manual no libro 24 egreso/divhab -->
+        </columns>
+        <from table="cbancpro">
+            <join type="left" table="capuntes">
+                <on>cbancpro.empcode = capuntes.empcode</on>
+                <on>cbancpro.cuenta  = capuntes.cuenta</on>
+            </join>
+            <join type="left" table="cempresa">
+                <on>cbancpro.empcode = cempresa.empcode</on>
+            </join>
+        </from>
+        <where>
+            capuntes.asient &gt;= 0
+            AND capuntes.fecha BETWEEN (SELECT MIN(fecini)
+            FROM cperiodo
+            WHERE empcode = cbancpro.empcode
+            AND ejerci = YEAR($FECINI))
+            AND $FECJUS
+            AND $0
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+    <!-- CRP 2023 11 22 Se exceptua registros del Libro Diario 24 cuyo origen es manual -->
+    <!--                corresponden a ajustes controlados que se concilian por bancos  -->
+
+
+    <!-- ================================================================================== -->
+    <!-- Contabilidad cuenta principal del banco 104xxx o 106xxx  solo M +  Libro 24        -->
+    <!-- ================================================================================== -->
+    <select>
+        <columns>
+            cbancpro.empcode, cempresa.empname,
+            cbancpro.ctafin,  cbancpro.nomcta,
+            cbancpro.moneda,  cbancpro.cuenta,
+            'L24'    origen,
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha) THEN divdeb  ELSE 0 END),0)                                                          <alias name='inideb' />,  <!-- Saldo inicial ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha) THEN divhab ELSE 0 END),0)                                                           <alias name='inihab' />,  <!-- Saldo inicial egreso/divhab -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN divdeb  ELSE 0 END),0)                                        <alias name='movdeb' />,  <!-- Movimientos período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN divhab ELSE 0 END),0)                                         <alias name='movhab' />,  <!-- Movimientos período egreso/divhab -->
+            NVL(SUM(CASE WHEN ($FECJUS >= capuntes.fecha) THEN divdeb  ELSE 0 END),0)                                                         <alias name='nocdeb' />,  <!-- Manual no libro 24 período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECJUS >= capuntes.fecha) THEN divhab ELSE 0 END),0)                                                          <alias name='nochab' />   <!-- Manual no libro 24 egreso/divhab -->
+        </columns>
+        <from table="cbancpro">
+            <join type="left" table="capuntes">
+                <on>cbancpro.empcode = capuntes.empcode</on>
+                <on>cbancpro.cuenta  = capuntes.cuenta</on>
+            </join>
+            <join type="left" table="cempresa">
+                <on>cbancpro.empcode = cempresa.empcode</on>
+            </join>
+        </from>
+        <where>
+            capuntes.asient &gt;= 0
+            AND capuntes.origen  = 'M'
+            AND capuntes.diario  = '24'
+            AND capuntes.fecha BETWEEN (SELECT MIN(fecini)
+            FROM cperiodo
+            WHERE empcode = cbancpro.empcode
+            AND ejerci = YEAR($FECINI))
+            AND $FECJUS
+            AND $0
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+    <!-- CRP 2023 11 22 Se detallan registros del Libro Diario 24 cuyo origen es manual -->
+    <!--                corresponden a ajustes controlados que se concilian por bancos  -->
+
+
+    <!-- ================================================================================== -->
+    <!-- Contabilidad cuenta principal banco 104xxx o 106xxx  solo Interfase Voucher Pago   -->
+    <!-- ================================================================================== -->
+    <select>
+        <columns>
+            cbancpro.empcode, cempresa.empname,
+            cbancpro.ctafin,  cbancpro.nomcta,
+            cbancpro.moneda,  cbancpro.cuenta,
+            'VPG'    origen,
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha) THEN divdeb  ELSE 0 END),0)                                                          <alias name='inideb' />,  <!-- Saldo inicial ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha) THEN divhab ELSE 0 END),0)                                                           <alias name='inihab' />,  <!-- Saldo inicial egreso/divhab -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN divdeb  ELSE 0 END),0)                                        <alias name='movdeb' />,  <!-- Movimientos período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN divhab ELSE 0 END),0)                                         <alias name='movhab' />,  <!-- Movimientos período egreso/divhab -->
+            NVL(SUM(CASE WHEN ($FECJUS >= capuntes.fecha) THEN debe  ELSE 0 END),0)                                                           <alias name='nocdeb' />,  <!-- Manual no libro 24 período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECJUS >= capuntes.fecha) THEN haber ELSE 0 END),0)                                                           <alias name='nochab' />   <!-- Manual no libro 24 egreso/divhab -->
+        </columns>
+        <from table="cbancpro">
+            <join type="left" table="capuntes">
+                <on>cbancpro.empcode = capuntes.empcode</on>
+                <on>cbancpro.cuenta  = capuntes.cuenta</on>
+            </join>
+            <join type="left" table="cempresa">
+                <on>cbancpro.empcode = cempresa.empcode</on>
+            </join>
+        </from>
+        <where>
+            capuntes.asient &gt;= 0
+            AND capuntes.origen  = 'MC'
+            AND capuntes.fecha BETWEEN (SELECT MIN(fecini)
+            FROM cperiodo
+            WHERE empcode = cbancpro.empcode
+            AND ejerci = YEAR($FECINI))
+            AND $FECJUS
+            AND $0
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+
+    <!-- ================================================================================== -->
+    <!-- Contabilidad cuenta fondos en movimiento 103xxx                                    -->
+    <!-- ================================================================================== -->
+    <select>
+        <columns>
+            cbancpro.empcode, cempresa.empname,
+            cbancpro.ctafin,  cbancpro.nomcta,
+            cbancpro.moneda,  cbancpro.cuenta,
+            '103'    origen,
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha) THEN debe  ELSE 0 END),0)                                                            <alias name='inideb' />,  <!-- Saldo inicial ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECINI > capuntes.fecha) THEN haber ELSE 0 END),0)                                                            <alias name='inihab' />,  <!-- Saldo inicial egreso/divhab -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN debe ELSE 0 END),0)                                           <alias name='movdeb' />,  <!-- Movimientos período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN (capuntes.fecha BETWEEN $FECINI AND $FECJUS) THEN haber ELSE 0 END),0)                                          <alias name='movhab' />,  <!-- Movimientos período egreso/divhab -->
+            NVL(SUM(CASE WHEN ($FECJUS >= capuntes.fecha) AND (capuntes.origen  = 'M' AND capuntes.diario != '24') THEN debe ELSE 0 END),0)   <alias name='nocdeb' />,  <!-- Manual no libro 24 período ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECJUS >= capuntes.fecha) AND (capuntes.origen  = 'M' AND capuntes.diario != '24') THEN haber ELSE 0 END),0)  <alias name='nochab' />   <!-- Manual no libro 24 egreso/divhab -->
+        </columns>
+        <from table="cbancpro">
+            <join type="left" table="capuntes">
+                <on>cbancpro.empcode = capuntes.empcode</on>
+                <on>cbancpro.ctamov  = capuntes.cuenta</on>
+            </join>
+            <join type="left" table="cempresa">
+                <on>cbancpro.empcode = cempresa.empcode</on>
+            </join>
+        </from>
+        <where>
+            capuntes.asient &gt;= 0
+            AND capuntes.fecha BETWEEN (SELECT MIN(fecini)
+            FROM cperiodo
+            WHERE empcode = cbancpro.empcode
+            AND ejerci = YEAR($FECINI))
+            AND $FECJUS
+            AND $0
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+    <!-- CRP 2023 11 22 Se exceptua registros del Libro Diario 24 cuyo origen es manual -->
+    <!--                corresponden a ajustes controlados que se concilian por bancos  -->
+
+    <!-- ================================================================================== -->
+    <!-- Tesoreria CRP Prevision a corto plazo                                              -->
+    <!-- 1. Saldo con origen cartera, contabilizado a fecha de fin.                         -->
+    <!--    Este subconjunto, divdeb coincidir con el saldo de apertura de 103xxx             -->
+    <!-- 2. Pendientes con origen cartera fecha final son diferencia en 103xxx              -->
+    <!-- 3. Conciliado no contabilizado cualquier origen                                    -->
+    <!--    Implica ajuste del saldo de textract a comparar con 104xxx                      -->
+    <!-- ================================================================================== -->
+    <select>
+        <columns>
+            cbancpro.empcode, cempresa.empname,
+            cbancpro.ctafin,  cbancpro.nomcta,
+            cbancpro.moneda,  cbancpro.cuenta,
+            'TES'    origen,
+            NVL(SUM(CASE WHEN ($FECJUS >= taptcuen.fecope AND impcta > 0 AND taptcuen.origen = 'C' AND taptcuen.feccon IS NULL) THEN  impcta ELSE 0 END),0)                                                        <alias name='inideb' />,  <!-- Saldo final ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECJUS >= taptcuen.fecope AND 0 > impcta AND taptcuen.origen = 'C' AND taptcuen.feccon IS NULL) THEN -impcta ELSE 0 END),0)                                                        <alias name='inihab' />,  <!-- Saldo final egreso/divhab -->
+            NVL(SUM(CASE WHEN ($FECJUS >= taptcuen.fecope AND impcta > 0 AND taptcuen.origen = 'C' AND NVL(taptcuen.feccon,$FECINI) > $FECJUS AND taptcuen.tipmov = 'R')   THEN  impcta ELSE 0 END),0)                                <alias name='movdeb' />,  <!-- Pendiente de cartera / divdeb  -->
+            NVL(SUM(CASE WHEN ($FECJUS >= taptcuen.fecope AND 0 > impcta AND taptcuen.origen = 'C' AND NVL(taptcuen.feccon,$FECINI) > $FECJUS AND taptcuen.tipmov = 'R')   THEN -impcta ELSE 0 END),0)                                <alias name='movhab' />,  <!-- Pendiente de cartera / divhab -->
+            NVL(SUM(CASE WHEN ($FECJUS >= taptcuen.fecope AND impcta > 0 AND taptcuen.concid IS NOT NULL AND taptcuen.feccon IS NULL AND taptcuen.tipmov = 'R') THEN  impcta ELSE 0 END),0) <alias name='nocdeb' />,  <!-- Conciliado no contab ingreso/divdeb -->
+            NVL(SUM(CASE WHEN ($FECJUS >= taptcuen.fecope AND 0 > impcta AND taptcuen.concid IS NOT NULL AND taptcuen.feccon IS NULL AND taptcuen.tipmov = 'R') THEN -impcta ELSE 0 END),0) <alias name='nochab' />   <!-- Conciliado no contab egreso/divhab -->
+        </columns>
+        <from table="cbancpro">
+            <join type="left"  table="taptcuen">
+                <on>cbancpro.empcode = taptcuen.empcode</on>
+                <on>cbancpro.ctafin  = taptcuen.ctafin</on>
+            </join>
+            <join type="left" table="cempresa">
+                <on>cbancpro.empcode = cempresa.empcode</on>
+            </join>
+        </from>
+        <where>
+            $FECJUS &gt;= taptcuen.fecope
+            AND taptcuen.tipmov IN ('R','S')
+            AND $0
+        </where>
+        <group>
+            1,2,3,4,5,6,7
+        </group>
+    </select>
+</union>
+
+        <!-- ================================================================================== -->
+        <!-- Salida acumulativa                                                                 -->
+        <!-- ================================================================================== -->
+<union type="all" >
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        1                               <alias name='orden' />,
+        '1. Saldo inicial ...'          <alias name='descri' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN @textract_capuntes.inideb ELSE 0 END),0)                               <alias name='exting' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN @textract_capuntes.inihab ELSE 0 END),0)                               <alias name='extegr' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb - @textract_capuntes.inihab) ELSE 0 END),0) <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN @textract_capuntes.inideb ELSE 0 END),0)                               <alias name='condeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN @textract_capuntes.inihab ELSE 0 END),0)                               <alias name='conhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb - @textract_capuntes.inihab) ELSE 0 END),0) <alias name='consal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN @textract_capuntes.inideb ELSE 0 END),0)                               <alias name='fmvdeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN @textract_capuntes.inihab ELSE 0 END),0)                               <alias name='fmvhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb - @textract_capuntes.inihab) ELSE 0 END),0) <alias name='fmvsal' />,
+        TO_CHAR($FECINI - 1 UNITS DAY, '%d-%m-%Y')                                                                                       <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        2                               <alias name='orden' />,
+        '2. Movimientos período'        <alias name='descri' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN @textract_capuntes.movdeb ELSE 0 END),0)                               <alias name='exting' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN @textract_capuntes.movhab ELSE 0 END),0)                               <alias name='extegr' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.movdeb - @textract_capuntes.movhab) ELSE 0 END),0) <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN @textract_capuntes.movdeb ELSE 0 END),0)                               <alias name='condeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN @textract_capuntes.movhab ELSE 0 END),0)                               <alias name='conhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.movdeb - @textract_capuntes.movhab) ELSE 0 END),0) <alias name='consal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN @textract_capuntes.movdeb ELSE 0 END),0)                               <alias name='fmvdeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN @textract_capuntes.movhab ELSE 0 END),0)                               <alias name='fmvhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.movdeb - @textract_capuntes.movhab) ELSE 0 END),0) <alias name='fmvsal' />,
+        TO_CHAR($FECJUS)                                                                                                                <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        3                               <alias name='orden' />,
+        '3. Saldo del período'          <alias name='descri' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb) ELSE 0 END),0)                                                         <alias name='exting' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab) ELSE 0 END),0)                                                         <alias name='extegr' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.inihab - @textract_capuntes.movhab) ELSE 0 END),0) <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb) ELSE 0 END),0)                                                         <alias name='condeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab) ELSE 0 END),0)                                                         <alias name='conhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.inihab - @textract_capuntes.movhab) ELSE 0 END),0) <alias name='consal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb) ELSE 0 END),0)                                                         <alias name='fmvdeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab) ELSE 0 END),0)                                                         <alias name='fmvhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.inihab - @textract_capuntes.movhab) ELSE 0 END),0) <alias name='fmvsal' />,
+        TO_CHAR($FECJUS)                                                                                                                                                                        <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        4                               <alias name='orden' />,
+        '4. Extracto NO conciliado'     <alias name='descri' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN @textract_capuntes.nocdeb ELSE 0 END),0)                               <alias name='exting' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN @textract_capuntes.nochab ELSE 0 END),0)                               <alias name='extegr' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END),0) <alias name='extsal' />,
+
+        0                               <alias name='condeb' />,
+        0                               <alias name='conhab' />,
+        0                               <alias name='consal' />,
+
+        0                               <alias name='fmvdeb' />,
+        0                               <alias name='fmvhab' />,
+        0                               <alias name='fmvsal' />,
+        ''                              <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        5                               <alias name='orden' />,
+        '4. Ext. conciliado No contab.' <alias name='descri' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN @textract_capuntes.nocdeb ELSE 0 END),0)                               <alias name='exting' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN @textract_capuntes.nochab ELSE 0 END),0)                               <alias name='extegr' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END),0) <alias name='extsal' />,
+
+        0                               <alias name='condeb' />,
+        0                               <alias name='conhab' />,
+        0                               <alias name='consal' />,
+
+        0                               <alias name='fmvdeb' />,
+        0                               <alias name='fmvhab' />,
+        0                               <alias name='fmvsal' />,
+        ''                              <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        6                               <alias name='orden' />,
+        '4. Contab NO tesorería'        <alias name='descri' />,
+
+        0                               <alias name='exting' />,
+        0                               <alias name='extegr' />,
+        0                               <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN @textract_capuntes.nocdeb ELSE 0 END),0)                               <alias name='condeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN @textract_capuntes.nochab ELSE 0 END),0)                               <alias name='conhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END),0) <alias name='consal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN @textract_capuntes.nocdeb ELSE 0 END),0)                               <alias name='fmvdeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN @textract_capuntes.nochab ELSE 0 END),0)                               <alias name='fmvhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END),0) <alias name='fmvsal' />,
+        ''                                                                                                                              <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        7                               <alias name='orden' />,
+        '4. Contab Interfases'          <alias name='descri' />,
+
+        0                               <alias name='exting' />,
+        0                               <alias name='extegr' />,
+        0                               <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nocdeb ELSE 0 END),0)                               <alias name='condeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nochab ELSE 0 END),0)                               <alias name='conhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END),0) <alias name='consal' />,
+
+        0                               <alias name='fmvdeb' />,
+        0                               <alias name='fmvhab' />,
+        0                               <alias name='fmvsal' />,
+        ''                              <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        8                               <alias name='orden' />,
+        '5. Tesorería pendiente 103'    <alias name='descri' />,
+
+        0                               <alias name='exting' />,
+        0                               <alias name='extegr' />,
+        0                               <alias name='extsal' />,
+
+        0                               <alias name='condeb' />,
+        0                               <alias name='conhab' />,
+        0                               <alias name='consal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN @textract_capuntes.movdeb ELSE 0 END),0)                               <alias name='fmvdeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN @textract_capuntes.movhab ELSE 0 END),0)                               <alias name='fmvhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.movdeb - @textract_capuntes.movhab) ELSE 0 END),0) <alias name='fmvsal' />,
+        ''                                                                                                                              <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        9                               <alias name='orden' />,
+        '6. Saldo ajustado a validar'   <alias name='descri' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nocdeb ELSE 0 END) ,0)                                                                                                                                              <alias name='exting' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.movhab + @textract_capuntes.inihab - @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nochab ELSE 0 END) ,0)                                                                                                                                              <alias name='extegr' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.movhab - @textract_capuntes.inihab + @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab)  ELSE 0 END) ,0)                                                                                                                <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nocdeb ELSE 0 END),0)                                                                                                                                               <alias name='condeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab - @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nochab ELSE 0 END),0)                                                                                                                                               <alias name='conhab' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.inihab - @textract_capuntes.movhab + @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END),0)                                                                                                                 <alias name='consal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END),0)                                                                                     <alias name='fmvdeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab - @textract_capuntes.nochab) ELSE 0 END),0)                                                                                     <alias name='fmvhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.inihab - @textract_capuntes.movhab + @textract_capuntes.nochab) ELSE 0 END),0) <alias name='fmvsal' />,
+        TO_CHAR($FECJUS)                                                                                                                                                                        <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+
+<!-- Saldo final de extracto - Saldo final contable + Saldo contable Manual Libro 24   -->
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        10                               <alias name='orden' />,
+        '7. Dif. no justificada'        <alias name='descri' />,
+        0                               <alias name='exting' />,
+        0                               <alias name='extegr' />,
+        0                               <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nocdeb ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) +
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nocdeb ELSE 0 END),0)                                                                                       <alias name='condeb' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.movhab + @textract_capuntes.inihab - @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nochab ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab - @textract_capuntes.nochab) ELSE 0 END) +
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nochab ELSE 0 END),0)                                                                                       <alias name='conhab' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.movhab - @textract_capuntes.inihab + @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab)  ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.inihab - @textract_capuntes.movhab + @textract_capuntes.nochab) ELSE 0 END) +
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END),0)                                                           <alias name='consal' />,
+
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.inideb) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb + @textract_capuntes.nocdeb) ELSE 0 END),0)                                                         <alias name='fmvdeb' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.inihab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inihab + @textract_capuntes.nochab) ELSE 0 END),0)                                                         <alias name='fmvhab' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.inideb - @textract_capuntes.inihab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb - @textract_capuntes.nocdeb - @textract_capuntes.inihab + @textract_capuntes.nochab) ELSE 0 END),0) <alias name='fmvsal' />,
+
+        ''  <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+
+<!-- Total General .... -->
+<select >
+    <columns>
+        @textract_capuntes.empcode, @textract_capuntes.empname,
+        @textract_capuntes.ctafin,  @textract_capuntes.nomcta,
+        @textract_capuntes.moneda,  @textract_capuntes.cuenta,
+        11                       <alias name='orden' />,
+        '8. Total general....'   <alias name='descri' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nocdeb ELSE 0 END) ,0)                                                                                                                                              <alias name='exting' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.movhab + @textract_capuntes.inihab - @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nochab ELSE 0 END) ,0)                                                                                                                                              <alias name='extegr' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.movhab - @textract_capuntes.inihab + @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab)  ELSE 0 END) ,0)                                                                                                                <alias name='extsal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nocdeb ELSE 0 END) +
+
+        (SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nocdeb ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END) +
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nocdeb ELSE 0 END)),0)                                                                                                                                               <alias name='condeb' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab - @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nochab ELSE 0 END) +
+
+        (SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.movhab + @textract_capuntes.inihab - @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN  @textract_capuntes.nochab ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab - @textract_capuntes.nochab) ELSE 0 END) +
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN @textract_capuntes.nochab ELSE 0 END)),0)                                                                                                                                               <alias name='conhab' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.inihab - @textract_capuntes.movhab + @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END) +
+
+        (SUM(CASE WHEN @textract_capuntes.origen = 'EXT' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.movhab - @textract_capuntes.inihab + @textract_capuntes.nochab) ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = 'TES' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab)  ELSE 0 END) -
+        SUM(CASE WHEN @textract_capuntes.origen = '104' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.inihab - @textract_capuntes.movhab + @textract_capuntes.nochab) ELSE 0 END) +
+        SUM(CASE WHEN @textract_capuntes.origen = 'VPG' THEN (@textract_capuntes.nocdeb - @textract_capuntes.nochab) ELSE 0 END)),0)                                                                                                                 <alias name='consal' />,
+
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb) ELSE 0 END),0)                                                                                     <alias name='fmvdeb' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inihab + @textract_capuntes.movhab - @textract_capuntes.nochab) ELSE 0 END),0)                                                                                     <alias name='fmvhab' />,
+        NVL(SUM(CASE WHEN @textract_capuntes.origen = '103' THEN (@textract_capuntes.inideb + @textract_capuntes.movdeb - @textract_capuntes.nocdeb - @textract_capuntes.inihab - @textract_capuntes.movhab + @textract_capuntes.nochab) ELSE 0 END),0) <alias name='fmvsal' />,
+        TO_CHAR($FECJUS)                                                                                                                                                                        <alias name='fecha' />
+    </columns>
+    <from table="@textract_capuntes" />
+    <where>
+        1 = 1
+    </where>
+    <group>
+        1,2,3,4,5,6,7
+    </group>
+</select>
+</union>
