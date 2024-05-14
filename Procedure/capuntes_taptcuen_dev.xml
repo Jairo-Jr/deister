@@ -1,0 +1,634 @@
+
+<!-- DEV: 14-05-2024 -->
+
+<!-- =========================================================================== -->
+<!--                                                                             -->
+<!--    capuntes_taptcuen                                                        -->
+<!--                                                                             -->
+<!--    Permite la inserción de movimientos de tesorería desde movimientos       -->
+<!--    de apuntes contables. Esta rutina gestiona los insert y/o delete sobre   -->
+<!--    la tabla taptcuen.                                                       -->
+<!--                                                                             -->
+<!--    Se llama desde los disparadores de capuntes_ins, capuntes_del y          -->
+<!--    capuntes_upd.                                                            -->
+<!--                                                                             -->
+<!-- =========================================================================== -->
+<procedure name="capuntes_taptcuen" trigger-referenced='capuntes'>
+    <args>
+        <arg name='p_tipope'      type='char' size='1'    />
+    </args>
+
+    <define>
+
+        <!-- =========================================================================== -->
+        <!--                                                                             -->
+        <!-- =========================================================================== -->
+        <variable name='p_apteid'         like='capuntes.apteid'  />
+        <variable name='p_loteid'         like='capuntes.loteid'  />
+        <variable name='p_cambio'         like='capuntes.cambio'  /> <!-- * -->
+        <variable name='p_old_empcode'    like='capuntes.empcode' />
+        <variable name='p_old_debe'       like='capuntes.debe'    />
+        <variable name='p_old_haber'      like='capuntes.haber'   />
+        <variable name='p_old_divdeb'     like='capuntes.divdeb'  /> <!-- * -->
+        <variable name='p_old_divhab'     like='capuntes.divhab'  /> <!-- * -->
+        <variable name='p_new_fecha'      like='capuntes.fecha'   />
+        <variable name='p_new_fecval'     like='capuntes.fecval'  />
+        <variable name='p_new_empcode'    like='capuntes.empcode' />
+        <variable name='p_new_proyec'     like='capuntes.proyec'  />
+        <variable name='p_new_seccio'     like='capuntes.seccio'  />
+        <variable name='p_new_sistem'     like='capuntes.sistem'  />
+        <variable name='p_new_jusser'     like='capuntes.jusser'  />
+        <variable name='p_new_cuenta'     like='capuntes.cuenta'  />
+        <variable name='p_new_moneda'     like='capuntes.moneda'  />
+        <variable name='p_new_codcon'     like='capuntes.codcon'  />
+        <variable name='p_new_concep'     like='capuntes.concep'  />
+        <variable name='p_new_debe'       like='capuntes.debe'    />
+        <variable name='p_new_haber'      like='capuntes.haber'   />
+        <variable name='p_new_divdeb'     like='capuntes.divdeb'  /> <!-- * -->
+        <variable name='p_new_divhab'     like='capuntes.divhab'  /> <!-- * -->
+
+        <!-- =========================================================================== -->
+        <!-- Estructura 'taptcuen'                                                       -->
+        <!-- =========================================================================== -->
+        <variable name='taptcuen_apteid'  like='taptcuen.apteid'  />
+        <variable name='taptcuen_empcode' like='taptcuen.empcode' />
+        <variable name='taptcuen_ctafin'  like='taptcuen.ctafin'  />
+        <variable name='taptcuen_notobs'  like='taptcuen.notobs'  />
+        <variable name='taptcuen_refban'  like='taptcuen.refban'  />
+        <variable name='taptcuen_impcta'  like='taptcuen.impcta'  />
+        <variable name='taptcuen_debhab'  like='taptcuen.debhab'  />
+        <variable name='taptcuen_opefin'  like='taptcuen.opefin'  />
+        <variable name='taptcuen_fecope'  like='taptcuen.fecope'  />
+        <variable name='taptcuen_fecval'  like='taptcuen.fecval'  />
+        <variable name='taptcuen_feccon'  like='taptcuen.feccon'  />
+        <variable name='taptcuen_concid'  like='taptcuen.concid'  />
+        <variable name='taptcuen_auxemp'  like='taptcuen.auxemp'  />
+        <variable name='taptcuen_auxcta'  like='taptcuen.auxcta'  />
+
+        <!-- =========================================================================== -->
+        <!-- Estructura 'taptfluj'                                                       -->
+        <!-- Uso opcional en includes.                                                   -->
+        <!-- =========================================================================== -->
+        <variable name='taptfluj_apteid'  like='taptfluj.apteid' />
+        <variable name='taptfluj_rowenl'  like='taptfluj.rowenl' />
+        <variable name='taptfluj_codflu'  like='taptfluj.codflu' />
+        <variable name='taptfluj_impflu'  like='taptfluj.impflu' />
+        <variable name='taptfluj_monflu'  like='taptfluj.monflu' />
+        <variable name='taptfluj_impdiv'  like='taptfluj.impdiv' />
+        <variable name='taptfluj_gtsfin'  like='taptfluj.gtsfin' />
+        <variable name='taptfluj_gtscon'  like='taptfluj.gtscon' />
+        <variable name='taptfluj_ctaflu'  like='taptfluj.ctaflu' />
+        <variable name='taptfluj_auxflu'  like='taptfluj.auxflu' />
+        <variable name='taptfluj_proflu'  like='taptfluj.proflu' />
+        <variable name='taptfluj_secflu'  like='taptfluj.secflu' />
+        <variable name='taptfluj_centro'  like='taptfluj.centro' />
+        <variable name='taptfluj_ctaexp'  like='taptfluj.ctaexp' />
+        <variable name='taptfluj_concep'  like='taptfluj.concep' />
+        <variable name='taptfluj_iflues'  like='taptfluj.iflues' />
+        <variable name='taptfluj_idives'  like='taptfluj.idives' />
+        <variable name='taptfluj_camflu'  like='taptfluj.camflu' /> <!-- * -->
+
+        <!-- =========================================================================== -->
+        <!-- Estructura 'cbancpro'                                                       -->
+        <!-- Uso opcional en includes.                                                   -->
+        <!-- =========================================================================== -->
+        <variable name='cbancpro_ctafin'  like='cbancpro.ctafin' />
+        <variable name='cbancpro_moneda'  like='cbancpro.moneda' />
+        <variable name='cbancpro_entfin'  like='cbancpro.entfin' />
+        <variable name='cbancpro_proyec'  like='cbancpro.proyec' />
+        <variable name='cbancpro_seccio'  like='cbancpro.seccio' />
+        <variable name='cbancpro_codban'  like='cbancpro.codban' />
+        <variable name='cbancpro_agrcta'  like='cbancpro.agrcta' />
+        <variable name='cbancpro_iban'    like='cbancpro.iban'   />
+        <variable name='cbancpro_fecext'  like='cbancpro.fecext' />
+
+        <!-- =========================================================================== -->
+        <!-- Estructura 'cconcept'                                                       -->
+        <!-- =========================================================================== -->
+        <variable name='cconcept_opedeb'  like='cconcept.opedeb' />
+        <variable name='cconcept_opehab'  like='cconcept.opehab' />
+
+        <!-- =========================================================================== -->
+        <!-- Estructura 'toperfin'                                                       -->
+        <!-- =========================================================================== -->
+        <variable name='toperfin_codflu'  like='toperfin.codflu' />
+        <variable name='toperfin_nomope'  like='toperfin.nomope' />
+        <variable name='toperfin_agrope'  like='toperfin.agrope' />
+
+        <!-- =========================================================================== -->
+        <!-- Estructura 'tflujfin'                                                       -->
+        <!-- =========================================================================== -->
+        <variable name='tflujfin_codflu'  like='tflujfin.codflu' />
+        <variable name='tflujfin_nomflu'  like='tflujfin.nomflu' />
+        <variable name='tflujfin_agrflu'  like='tflujfin.agrflu' />
+        <variable name='tflujfin_ctaflu'  like='tflujfin.ctaflu' />
+        <variable name='tflujfin_proflu'  like='tflujfin.proflu' />
+        <variable name='tflujfin_secflu'  like='tflujfin.secflu' />
+        <variable name='tflujfin_ctaexp'  like='tflujfin.ctaexp' />
+        <variable name='tflujfin_centro'  like='tflujfin.centro' />
+        <variable name='tflujfin_gtsfin'  like='tflujfin.gtsfin' />
+
+        <!-- =========================================================================== -->
+        <!-- Varias                                                                      -->
+        <!-- =========================================================================== -->
+        <variable name='m_count'          type='integer'         />
+        <variable name='m_count2'         type='integer'         />
+        <variable name='m_gen_flujo'      type='smallint'        />
+        <!-- Uso opcional en includes :                                                  -->
+        <variable name='m_auxnum1'        like='capuntes.debe'   />
+        <variable name='m_auxnum2'        like='capuntes.debe'   />
+        <variable name='m_auxnum3'        like='capuntes.debe'   />
+        <variable name='m_auxnum4'        like='capuntes.debe'   />
+        <variable name='m_auxnum5'        like='capuntes.debe'   />
+        <variable name='m_auxchr1'        type='char' size='255' />
+        <variable name='m_auxchr2'        type='char' size='255' />
+        <variable name='m_auxchr3'        type='char' size='255' />
+        <variable name='m_auxchr4'        type='char' size='255' />
+        <variable name='m_auxchr5'        type='char' size='255' />
+        <variable name='m_auxdat1'        type='date'            />
+        <variable name='m_auxdat2'        type='date'            />
+        <variable name='m_auxdat3'        type='date'            />
+
+    </define>
+
+    <body>
+
+        <!-- ==================================================================== -->
+        <!-- Debe generar el flujo por defecto ( 1 = Si ; 0 = No )                -->
+        <!-- ==================================================================== -->
+        <set name='m_gen_flujo'>1</set>
+
+        <!-- ==================================================================== -->
+        <!-- Posible código particularizado de customizacion.                     -->
+        <!-- ==================================================================== -->
+        <include name='before' />
+
+        <!-- ==================================================================== -->
+        <!--   EVENT 'D' (PRV)                                                    -->
+        <!-- ==================================================================== -->
+        <if>
+            <expr>p_tipope = 'D'</expr>
+            <then>
+
+                <set name='p_apteid'     ><prv>apteid</prv></set>
+                <set name='p_loteid'     ><prv>loteid</prv></set>
+                <set name='p_old_empcode'><prv>empcode</prv></set>
+                <set name='p_old_debe'   ><prv>debe</prv></set>
+                <set name='p_old_haber'  ><prv>haber</prv></set>
+                <set name='p_new_fecha'  ><prv>fecha</prv></set>
+                <set name='p_new_fecval' ><prv>fecval</prv></set>
+                <set name='p_new_empcode'><prv>empcode</prv></set>
+                <set name='p_new_proyec' ><prv>proyec</prv></set>
+                <set name='p_new_seccio' ><prv>seccio</prv></set>
+                <set name='p_new_sistem' ><prv>sistem</prv></set>
+                <set name='p_new_jusser' ><prv>jusser</prv></set>
+                <set name='p_new_cuenta' ><prv>cuenta</prv></set>
+                <set name='p_new_moneda' ><prv>moneda</prv></set>
+                <set name='p_new_codcon' ><prv>codcon</prv></set>
+                <set name='p_new_concep' ><prv>concep</prv></set>
+                <set name='p_new_debe'   ><prv>debe</prv></set>
+                <set name='p_new_haber'  ><prv>haber</prv></set>
+            </then>
+        </if>
+
+        <!-- ==================================================================== -->
+        <!--   EVENT 'I'  OR 'U'                                                  -->
+        <!-- ==================================================================== -->
+        <if>
+            <expr>p_tipope = 'I' OR p_tipope = 'U'</expr>
+            <then>
+
+                <set name='p_apteid'     ><nxt>apteid</nxt></set>
+                <set name='p_loteid'     ><nxt>loteid</nxt></set>
+                <set name='p_cambio'     ><nxt>cambio</nxt></set> <!-- * -->
+                <set name='p_old_empcode'><nxt>empcode</nxt></set>
+                <set name='p_old_debe'   ><nxt>debe</nxt></set>
+                <set name='p_old_haber'  ><nxt>haber</nxt></set>
+                <set name='p_old_divdeb' ><nxt>divdeb</nxt></set> <!-- * -->
+                <set name='p_old_divhab' ><nxt>divhab</nxt></set> <!-- * -->
+                <set name='p_new_fecha'  ><nxt>fecha</nxt></set>
+                <set name='p_new_fecval' ><nxt>fecval</nxt></set>
+                <set name='p_new_empcode'><nxt>empcode</nxt></set>
+                <set name='p_new_proyec' ><nxt>proyec</nxt></set>
+                <set name='p_new_seccio' ><nxt>seccio</nxt></set>
+                <set name='p_new_sistem' ><nxt>sistem</nxt></set>
+                <set name='p_new_jusser' ><nxt>docser</nxt></set>
+                <set name='p_new_cuenta' ><nxt>cuenta</nxt></set>
+                <set name='p_new_moneda' ><nxt>moneda</nxt></set>
+                <set name='p_new_codcon' ><nxt>codcon</nxt></set>
+                <set name='p_new_concep' ><nxt>concep</nxt></set>
+                <set name='p_new_debe'   ><nxt>debe</nxt></set>
+                <set name='p_new_haber'  ><nxt>haber</nxt></set>
+                <set name='p_new_divdeb' ><nxt>divdeb</nxt></set> <!-- * -->
+                <set name='p_new_divhab' ><nxt>divhab</nxt></set> <!-- * -->
+            </then>
+        </if>
+
+        <!-- ==================================================================== -->
+        <!--   EVENT 'U' some fields contains previous value                      -->
+        <!-- ==================================================================== -->
+        <if>
+            <expr>p_tipope = 'U'</expr>
+            <then>
+                <set name='p_old_empcode'><prv>empcode</prv></set>
+                <set name='p_old_debe'   ><prv>debe</prv></set>
+                <set name='p_old_haber'  ><prv>haber</prv></set>
+                <set name='p_old_divdeb' ><prv>divdeb</prv></set> <!-- * -->
+                <set name='p_old_divhab' ><prv>divhab</prv></set> <!-- * -->
+            </then>
+        </if>
+
+        <!-- =========================================================================== -->
+        <!-- DELETE taptcuen                                                             -->
+        <!-- =========================================================================== -->
+        <if>
+            <expr>p_tipope  IN ('U', 'D')</expr>
+            <then>
+
+                <!-- =========================================================================== -->
+                <!-- Verificamos si se ha generado tesoreria desde capuntes. Si no se localiza   -->
+                <!-- ningún apunte, salimos sin hacer nada.                                      -->
+                <!-- =========================================================================== -->
+                <select>
+                    <columns>
+                        taptcuen.apteid, taptcuen.feccon, taptcuen.concid, taptcuen.empcode,
+                        taptcuen.impcta, taptcuen.auxemp, taptcuen.auxcta
+                    </columns>
+                    <into>
+                        taptcuen_apteid, taptcuen_feccon, taptcuen_concid, taptcuen_empcode,
+                        taptcuen_impcta, taptcuen_auxemp, taptcuen_auxcta
+                    </into>
+                    FROM taptcuen
+                   WHERE rowenl = p_apteid
+                     AND origen = 'A'
+                </select>
+
+                <if>
+                    <expr>taptcuen_apteid IS NOT NULL</expr>
+                    <then>
+                        <!-- =========================================================================== -->
+                        <!-- Realiza verificaciones y elimina los movimientos de tesoreria.              -->
+                        <!--                                                                             -->
+                        <!-- 1) APUNTES NO CONCILIADOS.                                                  -->
+                        <!-- 2) APUNTES NO CONTABILIZADOS.                                               -->
+                        <!-- 3) SUMA APUNTES DE TESORERIA IGUAL A SUMA APUNTES BANCARIOS ASTO.           -->
+                        <!--                                                                             -->
+                        <!-- =========================================================================== -->
+                        <if>
+                            <expr>taptcuen_impcta IS NULL</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: [' || <char>p_apteid</char> || '] Registro no encontrado en [taptcuen.rowenl]!'</exception>
+                            </then>
+                        </if>
+                        <if>
+                            <expr>taptcuen_concid IS NOT NULL</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: [' || <char>taptcuen_apteid</char> || '] Apunte conciliado!'</exception>
+                            </then>
+                        </if>
+                        <if>
+                            <expr>taptcuen_feccon IS NULL</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: [' || <char>taptcuen_apteid</char> || '] Apunte no contabilizado!'</exception>
+                            </then>
+                        </if>
+                        <if>
+                            <expr>taptcuen_impcta != (p_old_divdeb - p_old_divhab)</expr> <!-- * -->
+                            <then>
+                                <exception>'capuntes_taptcuen: [' || <char>taptcuen_apteid</char> || '] Apunte importes distintos!'</exception>
+                            </then>
+                        </if>
+                        <if>
+                            <expr>taptcuen_empcode != p_old_empcode</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: [' || <char>taptcuen_apteid</char> || '] Apunte distintas empresas!'</exception>
+                            </then>
+                        </if>
+                        <if>
+                            <expr>taptcuen_auxemp IS NOT NULL</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: [' || <char>taptcuen_apteid</char> || '] Apunte vinculado!'</exception>
+                            </then>
+                        </if>
+
+                        <!-- ==================================================================== -->
+                        <!-- Posible código particularizado de customizacion.                     -->
+                        <!-- ==================================================================== -->
+                        <include name='before_del' />
+
+                        <delete table='taptcuen'>
+                            <where>
+                                taptcuen.apteid = taptcuen_apteid
+                            </where>
+                        </delete>
+
+                        <!-- ==================================================================== -->
+                        <!-- Posible código particularizado de customizacion.                     -->
+                        <!-- ==================================================================== -->
+                        <include name='after_del' />
+
+                    </then>
+                </if>
+            </then>
+        </if>
+
+
+        <!-- =========================================================================== -->
+        <!-- INSERT taptcuen                                                             -->
+        <!-- =========================================================================== -->
+        <if>
+            <expr>p_tipope IN ('U', 'I')</expr>
+            <then>
+
+                <!-- =========================================================================== -->
+                <!-- Si el concepto no permite generar tesoreria, no se genera.                  -->
+                <!-- =========================================================================== -->
+                <select>
+                    <columns>cconcept.opedeb, cconcept.opehab</columns>
+                    <into>cconcept_opedeb, cconcept_opehab</into>
+                    FROM cconcept
+                   WHERE codigo = p_new_codcon
+                </select>
+
+                <if>
+                    <expr>cconcept_opedeb IS NULL AND cconcept_opehab IS NULL</expr>
+                    <then>
+                        <return/>
+                    </then>
+                </if>
+
+                <!-- =========================================================================== -->
+                <!-- Obtención de los datos de la cuenta financiera considerando el proyecto del -->
+                <!-- apunte contable.                                                            -->
+                <!-- =========================================================================== -->
+                <select>
+                    <columns>
+                        MIN(ctafin), MIN(moneda), MIN(entfin), MIN(proyec),
+                        MIN(seccio), MIN(codban), MIN(agrcta), MIN(iban),
+                        MIN(fecext), COUNT(*)
+                    </columns>
+                    <into>
+                        cbancpro_ctafin, cbancpro_moneda, cbancpro_entfin, cbancpro_proyec,
+                        cbancpro_seccio, cbancpro_codban, cbancpro_agrcta, cbancpro_iban,
+                        cbancpro_fecext, m_count
+                    </into>
+                    FROM cbancpro
+                   WHERE empcode = p_new_empcode AND
+                         (cuenta  = p_new_cuenta  OR ctamov = p_new_cuenta) AND
+                         proyec  = p_new_proyec  AND
+                         estado  = 'A'
+                </select>
+
+                <!-- =========================================================================== -->
+                <!-- Si no se ha obtenido cuenta financiera por proyecto, se intenta obtener     -->
+                <!-- para la cuenta contable únicamente.                                         -->
+                <!-- =========================================================================== -->
+                <if>
+                    <expr>m_count = 0</expr>
+                    <then>
+                        <select>
+                            <columns>
+                                MIN(ctafin), MIN(moneda), MIN(entfin), MIN(proyec),
+                                MIN(seccio), MIN(codban), MIN(agrcta), MIN(iban),
+                                MIN(fecext), COUNT(*)
+                            </columns>
+                            <into>
+                                cbancpro_ctafin, cbancpro_moneda, cbancpro_entfin, cbancpro_proyec,
+                                cbancpro_seccio, cbancpro_codban, cbancpro_agrcta, cbancpro_iban,
+                                cbancpro_fecext, m_count
+                            </into>
+                            FROM cbancpro
+                           WHERE empcode = p_new_empcode AND
+                                 (cuenta  = p_new_cuenta  OR ctamov = p_new_cuenta) AND
+                                 estado  = 'A'
+                        </select>
+                    </then>
+                </if>
+
+                <!-- =========================================================================== -->
+                <!-- Si no hay cuenta financiera vinculada, no se genera tesoreria.              -->
+                <!-- =========================================================================== -->
+                <if>
+                    <expr>m_count = 0</expr>
+                    <then>
+                        <return/>
+                    </then>
+                </if>
+
+                <!-- =========================================================================== -->
+                <!-- Si hay más de una cuenta financiera, paramos.                               -->
+                <!-- =========================================================================== -->
+                <if>
+                    <expr>m_count &gt; 1</expr>
+                    <then>
+                        <exception>'capuntes_taptcuen: Apte.:[' || <char>p_apteid</char> || ']. Más de una cuenta financiera!'</exception>
+                    </then>
+                </if>
+
+                <!-- =========================================================================== -->
+                <!-- Si la moneda del apunte y de la cuenta financiera son distintas, paramos.   -->
+                <!-- =========================================================================== -->
+                <if>
+                    <expr>cbancpro_moneda != p_new_moneda</expr>
+                    <then>
+                        <exception>'capuntes_taptcuen: Apte.:[' || <char>p_apteid</char> || '] Monedas distintas!'</exception>
+                    </then>
+                </if>
+
+                <!-- =========================================================================== -->
+                <!-- Seteo de variables para el insert en taptcuen.                              -->
+                <!-- =========================================================================== -->
+                <set name='taptcuen_empcode'>p_new_empcode</set>
+                <set name='taptcuen_ctafin'>cbancpro_ctafin</set>
+                <set name='taptcuen_notobs'>p_new_concep</set>
+                <set name='taptcuen_refban'>p_new_jusser</set>
+                <set name='taptcuen_impcta'>p_new_divdeb-p_new_divhab</set> <!-- * -->
+                <set name='taptcuen_fecope'><nvl>p_new_fecval, p_new_fecha</nvl></set>
+                <set name='taptcuen_feccon'>p_new_fecha</set>
+                <if>
+                    <expr>taptcuen_impcta &gt;= 0</expr>
+                    <then>
+                        <set name='taptcuen_debhab'>'D'</set>
+                        <if>
+                            <expr>cconcept_opedeb IS NULL</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: Concepto: [' || <trim>p_new_codcon</trim> || ']. Operación deudora no informada.'</exception>
+                            </then>
+                            <else>
+                                <set name='taptcuen_opefin'>cconcept_opedeb</set>
+                            </else>
+                        </if>
+                    </then>
+                    <else>
+                        <set name='taptcuen_debhab'>'H'</set>
+                        <if>
+                            <expr>cconcept_opehab IS NULL</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: Concepto: [' || <trim>p_new_codcon</trim> || ']. Operación acreedora no informada.'</exception>
+                            </then>
+                            <else>
+                                <set name='taptcuen_opefin'>cconcept_opehab</set>
+                            </else>
+                        </if>
+                    </else>
+                </if>
+                <set name='taptcuen_fecval'>ites_get_fecval(taptcuen_empcode, taptcuen_ctafin, taptcuen_debhab, taptcuen_opefin, taptcuen_fecope)</set>
+
+                <!-- ==================================================================== -->
+                <!-- Posible código particularizado de customizacion.                     -->
+                <!-- ==================================================================== -->
+                <include name='before_ins' />
+
+                <!-- =========================================================================== -->
+                <!-- taptcuen                                                                    -->
+                <!-- =========================================================================== -->
+                <insert table='taptcuen'>
+                    <column name='rowenl'>p_apteid</column>             <!-- Enlace ligero con el apunte contable. -->
+                    <column name='loteid'>p_loteid</column>
+                    <column name='empcode'>taptcuen_empcode</column>
+                    <column name='ctafin'>taptcuen_ctafin</column>
+                    <column name='proyec'>p_new_proyec</column>
+                    <column name='seccio'>p_new_seccio</column>
+                    <column name='sistem'>p_new_sistem</column>
+                    <column name='notobs'>taptcuen_notobs</column>
+                    <column name='refban'>taptcuen_refban</column>
+                    <column name='impcta'>taptcuen_impcta</column>
+                    <column name='debhab'>taptcuen_debhab</column>
+                    <column name='opefin'>taptcuen_opefin</column>
+                    <column name='fecope'>taptcuen_fecope</column>
+                    <column name='fecval'>taptcuen_fecval</column>
+                    <column name='feccon'>taptcuen_feccon</column>
+                    <column name='origen'>'A'</column>
+                    <column name='tipmov'>'R'</column>
+                    <column name='concid'>NULL</column>
+                    <column name='audtes'>'S'</column>
+                    <column name='audcon'>'N'</column>
+                </insert>
+                <set name='taptcuen_apteid'><sqlca.serial /></set>
+
+                <!-- ==================================================================== -->
+                <!-- Posible código particularizado de customizacion.                     -->
+                <!-- ==================================================================== -->
+                <include name='after_ins' />
+
+                <!-- =========================================================================== -->
+                <!-- Generer el flujo financiero por defecto                                     -->
+                <!-- Si no generamos en este punto el flujo financiero por defecto, entonces,    -->
+                <!-- lo generará el XSQL taptcuen_valida                                         -->
+                <!-- =========================================================================== -->
+                <if>
+                    <expr>m_gen_flujo = 1</expr>
+                    <then>
+
+                        <!-- =========================================================================== -->
+                        <!-- toperfin                                                                    -->
+                        <!-- =========================================================================== -->
+                        <select>
+                            <columns>
+                                toperfin.codflu, toperfin.nomope, toperfin.agrope
+                            </columns>
+                            <into>
+                                toperfin_codflu, toperfin_nomope, toperfin_agrope
+                            </into>
+                            FROM toperfin
+                           WHERE debhab = taptcuen_debhab AND
+                                 opefin = taptcuen_opefin
+                        </select>
+
+                        <!-- =========================================================================== -->
+                        <!-- tflujfin                                                                    -->
+                        <!-- =========================================================================== -->
+                        <select>
+                            <columns>
+                                tflujfin.codflu, tflujfin.nomflu, tflujfin.agrflu, tflujfin.ctaflu,
+                                tflujfin.ctaexp, tflujfin.centro, tflujfin.gtsfin,
+                                CASE WHEN tflujfin.proflu IS NOT NULL THEN tflujfin.proflu ELSE p_new_proyec END AS proflu,
+                                CASE WHEN tflujfin.secflu IS NOT NULL THEN tflujfin.secflu ELSE p_new_seccio END AS secflu
+                            </columns>
+                            <into>
+                                tflujfin_codflu, tflujfin_nomflu, tflujfin_agrflu, tflujfin_ctaflu,
+                                tflujfin_ctaexp, tflujfin_centro, tflujfin_gtsfin,
+                                tflujfin_proflu,
+                                tflujfin_secflu
+                            </into>
+                            FROM tflujfin
+                           WHERE codflu = toperfin_codflu
+                        </select>
+                        <if>
+                            <expr>tflujfin_codflu IS NULL</expr>
+                            <then>
+                                <exception>'capuntes_taptcuen: Flujo: [' || <trim>toperfin_codflu</trim> || '] no encontrado.'</exception>
+                            </then>
+                        </if>
+
+                        <!-- =========================================================================== -->
+                        <!-- taptfluj                                                                    -->
+                        <!-- =========================================================================== -->
+
+                        <set name='taptfluj_rowenl'>taptcuen_apteid</set>
+                        <set name='taptfluj_codflu'>toperfin_codflu</set>
+                        <set name='taptfluj_impflu'>-(p_new_debe-p_new_haber)</set> <!-- * -->
+                        <set name='taptfluj_monflu'>p_new_moneda</set>
+                        <set name='taptfluj_impdiv'>-taptcuen_impcta</set>
+                        <set name='taptfluj_gtsfin'>NULL</set>
+                        <set name='taptfluj_gtscon'>NULL</set>
+                        <set name='taptfluj_ctaflu'>icon_get_ctanem(taptcuen_empcode, tflujfin_ctaflu)</set>
+                        <set name='taptfluj_auxflu'>'0'</set>
+                        <set name='taptfluj_proflu'>tflujfin_proflu</set>
+                        <set name='taptfluj_secflu'>tflujfin_secflu</set>
+                        <set name='taptfluj_centro'>tflujfin_centro</set>
+                        <set name='taptfluj_ctaexp'>tflujfin_ctaexp</set>
+                        <set name='taptfluj_concep'>NULL</set>
+                        <set name='taptfluj_camflu'>p_cambio</set> <!-- * -->
+
+                        <!-- ==================================================================== -->
+                        <!-- Posible código particularizado de customizacion.                     -->
+                        <!-- ==================================================================== -->
+                        <include name='before_ins_fluj' />
+
+                        <insert table='taptfluj'>
+                            <column name='rowenl'>taptfluj_rowenl</column>         <!-- Enlace con taptcuen. -->
+                            <column name='codflu'>taptfluj_codflu</column>
+                            <column name='impflu'>taptfluj_impflu</column>
+                            <column name='camflu'>taptfluj_camflu</column> <!-- * -->
+                            <column name='monflu'>taptfluj_monflu</column>
+                            <column name='impdiv'>taptfluj_impdiv</column>
+                            <column name='gtsfin'>taptfluj_gtsfin</column>
+                            <column name='gtscon'>taptfluj_gtscon</column>
+                            <column name='ctaflu'>taptfluj_ctaflu</column>
+                            <column name='auxflu'>taptfluj_auxflu</column>
+                            <column name='proflu'>taptfluj_proflu</column>
+                            <column name='secflu'>taptfluj_secflu</column>
+                            <column name='centro'>taptfluj_centro</column>
+                            <column name='ctaexp'>taptfluj_ctaexp</column>
+                            <column name='concep'>taptfluj_concep</column>
+                            <column name='iflues'>taptfluj_impflu</column>
+                            <column name='idives'>taptfluj_impdiv</column>
+                        </insert>
+
+                        <!-- ==================================================================== -->
+                        <!-- Posible código particularizado de customizacion.                     -->
+                        <!-- ==================================================================== -->
+                        <include name='after_ins_fluj' />
+
+                        <!-- ==================================================================== -->
+                        <!-- Fuerza la validacion directa de taptcuen                             -->
+                        <!-- ==================================================================== -->
+                        <update table='taptcuen'>
+                            <column name='estcab'>1</column>
+                            <where>apteid = taptcuen_apteid</where>
+                        </update>
+
+                    </then>
+                </if>
+
+            </then>
+        </if>
+
+        <!-- ==================================================================== -->
+        <!-- Posible código particularizado de customizacion.                     -->
+        <!-- ==================================================================== -->
+        <include name='after' />
+
+    </body>
+</procedure>

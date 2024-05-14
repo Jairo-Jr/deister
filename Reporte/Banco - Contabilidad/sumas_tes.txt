@@ -1,0 +1,3 @@
+empcode -             empname -                      ctafin -         nomcta -     moneda -     cuenta -        origen -   inideb -   inihab -  movdeb -  movhab -    nocdeb -     nochab
+
+  125 - ADMINISTRADORA CLINICA RICARDO PALMA S.A - BCPLCC6190 - BCP cc 06190 USD -   USD - 104110005.00000000 -   TES -  107,729.15 -   0.00 -   0.00 -    0.00 -    58,647.70 -  100,820.56

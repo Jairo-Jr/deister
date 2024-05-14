@@ -1,0 +1,117 @@
+<select>
+    <columns>
+        taptcuen.apteid,
+        cbancpro.empcode, cempresa.empname,
+        cbancpro.ctafin,  cbancpro.nomcta,
+        cbancpro.moneda,  taptfluj.monflu, cbancpro.cuenta,
+        'TES'    origen,
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND impcta &gt; 0 AND taptcuen.origen = 'C' AND taptcuen.feccon IS NULL) THEN  impcta ELSE 0 END),0)                                                        <alias name='inideb' />,  <!-- Saldo final ingreso/divdeb -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND 0 &gt; impcta AND taptcuen.origen = 'C' AND taptcuen.feccon IS NULL) THEN -impcta ELSE 0 END),0)                                                        <alias name='inihab' />,  <!-- Saldo final egreso/divhab -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND impcta &gt; 0 AND taptcuen.origen = 'C' AND NVL(taptcuen.feccon,'15-04-2024') &gt; '29-04-2024' AND taptcuen.tipmov = 'R')   THEN  impcta ELSE 0 END),0)                                <alias name='movdeb' />,  <!-- Pendiente de cartera / divdeb  -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND 0 &gt; impcta AND taptcuen.origen = 'C' AND NVL(taptcuen.feccon,'15-04-2024') &gt; '29-04-2024' AND taptcuen.tipmov = 'R')   THEN -impcta ELSE 0 END),0)                                <alias name='movhab' />,  <!-- Pendiente de cartera / divhab -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND impcta &gt; 0 AND taptcuen.concid IS NOT NULL AND taptcuen.feccon IS NULL AND taptcuen.tipmov = 'R') THEN  impcta ELSE 0 END),0) <alias name='nocdeb' />,  <!-- Conciliado no contab ingreso/divdeb -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND 0 &gt; impcta AND taptcuen.concid IS NOT NULL AND taptcuen.feccon IS NULL AND taptcuen.tipmov = 'R') THEN -impcta ELSE 0 END),0) <alias name='nochab' />   <!-- Conciliado no contab egreso/divhab -->
+    </columns>
+    <from table="cbancpro">
+        <join type="left"  table="taptcuen">
+            <on>cbancpro.empcode = taptcuen.empcode</on>
+            <on>cbancpro.ctafin  = taptcuen.ctafin</on>
+            <join type="left" table="taptfluj">
+                <on>taptcuen.apteid = taptfluj.rowenl</on>
+            </join>
+        </join>
+        <join type="left" table="cempresa">
+            <on>cbancpro.empcode = cempresa.empcode</on>
+        </join>
+    </from>
+    <where>
+        cbancpro.moneda != 'PEN'
+        AND '29-04-2024' &gt;= taptcuen.fecope
+        AND taptcuen.tipmov IN ('R','S')
+        AND cbancpro.agrcta IN ('CA','CC') AND cbancpro.estado = 'A' AND cbancpro.ctafin = 'BCPLCC6190' AND cbancpro.empcode = '125'
+    </where>
+    <group>
+        1,2,3,4,5,6,7,8
+    </group>
+</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- TEST DE SCRIPT -->
+<select>
+    <columns>
+        cbancpro.empcode, cempresa.empname,
+        cbancpro.ctafin,  cbancpro.nomcta,
+        cbancpro.moneda,  NVL((SELECT MAX(taptfluj.monflu) FROM taptfluj WHERE taptcuen.apteid = taptfluj.rowenl), 'Xx') monflu, cbancpro.cuenta,
+        'TES'    origen,
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope 
+                         AND impcta &gt; 0 
+                         AND taptcuen.origen = 'C' 
+                         AND taptcuen.feccon IS NULL
+                         AND cbancpro.moneda = NVL((SELECT MAX(monflu) FROM taptfluj WHERE taptcuen.apteid = taptfluj.rowenl), cbancpro.moneda)) THEN  impcta
+                  WHEN ('29-04-2024' >= taptcuen.fecope 
+                         AND impcta &gt; 0 
+                         AND taptcuen.origen = 'C' 
+                         AND taptcuen.feccon IS NULL
+                         AND cbancpro.moneda != NVL((SELECT MAX(monflu) FROM taptfluj WHERE taptcuen.apteid = taptfluj.rowenl), cbancpro.moneda)) THEN  icon_get_impdiv(1, cbancpro.empcode, cbancpro.moneda, taptcuen.fecope, NULL, impcta)
+                  ELSE 0 END),0)                                                        <alias name='inideb' />,  <!-- Saldo final ingreso/divdeb -->
+
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope
+                         AND 0 &gt; impcta
+                         AND taptcuen.origen = 'C' 
+                         AND taptcuen.feccon IS NULL
+                         AND cbancpro.moneda = NVL((SELECT MAX(monflu) FROM taptfluj WHERE taptcuen.apteid = taptfluj.rowenl), cbancpro.moneda)) THEN -impcta
+                  WHEN ('29-04-2024' >= taptcuen.fecope
+                         AND 0 &gt; impcta
+                         AND taptcuen.origen = 'C' 
+                         AND taptcuen.feccon IS NULL
+                         AND cbancpro.moneda != NVL((SELECT MAX(monflu) FROM taptfluj WHERE taptcuen.apteid = taptfluj.rowenl), cbancpro.moneda)) THEN  icon_get_impdiv(1, cbancpro.empcode, cbancpro.moneda, taptcuen.fecope, NULL, -impcta)
+                  ELSE 0 END),0)                                                        <alias name='inihab' />,  <!-- Saldo final egreso/divhab -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope 
+                         AND impcta &gt; 0
+                         AND taptcuen.origen = 'C'
+                         AND NVL(taptcuen.feccon,'15-04-2024') &gt; '29-04-2024'
+                         AND taptcuen.tipmov = 'R'
+                         AND cbancpro.moneda = NVL((SELECT MAX(monflu) FROM taptfluj WHERE taptcuen.apteid = taptfluj.rowenl), cbancpro.moneda)) THEN impcta
+                  WHEN ('29-04-2024' >= taptcuen.fecope 
+                         AND impcta &gt; 0
+                         AND taptcuen.origen = 'C'
+                         AND NVL(taptcuen.feccon,'15-04-2024') &gt; '29-04-2024'
+                         AND taptcuen.tipmov = 'R'
+                         AND cbancpro.moneda != NVL((SELECT MAX(monflu) FROM taptfluj WHERE taptcuen.apteid = taptfluj.rowenl), cbancpro.moneda)) THEN  icon_get_impdiv(1, cbancpro.empcode, cbancpro.moneda, taptcuen.fecope, NULL, impcta)
+                  ELSE 0 END),0)                                <alias name='movdeb' />,  <!-- Pendiente de cartera / divdeb  -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND 0 &gt; impcta AND taptcuen.origen = 'C' AND NVL(taptcuen.feccon,'15-04-2024') &gt; '29-04-2024' AND taptcuen.tipmov = 'R')   THEN -impcta ELSE 0 END),0)                                <alias name='movhab' />,  <!-- Pendiente de cartera / divhab -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND impcta &gt; 0 AND taptcuen.concid IS NOT NULL AND taptcuen.feccon IS NULL AND taptcuen.tipmov = 'R') THEN  impcta ELSE 0 END),0) <alias name='nocdeb' />,  <!-- Conciliado no contab ingreso/divdeb -->
+        NVL((CASE WHEN ('29-04-2024' >= taptcuen.fecope AND 0 &gt; impcta AND taptcuen.concid IS NOT NULL AND taptcuen.feccon IS NULL AND taptcuen.tipmov = 'R') THEN -impcta ELSE 0 END),0) <alias name='nochab' />   <!-- Conciliado no contab egreso/divhab -->
+    </columns>
+    <from table="cbancpro">
+        <join type="left"  table="taptcuen">
+            <on>cbancpro.empcode = taptcuen.empcode</on>
+            <on>cbancpro.ctafin  = taptcuen.ctafin</on>
+        </join>
+        <join type="left" table="cempresa">
+            <on>cbancpro.empcode = cempresa.empcode</on>
+        </join>
+    </from>
+    <where>
+        cbancpro.moneda != 'PEN'
+        AND '29-04-2024' &gt;= taptcuen.fecope
+        AND taptcuen.tipmov IN ('R','S')
+        AND cbancpro.agrcta IN ('CA','CC') AND cbancpro.estado = 'A' AND cbancpro.ctafin = 'BCPLCC6190' AND cbancpro.empcode = '125'
+    </where>
+    <!-- <group>
+        1,2,3,4,5,6,7
+    </group> -->
+</select>
