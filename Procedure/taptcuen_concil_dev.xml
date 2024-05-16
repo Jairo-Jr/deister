@@ -1,0 +1,183 @@
+
+<!-- ========================================================================== -->
+<!--                                                                            -->
+<!--    taptcuen_concil()                                                       -->
+<!--                                                                            -->
+<!--    Actualiza las columnas backup de las tablas taptcuen y taptfluj.        -->
+<!--    Las columnas backup nos informan de las comisiones pactadas             -->
+<!--    puntualmente.                                                           -->
+<!--                                                                            -->
+<!--    Se llama desde el trigger taptcuen_upd por este motivo no se bloquea    -->
+<!--    el registro.                                                            -->
+<!--                                                                            -->
+<!-- ========================================================================== -->
+<procedure name='taptcuen_concil'>
+    <test>
+        <unit id='1'>
+        </unit>
+    </test>
+    
+    <args>
+        <arg name='p_apteid' type='integer'         mode='in' />
+        <arg name='p_concid' like='taptcuen.concid' mode='in' />
+        <arg name='p_origen' like='taptcuen.origen' mode='in' />
+        <arg name='p_impcta' like='taptcuen.impcta' mode='in' />
+        <arg name='p_fecope' like='taptcuen.fecope' mode='in' />
+        <arg name='p_fecval' like='taptcuen.fecval' mode='in' />
+        <arg name='p_ictaes' like='taptcuen.ictaes' mode='in' />
+        
+        <arg name='o_ictaes' like='taptcuen.ictaes' mode='out' />
+        <arg name='o_fopees' like='taptcuen.fopees' mode='out' />
+        <arg name='o_fvales' like='taptcuen.fvales' mode='out' />
+    </args>
+    
+    <define>
+        <variable name='m_empcode' like='taptcuen.empcode' />
+        <variable name='m_ctafin'  like='taptcuen.ctafin' />
+        <variable name='m_debhab'  like='taptcuen.debhab' />
+        <variable name='m_opefin'  like='taptcuen.opefin' />
+
+        <variable name='m_count'   type='smallint'        />
+        <variable name='m_fecval'  like='taptcuen.fecval' />
+
+        <variable name='m_codflu'  like='taptfluj.codflu' />
+        <variable name='m_impflu'  like='taptfluj.impflu' />
+        <variable name='m_monflu'  like='taptfluj.monflu' />
+        <variable name='m_camflu'  like='taptfluj.camflu' />
+        <variable name='m_impdiv'  like='taptfluj.impdiv' />
+        <variable name='m_ctaflu'  like='taptfluj.ctaflu' />
+        <variable name='m_proflu'  like='taptfluj.proflu' />
+        <variable name='m_secflu'  like='taptfluj.secflu' />
+        
+    </define>
+    
+    <body>
+    
+        <set name='m_fecval'>p_fecval</set>
+    
+        <!-- =================================================================== -->
+        <!-- CONCILIACIÓN:                                                       -->
+        <!-- Actualiza según valores originales las columnas backup de taptfluj. -->
+        <!-- =================================================================== -->
+    
+        <if>
+            <expr>p_concid IS NOT NULL</expr>
+            <then>
+                
+                <!-- ===================================================================== -->
+                <!-- El backup de impcta está condicionado a que ictaes tenga valor NULO.  -->
+                <!-- En el evento textract: AFTER-RETURN (Conciliación manual) se permite  -->
+                <!-- modificar el importe de taptcuen, en este caso desde el frontal ya se -->
+                <!-- realiza el backup de impcta. Si lo realizaramos aquí perderíamos el   -->
+                <!-- valor original de impcta.                                             -->
+                <!-- ===================================================================== -->
+    
+                <if>
+                    <expr>p_ictaes IS NOT NULL</expr>
+                    <then>
+                        <set name='o_ictaes'>p_ictaes</set>
+                    </then>
+                    <else>
+                        <set name='o_ictaes'>p_impcta</set>
+                    </else>
+                </if>
+                
+                <!-- ===================================================================== -->
+                <!-- Los apuntes integrados automáticamente desde el proceso de            -->
+                <!-- conciliación necesitan calcular los días de valor según la            -->
+                <!-- parametrización.                                                      -->
+                <!-- En fecval nos quedará la fecha de valor aplicada por el banco y en    -->
+                <!-- fvales la calculada según parametrización.                            -->
+                <!-- ===================================================================== -->
+                
+                <if>
+                    <expr>p_origen = 'X'</expr> <!-- Origen: eXtracto -->
+                    <then>
+                        <select>
+                            <columns>empcode, ctafin, debhab, opefin</columns>
+                            <into>m_empcode, m_ctafin, m_debhab, m_opefin</into>
+                            FROM taptcuen
+                            WHERE apteid = p_apteid
+                        </select>
+                        
+                        <set name='m_fecval'>ites_get_fecval(m_empcode, m_ctafin, m_debhab, m_opefin, p_fecope)</set>
+                    </then>
+                </if>
+                
+                <set name='o_fopees'>p_fecope</set>
+                <set name='o_fvales'>m_fecval</set>
+
+                <if>
+                    <expr>p_origen != 'C'</expr> <!-- Origen diferente a Cartera -->
+                    <then>
+                        <update table='taptfluj'>
+                            <column name='iflues'>impflu</column>
+                            <column name='idives'>impdiv</column>
+                            <where>
+                                rowenl = p_apteid
+                            </where>
+                        </update>
+                    </then>
+                    <else>
+                        <select>
+                            <columns>
+                                'DFRED' codflu, icon_get_imploc(0, taptcuen.empcode, cbancpro.moneda, taptcuen.fecope, NULL, ictaes - impcta) impflu,
+                                cbancpro.moneda monflu, crp_get_cambio(taptcuen.empcode, cbancpro.moneda, taptcuen.fecope, 'V') camflu,
+                                (ictaes - impcta) impdiv, cbancpro.ctamov ctaflu, taptcuen.proyec proflu, taptcuen.seccio secflu
+                            </columns>
+                            <into>m_codflu, m_impflu, m_monflu, m_camflu, m_impdiv, m_ctaflu, m_proflu, m_secflu</into>
+                            FROM taptcuen,
+                                 OUTER cbancpro
+                            WHERE taptcuen.empcode = cbancpro.empcode
+                              AND taptcuen.ctafin  = cbancpro.ctafin
+                              AND apteid = p_apteid
+                        </select>
+
+                        <if>
+                            <expr>
+                                m_impdiv != 0
+                            </expr>
+                            <then>
+                                <insert table='taptfluj'>
+                                    <column name='rowenl'>p_apteid</column>
+                                    <column name='codflu'>m_codflu</column>
+                                    <column name='impflu'>m_impflu</column>
+                                    <column name='monflu'>m_monflu</column>
+                                    <column name='camflu'>m_camflu</column>
+                                    <column name='impdiv'>m_impdiv</column>
+                                    <column name='ctaflu'>m_ctaflu</column>
+                                    <column name='proflu'>m_proflu</column>
+                                    <column name='secflu'>m_secflu</column>
+                                </insert>
+                            </then>
+                        </if>
+
+                    </else>
+                </if>
+                
+            </then>
+        </if>
+                
+        <!-- ===================================================================== -->
+        <!-- DESCONCILIACIÓN:                                                      -->
+        <!-- Comprueba que este apunte no este conciliado en la tabla tconcili.    -->
+        <!-- Actualiza a NULL las columnas backup de taptfluj.                     -->
+        <!-- ===================================================================== -->
+        <if>
+            <expr>p_concid IS NULL</expr>
+            <then>
+                <set name='o_ictaes'>NULL</set>
+                <set name='o_fopees'>NULL</set>
+                <set name='o_fvales'>NULL</set>
+                
+                <update table='taptfluj'>
+                    <column name='iflues'>NULL</column>
+                    <column name='idives'>NULL</column>
+                    <where>
+                        rowenl = p_apteid
+                    </where>
+                </update>
+            </then>
+        </if>
+    </body>
+</procedure>
