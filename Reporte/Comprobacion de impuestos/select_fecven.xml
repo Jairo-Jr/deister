@@ -1,0 +1,36 @@
+<select >
+    <columns>
+        ctax_move_head.taxh_seqno,
+        MAX(ctax_move_line.taxl_auxnum1)    taxl_auxnum1,
+        MAX(ctax_detracciones.fecpago)      fecpago,
+        MAX(cefectos.fecven)                fecven,
+        MIN(capuntes.asient)                asient_det
+    </columns>
+    <from table='ctax_move_head'>
+        <join type='left' table='ctax_move_line'>
+            <on>ctax_move_head.taxh_seqno = ctax_move_line.taxh_seqno</on>
+            <on>ctax_move_line.taxl_type  = 'D'</on>   <!-- Detracción -->
+            <join type='left' table='ctax_detracciones'>
+                <on>ctax_move_line.taxl_auxnum1 = ctax_detracciones.constancia</on>
+            </join>
+        </join>
+        <join type='left' table='ccomfach'>
+            <on>ccomfach.loteid = ctax_move_head.taxh_loteid</on>
+            <join type='left' table='capuntes'>
+                <on>ccomfach.loteid = capuntes.loteid</on>
+                <join type='left' table='cefectos'>
+                    <on>capuntes.apteid = cefectos.apteid</on>
+                </join>
+            </join>
+            
+        </join>
+
+        
+    </from>
+    <where>
+        ctax_move_head.taxh_seqno = '619362'
+    </where>
+    <group>
+        ctax_move_head.taxh_seqno
+    </group>
+</select>
