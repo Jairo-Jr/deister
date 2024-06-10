@@ -577,3 +577,12 @@ var rsTesoreria = Ax.db.executeQuery(`
     `);
 
 return rsTesoreria;
+
+
+
+
+
+
+
+
+https://mail.google.com/mail/u/0/#inbox|http://localhost:8061/#|http://10.7.3.47:8080/|http://10.7.3.78:8080/|http://10.7.3.78:8081/
