@@ -1,0 +1,83 @@
+<!-- Asientos de Albaranes -->
+<select >
+    <columns>
+        geanmovh.cabid,
+        asien_fach.asient,
+        asien_fach.diario
+    </columns>
+    <from table='geanmovh'>
+        <lateral alias='asien_fach'>
+            <select first='1'>
+                <columns>
+                    capuntes.asient,
+                    capuntes.diario
+                </columns>
+                <from table='gcomalbh'>
+                    <join table='capuntes'>
+                        <on>gcomalbh.loteid = capuntes.loteid</on>
+                        <on>capuntes.diario IN ('01', '94')</on>
+                    </join>
+                </from>
+                <where>
+                    geanmovh.docori = gcomalbh.docser
+                </where>
+                <order>capuntes.diario, capuntes.fecha, capuntes.asient, capuntes.orden</order>
+            </select>
+        </lateral>
+    </from>
+    <where>
+        geanmovh.auxnum5 != 1
+        AND geanmovh.fecmov BETWEEN '21-06-2024' AND '21-06-2024'
+        AND geanmovh.docser = 'ENTS0053174'
+    </where>
+</select>
+
+
+<!-- Asientos de Facturas -->
+<select >
+    <columns>
+        geanmovh.cabid,
+        asien_fach.asient,
+        asien_fach.diario
+    </columns>
+    <from table='geanmovh'>
+        <lateral alias='asien_fach'>
+            <select first='1'>
+                <columns>
+                    capuntes.asient,
+                    capuntes.diario
+                </columns>
+                <from table='gcomalbh'>
+                    <join table='gcomalbl'>
+                        <on>gcomalbh.cabid = gcomalbl.cabid</on>
+                        <join table='gcomfacl'>
+                            <on>gcomalbl.cabid = gcomfacl.cabori</on>
+                            <on>gcomalbl.linid = gcomfacl.linori</on>
+                            <on>'gcommovh' = gcomfacl.tabori</on>
+                            <join table='gcomfach'>
+                                <on>gcomfacl.cabid = gcomfach.cabid</on>
+                                <on>gcomfach.tipdoc != 'NCFA'</on>
+                                <join table='capuntes'>
+                                    <on>gcomfach.loteid = capuntes.loteid</on>
+                                    <on>capuntes.diario IN ('01', '94')</on>
+                                </join>
+                            </join>
+                        </join>
+                    </join>
+                </from>
+                <where>
+                    geanmovh.docori = gcomalbh.docser
+                    AND gcomfach.tipdoc NOT IN ('RFAC', 'SFAR')
+                </where>
+                <order>capuntes.diario, capuntes.fecha, capuntes.asient, capuntes.orden</order>
+            </select>
+        </lateral>
+    </from>
+    <where>
+        geanmovh.auxnum5 != 1
+        AND geanmovh.fecmov BETWEEN '21-06-2024' AND '21-06-2024'
+        AND geanmovh.docser = 'ENTS0053174'
+    </where>
+</select>
+
+
