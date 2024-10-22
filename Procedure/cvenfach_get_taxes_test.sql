@@ -373,3 +373,11 @@ CREATE PROCEDURE cvenfach_get_taxes(
         ,o_totdet
     ;
 END PROCEDURE;
+
+
+
+
+
+
+-- F418-00000583
+-- F418-00000825

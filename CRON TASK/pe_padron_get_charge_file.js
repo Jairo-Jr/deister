@@ -182,3 +182,6 @@ function pe_padron_get_charge_file() {
     
     return __getRsClogProh(mIntLogId);
 }
+
+
+201001218090000940901F80100003459    1  1403500301    CONSULTA O INTERCONSULTA DIURNA,POR ESPECIALISTA                      202402290136884 107516870       28          55.56        0.00        0.00     1555.80        0.00I77.0A02
