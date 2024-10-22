@@ -42,20 +42,20 @@ function crpKardexRep(pDateFecini, pDateFecfin, pSqlCond) {
         <select intotemp='${mTmpTblAsientGeanmov}'>
             <columns>
                 geanmovh.cabid,
-                cefectos.asient
+                apunte.asient
             </columns>
             <from table='geanmovh'>
-                <lateral alias='cefectos'>
+                <lateral alias='apunte'>
                     <select first='1'>
                         <columns>
-                            gean_cap.asient
+                            capuntes.asient
                         </columns>
-                        <from table='capuntes' alias='gean_cap' />
+                        <from table='capuntes' />
                         <where>
-                            gean_cap.diario IN ('01', '94')
-                            AND gean_cap.loteid = geanmovh.loteid
+                            capuntes.diario IN ('01', '94')
+                            AND capuntes.loteid = geanmovh.loteid
                         </where>
-                        <order>gean_cap.diario, gean_cap.fecha, gean_cap.asient, gean_cap.orden</order>
+                        <order>capuntes.diario, capuntes.fecha, capuntes.asient, capuntes.orden</order>
                     </select>
                 </lateral>
             </from>
@@ -69,32 +69,77 @@ function crpKardexRep(pDateFecini, pDateFecfin, pSqlCond) {
     let mTmpTblAsientGcomalb = Ax.db.getTempTableName(`tmp_asiento_gcomalb`);
     Ax.db.execute(`DROP TABLE IF EXISTS ${mTmpTblAsientGcomalb}`);
     Ax.db.execute(`
-        <select intotemp='${mTmpTblAsientGcomalb}'>
-            <columns>
-                gcomalbh.cabid,
-                cefectos.asient
-            </columns>
-            <from table='gcomalbh'>
-                <lateral alias='cefectos'>
-                    <select first='1'>
-                        <columns>
-                            gean_cap.asient
-                        </columns>
-                        <from table='capuntes' alias='gean_cap' />
-                        <where>
-                            gean_cap.diario IN ('01', '94')
-                            AND gean_cap.loteid = gcomalbh.loteid
-                        </where>
-                        <order>gean_cap.diario, gean_cap.fecha, gean_cap.asient, gean_cap.orden</order>
-                    </select>
-                </lateral>
-            </from>
-            <where>
-                gcomalbh.fconta IS NOT NULL
-                AND gcomalbh.fecmov BETWEEN ? AND ?
-            </where>
-        </select>
-    `, pDateFecini, pDateFecfin);
+        <union intotemp='${mTmpTblAsientGcomalb}'>
+            <select>
+                <columns>
+                    gcomalbh.cabid,
+                    apunte.asient
+                </columns>
+                <from table='gcomalbh'>
+                    <lateral alias='apunte'>
+                        <select first='1'>
+                            <columns>
+                                capuntes.asient
+                            </columns>
+                            <from table='capuntes' />
+                            <where>
+                                capuntes.diario IN ('01', '94')
+                                AND (capuntes.loteid = gcomalbh.loteid
+                                    OR (capuntes.loteid = (SELECT MAX(gcomfach.loteid)
+                                                            FROM gcomfacl,gcomfach
+                                                            WHERE gcomfacl.cabid = gcomfach.cabid
+                                                                AND gcomfacl.cabori = gcomalbh.cabid
+                                                                AND gcomfacl.tabori = 'gcommovh')))
+                            </where>
+                            <order>capuntes.diario, capuntes.fecha, capuntes.asient, capuntes.orden</order>
+                        </select>
+                    </lateral>
+                </from>
+                <where>
+                    gcomalbh.fconta IS NOT NULL
+                    AND gcomalbh.fecmov BETWEEN ? AND ?
+                </where>
+            </select>
+
+            <select>
+                <columns>
+                    gcomalbh.cabid,
+                    apunte.asient
+                </columns>
+                <from table='gcomalbh'>
+                    <lateral alias='apunte'>
+                        <select first='1'>
+                            <columns>
+                                capuntes.asient
+                            </columns>
+                            <from table='capuntes' />
+                            <where>
+                                capuntes.diario IN ('01', '94')
+                                AND (capuntes.loteid = (SELECT MAX(alb_dest.loteid)
+                                                        FROM gcomalbl,gcomalbh alb_dest
+                                                        WHERE alb_dest.cabid = gcomalbl.cabid
+                                                            AND gcomalbl.cabori = gcomalbh.cabid
+                                                            AND gcomalbl.tabori = 'gcommovh')
+                                    OR (capuntes.loteid = (SELECT MAX(gcomfach.loteid)
+                                                            FROM gcomfacl,gcomfach
+                                                            WHERE gcomfacl.cabid = gcomfach.cabid
+                                                                AND gcomfacl.cabori = (SELECT MAX(gcomalbl.cabid)
+                                                                                            FROM gcomalbl
+                                                                                        WHERE gcomalbl.cabori = gcomalbh.cabid
+                                                                                                AND gcomalbl.tabori = 'gcommovh')
+                                                                AND gcomfacl.tabori = 'gcommovh')))
+                            </where>
+                            <order>capuntes.diario, capuntes.fecha, capuntes.asient, capuntes.orden</order>
+                        </select>
+                    </lateral>
+                </from>
+                <where>
+                    gcomalbh.fconta IS NULL
+                    AND gcomalbh.fecmov BETWEEN ? AND ?
+                </where>
+            </select>
+        </union>
+    `, pDateFecini, pDateFecfin, pDateFecini, pDateFecfin);
 
 
     /* Creamos tabla temporal con los saldos iniciales de un artículo */
@@ -493,7 +538,7 @@ function crpKardexRep(pDateFecini, pDateFecfin, pSqlCond) {
                         <cast type='decimal' size='22,8'>NULL</cast> montocompania,
                         <cast type='char' size='1'>NULL</cast> tipopreciofijo,
                         NVL(enlaces_factura.anyo_asien_ch, enlaces_albaran.anyo_asien_ch)                                   <alias name='anyo_chv' />,
-                        NVL(asient_geanmov.asient, NVL(asient_gcomalb.asient, 'x01'))::CHAR(10)                <alias name='asien_ch' />,
+                        NVL(asient_gcomalb.asient, NVL(asient_geanmov.asient, 'x01'))::CHAR(10)                             <alias name='asien_ch' />,
                         CASE WHEN NVL(geanmovh.loteid, 0) + NVL(gcomalbh.loteid, 0) = 0 THEN '0'
                         ELSE '1'
                         END <alias name='flag_conta' />,
@@ -2941,4 +2986,4 @@ function crpKardexRep(pDateFecini, pDateFecfin, pSqlCond) {
         return rsKardex}
 
 
-return crpKardexRep(new Ax.sql.Date('01-05-2024'), new Ax.sql.Date('02-05-2024'), '1=1')
+return crpKardexRep(new Ax.sql.Date('30-05-2024'), new Ax.sql.Date('30-05-2024'), '1=1')
