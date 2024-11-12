@@ -922,6 +922,9 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
 
 
 // ID DE FACTURA
+
+// EndPoint: https://asp4demos.paperless.com.pe/axis2/services/Online?wsdl
+
 var pIntCabid = 2222669; // MALO -2163.87
 // var pIntCabid = 1576993; // BUENO
 
@@ -1009,11 +1012,11 @@ let mObjHeadInvoice = Ax.db.executeQuery(`
 				(SELECT SUM(CASE WHEN cvenfach_tax.tax_cuoded &gt;= 0 
 								THEN cvenfach_tax.tax_cuoded
 								WHEN cvenfach_tax.tax_cuoded &lt; 0 
-                                AND cvenfach_tax.tax_code NOT LIKE 'D%' 
-                                THEN cvenfach_tax.tax_cuoded 
-								WHEN cvenfach_tax.tax_cuoded &lt; 0 
 								AND cvenfach.dockey = '07' 
 								THEN cvenfach_tax.tax_cuoded * (-1)
+								WHEN cvenfach_tax.tax_cuoded &lt; 0 
+                                AND cvenfach_tax.tax_code NOT LIKE 'D%' 
+                                THEN cvenfach_tax.tax_cuoded 
 								ELSE 0.00 
 							END)
 				FROM cvenfach_tax
