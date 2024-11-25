@@ -1202,9 +1202,10 @@ function liquidacion_CalcularImportes(pIDLiquidacion, pAplicaDedu) {
 			<select first='1'>
 				<columns>
 					liql_id, liql_concep_fact, liql_importe_neto,
-                    CASE WHEN fas_liquidacion_linea.liql_concep_fact IN ('1','2','4','7') AND liql_importe_neto - 150 &gt;= 0 THEN 1
-                        WHEN fas_liquidacion_linea.liql_concep_fact = '5' AND liql_importe_neto - 150 &gt;= 0 THEN 2
-                        WHEN fas_liquidacion_linea.liql_concep_fact IN ('267', '268') AND liql_importe_neto - 150 &gt;= 0 THEN 3
+                    CASE WHEN fas_liquidacion_linea.liql_concep_fact IN ('1','2','4','7') AND liql_importe_neto - ${mObjLiquidacionImportes.liq_importe_ded} &gt;= 0 THEN 1
+                        WHEN fas_liquidacion_linea.liql_concep_fact = '5' AND liql_importe_neto - ${mObjLiquidacionImportes.liq_importe_ded} &gt;= 0 THEN 2
+                        WHEN fas_liquidacion_linea.liql_concep_fact = '268' AND liql_importe_neto - ${mObjLiquidacionImportes.liq_importe_ded} &gt;= 0 THEN 3
+						WHEN fas_liquidacion_linea.liql_concep_fact = '267' AND liql_importe_neto - ${mObjLiquidacionImportes.liq_importe_ded} &gt;= 0 THEN 4
                         ELSE 99
                     END orden
 				</columns>
