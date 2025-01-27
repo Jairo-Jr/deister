@@ -182,7 +182,10 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
     mObjTramaEN.distrito_emisor      = pObjHeadInvoice.distrito_emisor;
     mObjTramaEN.num_id_adquiriente   = (pObjHeadInvoice.zona_tercero == 'INT') ? '00000000000' : pObjHeadInvoice.num_id_adquiriente;
     mObjTramaEN.tipo_id_adquiriente  = (pObjHeadInvoice.zona_tercero == 'INT') ? '0' : pObjHeadInvoice.tipo_id_adquiriente;
-    mObjTramaEN.full_nom_adquiriente = pObjHeadInvoice.full_nom_adquiriente;
+    mObjTramaEN.full_nom_adquiriente = (pObjHeadInvoice.zona_tercero == 'INT' && pObjHeadInvoice.tipo_documento == '03') ?
+        `${pObjHeadInvoice.full_nom_adquiriente}    VAT Number: ${pObjHeadInvoice.num_id_adquiriente}` :
+        pObjHeadInvoice.full_nom_adquiriente
+    ;
     mObjTramaEN.direccion_receptor   = (pObjHeadInvoice.direccion_receptor !== null ) ? pObjHeadInvoice.direccion_receptor : '---------';
     mObjTramaEN.valor_total_venta    = pObjHeadInvoice.valor_total;
     mObjTramaEN.total_impuestos      = pObjHeadInvoice.total_impuestos;    
@@ -256,34 +259,85 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
     //==========================================================================
     let mCpmDif = 0;
     
+    /**
+     * [13-01-2025]
+     * Ticket Nº185912, Nº185943
+     *  - Ajuste para notas de crédito 'NCRE', igual comportamiento que su factura origen.
+    */
     pArrLineInvoice.forEach(row=>{
-        if (row.codigo_item != 'DC') {
-            if (row.codigo_item == '286' && row.cantidad_item < 0) {
-                mCpmDif += row.precio_unitario;
-                mPreTot -= row.precio_unitario;
+        if (pObjHeadInvoice.tipologia_documento != 'NCRE'){
+            if (row.codigo_item != 'DC') {
+                if (row.codigo_item == '286' && row.cantidad_item < 0) {
+                    mCpmDif += row.precio_unitario;
+                    mPreTot -= row.precio_unitario;
+                } else {
+                    mPreTot += row.precio_unitario;
+                }
             } else {
-                mPreTot += row.precio_unitario;
+                mDedTot= row.precio_unitario;
             }
         } else {
-            mDedTot= row.precio_unitario;
+            if (row.codigo_item != 'DC') {
+                if (row.codigo_item == '286' && row.cantidad_item > 0) {
+                    mCpmDif -= row.precio_unitario;
+                    mPreTot += row.precio_unitario;
+                } else {
+                    mPreTot -= row.precio_unitario;
+                }
+            } else {
+                mDedTot= row.precio_unitario;
+            }
         }
     })
-
+    
+    /**
+     * [24-10-2024]
+     *  - Adicion de consideracion en notas de credito con articulos:
+     *      - Paciente Mes (286)
+     *      - Deducible (DC)
+     *  - Comportamiento igual que la factura origen.
+    */
+    /**
+     * [13-01-2025]
+     * Ticket Nº185912, Nº185943
+     *  - Ajuste para notas de crédito 'NCRE', igual comportamiento que su factura origen.
+    */
     pArrLineInvoice.forEach(row=>{
-        if (row.codigo_item != 'DC' &&
-           !(row.codigo_item == '286' && row.cantidad_item < 0)) {
+        
+        if (pObjHeadInvoice.tipologia_documento != 'NCRE'){
+            if (row.codigo_item != 'DC' &&
+                !(row.codigo_item == '286' && row.cantidad_item < 0)) {
 
-            if (row.codigo_item == '286' && row.cantidad_item > 0 && mCpmDif > 0) {
-                row.precio_unitario = Ax.math.bc.sub(row.precio_unitario,mCpmDif)
-                mCpmDif = 0;
+                if (row.codigo_item == '286' && row.cantidad_item > 0 && mCpmDif > 0) {
+                    row.precio_unitario = Ax.math.bc.sub(row.precio_unitario,mCpmDif)
+                    mCpmDif = 0;
+                }
+
+                row.precio_unitario = Ax.math.bc.sub(row.precio_unitario,Ax.math.bc.mul(mDedTot,Ax.math.bc.div(row.precio_unitario,mPreTot)))
+
+                if (row.precio_unitario.compareTo(Ax.math.bc.of(0)) == 1) {
+                    pNewArrLineInvoice.push(row)
+                }
+                
             }
+        } else {
+            if (row.codigo_item != 'DC' &&
+                !(row.codigo_item == '286' && row.cantidad_item > 0)) {
 
-            row.precio_unitario = Ax.math.bc.sub(row.precio_unitario,Ax.math.bc.mul(mDedTot,Ax.math.bc.div(row.precio_unitario,mPreTot)))
+                if (row.codigo_item == '286' && row.cantidad_item < 0 && mCpmDif < 0) {
+                    row.precio_unitario = Ax.math.bc.add(row.precio_unitario,mCpmDif)
+                    mCpmDif = 0;
+                }
 
-            if (row.precio_unitario.compareTo(Ax.math.bc.of(0)) == 1) {
-                pNewArrLineInvoice.push(row)
+                row.precio_unitario = Ax.math.bc.add(row.precio_unitario,Ax.math.bc.mul(mDedTot,Ax.math.bc.div(row.precio_unitario,mPreTot)))
+
+                if (row.precio_unitario.compareTo(Ax.math.bc.of(0)) == 1) {
+                    pNewArrLineInvoice.push(row)
+                }
+                
             }
         }
+        
     })
     
      if(pObjHeadInvoice.comparar_monto_total == 0){
@@ -581,7 +635,7 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
                                       pObjHeadInvoice.fecha_egreso  != null) ? new Ax.util.Date(pObjHeadInvoice.fecha_ingreso).days(new Ax.util.Date(pObjHeadInvoice.fecha_egreso)) : 0;
         
     }
-    console.log(mObjTramaEN.total_impuestos);
+    
     //==========================================================================
     // Armado de la linea EN de la trama a partir mObjTramaEN
     //==========================================================================
@@ -736,7 +790,6 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
     let mLineDI = '';
     
     for (i = 0; i < mArrTramaDI.length; i++) {
-        console.log('*DI*', mArrTramaDI[i].total_impuestos);
         mLineDI += (
             'DI|' 
             + Ax.math.bc.of(mArrTramaDI[i].total_impuestos).setScale(2, Ax.math.bc.RoundingMode.HALF_UP) + '|'
