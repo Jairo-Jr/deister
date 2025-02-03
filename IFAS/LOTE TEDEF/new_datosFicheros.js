@@ -1,8 +1,9 @@
 function datosFicheros(pdata, pIntIndicador) {
-    Ax.db.execute(`DELETE fas_tedef_dfac_test`);
-    Ax.db.execute(`DELETE fas_tedef_date_test`);
-    Ax.db.execute(`DELETE fas_tedef_dserv_test`);
-    Ax.db.execute(`DELETE fas_tedef_dfarm_test`);
+
+    Ax.db.execute(`DELETE fas_tedef_dfac_test WHERE tdfac_lote = ?`, pdata.tdl_nrolote);
+    Ax.db.execute(`DELETE fas_tedef_date_test WHERE tdate_nrolote = ?`, pdata.tdl_nrolote);
+    Ax.db.execute(`DELETE fas_tedef_dserv_test WHERE tdserv_nrolote = ?`, pdata.tdl_nrolote);
+    Ax.db.execute(`DELETE fas_tedef_dfarm_test WHERE tdfarm_nrolote = ?`, pdata.tdl_nrolote);
 	/**
      * Se redondea hacia arriba cuando el tercer decimal es mayor que 5, 
      * de lo contrario se redondea hacia abajo
@@ -107,243 +108,243 @@ function datosFicheros(pdata, pIntIndicador) {
 
 	mRsDatosDfacFichero.forEach((mRowData) => {
 
-        let mBcSumCpFjIgv = 0.00;
-		let mBcSumCpFjExo = 0.00;
-		let mBcSumCpVrIgv = 0.00;
-		let mBcSumCpVrExo = 0.00;
+        // let mBcSumCpFjIgv = 0.00;
+		// let mBcSumCpFjExo = 0.00;
+		// let mBcSumCpVrIgv = 0.00;
+		// let mBcSumCpVrExo = 0.00;
 
-        let mObjAteSumRound = Ax.db.executeQuery(`
-			<select>
-				<columns>
-					SUM(tdate_cpgfijaf_round)	tdate_cpgfijaf_round,
-					SUM(tdate_cpgfijexo_round)	tdate_cpgfijexo_round,
-					SUM(tdate_cpgvaraf_round)	tdate_cpgvaraf_round,
-					SUM(tdate_cpgvarexo_round)	tdate_cpgvarexo_round
-				</columns>
-				<from table = 'fas_tedef_date_test' />
-				<where>
-						tdate_nrolote	= ?
-					AND tdate_nrodocpg	= ?
-					AND tdate_centro	= ?
-				</where>
-			</select>
-		`, mStrLote, mRowData.fvh_numero, mStrCentro).toOne();
+        // let mObjAteSumRound = Ax.db.executeQuery(`
+		// 	<select>
+		// 		<columns>
+		// 			SUM(tdate_cpgfijaf_round)	tdate_cpgfijaf_round,
+		// 			SUM(tdate_cpgfijexo_round)	tdate_cpgfijexo_round,
+		// 			SUM(tdate_cpgvaraf_round)	tdate_cpgvaraf_round,
+		// 			SUM(tdate_cpgvarexo_round)	tdate_cpgvarexo_round
+		// 		</columns>
+		// 		<from table = 'fas_tedef_date_test' />
+		// 		<where>
+		// 				tdate_nrolote	= ?
+		// 			AND tdate_nrodocpg	= ?
+		// 			AND tdate_centro	= ?
+		// 		</where>
+		// 	</select>
+		// `, mStrLote, mRowData.fvh_numero, mStrCentro).toOne();
 
-        let mRsFarmSumRound = Ax.db.executeQuery(`
-			<select>
-				<columns>
-					tdfarm_prdexeifv,
-					NVL(SUM(tdfarm_cpgprd_round), 0.00) tdfarm_cpgprd_round
-				</columns>
-				<from table = 'fas_tedef_dfarm_test' />
-				<where>
-						tdfarm_nrolote	= ?
-					AND tdfarm_nrodocpg	= ?
-					AND tdfarm_centro	= ?
-				</where>
-				<group>
-					tdfarm_prdexeifv
-				</group>
-			</select>
-		`, mStrLote, mRowData.fvh_numero, mStrCentro);
+        // let mRsFarmSumRound = Ax.db.executeQuery(`
+		// 	<select>
+		// 		<columns>
+		// 			tdfarm_prdexeifv,
+		// 			NVL(SUM(tdfarm_cpgprd_round), 0.00) tdfarm_cpgprd_round
+		// 		</columns>
+		// 		<from table = 'fas_tedef_dfarm_test' />
+		// 		<where>
+		// 				tdfarm_nrolote	= ?
+		// 			AND tdfarm_nrodocpg	= ?
+		// 			AND tdfarm_centro	= ?
+		// 		</where>
+		// 		<group>
+		// 			tdfarm_prdexeifv
+		// 		</group>
+		// 	</select>
+		// `, mStrLote, mRowData.fvh_numero, mStrCentro);
 
-        let mRsServSumRound = Ax.db.executeQuery(`
-			<select>
-				<columns>
-					tdserv_servexeimp,
-					NVL(SUM(tdserv_cpgvr_round), 0.00) tdserv_cpgvr_round,
-					NVL(SUM(tdserv_cpgfj_round), 0.00) tdserv_cpgfj_round
-				</columns>
-				<from table = 'fas_tedef_dserv_test' />
-				<where>
-						tdserv_nrolote	= ?
-					AND tdserv_nrodocpg	= ?
-					AND tdserv_centro	= ?
-				</where>
-				<group>
-					tdserv_servexeimp
-				</group>
-			</select>
-		`, mStrLote, mRowData.fvh_numero, mStrCentro);
+        // let mRsServSumRound = Ax.db.executeQuery(`
+		// 	<select>
+		// 		<columns>
+		// 			tdserv_servexeimp,
+		// 			NVL(SUM(tdserv_cpgvr_round), 0.00) tdserv_cpgvr_round,
+		// 			NVL(SUM(tdserv_cpgfj_round), 0.00) tdserv_cpgfj_round
+		// 		</columns>
+		// 		<from table = 'fas_tedef_dserv_test' />
+		// 		<where>
+		// 				tdserv_nrolote	= ?
+		// 			AND tdserv_nrodocpg	= ?
+		// 			AND tdserv_centro	= ?
+		// 		</where>
+		// 		<group>
+		// 			tdserv_servexeimp
+		// 		</group>
+		// 	</select>
+		// `, mStrLote, mRowData.fvh_numero, mStrCentro);
 
-		let mRsAte = Ax.db.executeQuery(`
-			<select>
-				<columns>
-					tdate_serial,
-					tdate_cpgfijaf_round,
-					tdate_cpgfijexo_round,
-					tdate_cpgvaraf_round,
-					tdate_cpgvarexo_round
-				</columns>
-				<from table = 'fas_tedef_date_test' />
-				<where>
-						tdate_nrolote	= ?
-					AND tdate_nrodocpg	= ?
-					AND tdate_centro	= ?
-				</where>
-			</select>
-		`, mStrLote, mRowData.fvh_numero, mStrCentro).toMemory();
+		// let mRsAte = Ax.db.executeQuery(`
+		// 	<select>
+		// 		<columns>
+		// 			tdate_serial,
+		// 			tdate_cpgfijaf_round,
+		// 			tdate_cpgfijexo_round,
+		// 			tdate_cpgvaraf_round,
+		// 			tdate_cpgvarexo_round
+		// 		</columns>
+		// 		<from table = 'fas_tedef_date_test' />
+		// 		<where>
+		// 				tdate_nrolote	= ?
+		// 			AND tdate_nrodocpg	= ?
+		// 			AND tdate_centro	= ?
+		// 		</where>
+		// 	</select>
+		// `, mStrLote, mRowData.fvh_numero, mStrCentro).toMemory();
 
-        mRsFarmSumRound.forEach((mRowFarmSumRound) => {
-			if (mRowFarmSumRound.tdfarm_prdexeifv == 'IGV') {
-				mBcSumCpVrIgv = Ax.math.bc.add(mBcSumCpVrIgv, mRowFarmSumRound.tdfarm_cpgprd_round)
-			} else if (mRowFarmSumRound.tdfarm_prdexeifv == 'EXONERADO') {
-				mBcSumCpVrExo = Ax.math.bc.add(mBcSumCpVrExo, mRowFarmSumRound.tdfarm_cpgprd_round)
-			} 
-		});
-		mRsFarmSumRound.close();
+        // mRsFarmSumRound.forEach((mRowFarmSumRound) => {
+		// 	if (mRowFarmSumRound.tdfarm_prdexeifv == 'IGV') {
+		// 		mBcSumCpVrIgv = Ax.math.bc.add(mBcSumCpVrIgv, mRowFarmSumRound.tdfarm_cpgprd_round)
+		// 	} else if (mRowFarmSumRound.tdfarm_prdexeifv == 'EXONERADO') {
+		// 		mBcSumCpVrExo = Ax.math.bc.add(mBcSumCpVrExo, mRowFarmSumRound.tdfarm_cpgprd_round)
+		// 	} 
+		// });
+		// mRsFarmSumRound.close();
 
-		mRsServSumRound.forEach((mRowServSumRound) => {
-			if (mRowServSumRound.tdserv_servexeimp == 'IGV') {
-				mBcSumCpVrIgv = Ax.math.bc.add(mBcSumCpVrIgv, mRowServSumRound.tdserv_cpgvr_round)
-				mBcSumCpFjIgv = Ax.math.bc.add(mBcSumCpFjIgv, mRowServSumRound.tdserv_cpgfj_round)
-			} else if (mRowServSumRound.tdserv_servexeimp == 'EXONERADO') {
-				mBcSumCpVrExo = Ax.math.bc.add(mBcSumCpVrExo, mRowServSumRound.tdserv_cpgvr_round)
-				mBcSumCpFjExo = Ax.math.bc.add(mBcSumCpFjExo, mRowServSumRound.tdserv_cpgfj_round)
-			}
-		})
-		mRsServSumRound.close();
+		// mRsServSumRound.forEach((mRowServSumRound) => {
+		// 	if (mRowServSumRound.tdserv_servexeimp == 'IGV') {
+		// 		mBcSumCpVrIgv = Ax.math.bc.add(mBcSumCpVrIgv, mRowServSumRound.tdserv_cpgvr_round)
+		// 		mBcSumCpFjIgv = Ax.math.bc.add(mBcSumCpFjIgv, mRowServSumRound.tdserv_cpgfj_round)
+		// 	} else if (mRowServSumRound.tdserv_servexeimp == 'EXONERADO') {
+		// 		mBcSumCpVrExo = Ax.math.bc.add(mBcSumCpVrExo, mRowServSumRound.tdserv_cpgvr_round)
+		// 		mBcSumCpFjExo = Ax.math.bc.add(mBcSumCpFjExo, mRowServSumRound.tdserv_cpgfj_round)
+		// 	}
+		// })
+		// mRsServSumRound.close();
 
-        mBcSumCpFjIgv = Ax.math.bc.sub(mBcSumCpFjIgv, (mObjAteSumRound.tdate_cpgfijaf_round || 0));
-		mBcSumCpFjExo = Ax.math.bc.sub(mBcSumCpFjExo, (mObjAteSumRound.tdate_cpgfijexo_round || 0));
-		mBcSumCpVrIgv = Ax.math.bc.sub(mBcSumCpVrIgv, (mObjAteSumRound.tdate_cpgvaraf_round || 0));
-		mBcSumCpVrExo = Ax.math.bc.sub(mBcSumCpVrExo, (mObjAteSumRound.tdate_cpgvarexo_round || 0));
+        // mBcSumCpFjIgv = Ax.math.bc.sub(mBcSumCpFjIgv, (mObjAteSumRound.tdate_cpgfijaf_round || 0));
+		// mBcSumCpFjExo = Ax.math.bc.sub(mBcSumCpFjExo, (mObjAteSumRound.tdate_cpgfijexo_round || 0));
+		// mBcSumCpVrIgv = Ax.math.bc.sub(mBcSumCpVrIgv, (mObjAteSumRound.tdate_cpgvaraf_round || 0));
+		// mBcSumCpVrExo = Ax.math.bc.sub(mBcSumCpVrExo, (mObjAteSumRound.tdate_cpgvarexo_round || 0));
 
-        if (mBcSumCpFjIgv > 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjIgv > 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgfijaf_round"	: Ax.math.bc.add(mRowAte.tdate_cpgfijaf_round, 0.01),
-							"tdate_cpgfijaf"		: Ax.math.bc.add(mRowAte.tdate_cpgfijaf_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpFjIgv = Ax.math.bc.sub(mBcSumCpFjIgv, 0.01);
-				}
-			})
-			mRsAte.close();
-		} else if (mBcSumCpFjIgv < 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjIgv < 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgfijaf_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgfijaf_round, 0.01),
-							"tdate_cpgfijaf"		: Ax.math.bc.sub(mRowAte.tdate_cpgfijaf_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpFjIgv = Ax.math.bc.add(mBcSumCpFjIgv, 0.01);
-				}
-			})
-			mRsAte.close();
-		}
+        // if (mBcSumCpFjIgv > 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpFjIgv > 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgfijaf_round"	: Ax.math.bc.add(mRowAte.tdate_cpgfijaf_round, 0.01),
+		// 					"tdate_cpgfijaf"		: Ax.math.bc.add(mRowAte.tdate_cpgfijaf_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpFjIgv = Ax.math.bc.sub(mBcSumCpFjIgv, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// } else if (mBcSumCpFjIgv < 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpFjIgv < 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgfijaf_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgfijaf_round, 0.01),
+		// 					"tdate_cpgfijaf"		: Ax.math.bc.sub(mRowAte.tdate_cpgfijaf_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpFjIgv = Ax.math.bc.add(mBcSumCpFjIgv, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// }
 
-        if (mBcSumCpFjExo > 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjExo > 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgfijexo_round"	: Ax.math.bc.add(mRowAte.tdate_cpgfijexo_round, 0.01),
-							"tdate_cpgfijexo"		: Ax.math.bc.add(mRowAte.tdate_cpgfijexo_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpFjExo = Ax.math.bc.sub(mBcSumCpFjExo, 0.01);
-				}
-			})
-			mRsAte.close();
-		} else if (mBcSumCpFjExo < 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjExo < 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgfijexo_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgfijexo_round, 0.01),
-							"tdate_cpgfijexo"		: Ax.math.bc.sub(mRowAte.tdate_cpgfijexo_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpFjExo = Ax.math.bc.add(mBcSumCpFjExo, 0.01);
-				}
-			})
-			mRsAte.close();
-		}
+        // if (mBcSumCpFjExo > 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpFjExo > 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgfijexo_round"	: Ax.math.bc.add(mRowAte.tdate_cpgfijexo_round, 0.01),
+		// 					"tdate_cpgfijexo"		: Ax.math.bc.add(mRowAte.tdate_cpgfijexo_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpFjExo = Ax.math.bc.sub(mBcSumCpFjExo, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// } else if (mBcSumCpFjExo < 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpFjExo < 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgfijexo_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgfijexo_round, 0.01),
+		// 					"tdate_cpgfijexo"		: Ax.math.bc.sub(mRowAte.tdate_cpgfijexo_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpFjExo = Ax.math.bc.add(mBcSumCpFjExo, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// }
 
-		if (mBcSumCpVrIgv > 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrIgv > 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgvaraf_round"	: Ax.math.bc.add(mRowAte.tdate_cpgvaraf_round, 0.01),
-							"tdate_cpgvaraf"		: Ax.math.bc.add(mRowAte.tdate_cpgvaraf_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpVrIgv = Ax.math.bc.sub(mBcSumCpVrIgv, 0.01);
-				}
-			})
-			mRsAte.close();
-		} else if (mBcSumCpVrIgv < 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrIgv < 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgvaraf_round, 0.01),
-							"tdate_cpgvaraf"		: Ax.math.bc.sub(mRowAte.tdate_cpgvaraf_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpVrIgv = Ax.math.bc.add(mBcSumCpVrIgv, 0.01);
-				}
-			})
-			mRsAte.close();
-		}
+		// if (mBcSumCpVrIgv > 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpVrIgv > 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgvaraf_round"	: Ax.math.bc.add(mRowAte.tdate_cpgvaraf_round, 0.01),
+		// 					"tdate_cpgvaraf"		: Ax.math.bc.add(mRowAte.tdate_cpgvaraf_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpVrIgv = Ax.math.bc.sub(mBcSumCpVrIgv, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// } else if (mBcSumCpVrIgv < 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpVrIgv < 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgvaraf_round, 0.01),
+		// 					"tdate_cpgvaraf"		: Ax.math.bc.sub(mRowAte.tdate_cpgvaraf_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpVrIgv = Ax.math.bc.add(mBcSumCpVrIgv, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// }
 
-		if (mBcSumCpVrExo > 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrExo > 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgvarexo_round"	: Ax.math.bc.add(mRowAte.tdate_cpgvarexo_round, 0.01),
-							"tdate_cpgvarexo"		: Ax.math.bc.add(mRowAte.tdate_cpgvarexo_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpVrExo = Ax.math.bc.sub(mBcSumCpVrExo, 0.01);
-				}
-			})
-			mRsAte.close();
-		} else if (mBcSumCpVrExo < 0.00) {
-			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrExo < 0.00) {
-					Ax.db.update('fas_tedef_date_test',
-						{
-							"tdate_cpgvarexo_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgvarexo_round, 0.01),
-							"tdate_cpgvarexo"		: Ax.math.bc.sub(mRowAte.tdate_cpgvarexo_round, 0.01)
-						},
-						{
-							"tdate_serial"			: mRowAte.tdate_serial
-						}
-					);
-					mBcSumCpVrExo = Ax.math.bc.add(mBcSumCpVrExo, 0.01);
-				}
-			})
-			mRsAte.close();
-		}
+		// if (mBcSumCpVrExo > 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpVrExo > 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgvarexo_round"	: Ax.math.bc.add(mRowAte.tdate_cpgvarexo_round, 0.01),
+		// 					"tdate_cpgvarexo"		: Ax.math.bc.add(mRowAte.tdate_cpgvarexo_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpVrExo = Ax.math.bc.sub(mBcSumCpVrExo, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// } else if (mBcSumCpVrExo < 0.00) {
+		// 	mRsAte.forEach((mRowAte) => {
+		// 		if (mBcSumCpVrExo < 0.00) {
+		// 			Ax.db.update('fas_tedef_date_test',
+		// 				{
+		// 					"tdate_cpgvarexo_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgvarexo_round, 0.01),
+		// 					"tdate_cpgvarexo"		: Ax.math.bc.sub(mRowAte.tdate_cpgvarexo_round, 0.01)
+		// 				},
+		// 				{
+		// 					"tdate_serial"			: mRowAte.tdate_serial
+		// 				}
+		// 			);
+		// 			mBcSumCpVrExo = Ax.math.bc.add(mBcSumCpVrExo, 0.01);
+		// 		}
+		// 	})
+		// 	mRsAte.close();
+		// }
 
         if (mStrMecPago == 'PPS') {
 			mStrSqlCond	= "fas_liquidacion_impuesto.liqi_impuesto = '" + mRowData.liql_impuesto + "'"
@@ -746,49 +747,6 @@ function datosFicheros(pdata, pIntIndicador) {
 				mChrTipoNota = 'N'
 			}
 
-            // /**
-			//  * Obtención de la suma total de los copagos de la tabla Date
-			//  * en base a la factura
-			//  */
-			// let mObjDate = Ax.db.executeQuery(`
-			// 	<select>
-			// 		<columns>
-			// 			SUM(tdate_totgstcub)	tdate_totgstcub,
-			// 			SUM(tdate_cpgfijaf)		tdate_cpgfijaf,
-			// 			SUM(tdate_cpgfijexo)	tdate_cpgfijexo,
-			// 			SUM(tdate_cpgvaraf)		tdate_cpgvaraf,
-			// 			SUM(tdate_cpgvarexo)	tdate_cpgvarexo,
-			// 			SUM(tdate_prdsemedexo)	tdate_prdsemedexo
-			// 		</columns>
-			// 		<from table = 'fas_tedef_date_test' />
-			// 		<where>
-			// 				tdate_nrodocpg = ?
-			// 			AND tdate_nrolote = ?
-			// 		</where>
-			// 	</select>
-			// `, mRowData.fvh_numero, mRowData.tdf_nrolote).toOne();
-
-			// /**
-			//  * Reglas en base al modo de pago, obtención de la suma del total de gastos cubiertos,
-			//  * cálculo para la base imponible y cálculo para el total facturado
-			//  */
-			// let mDcSuma			= Ax.math.bc.of(mObjDate.tdate_totgstcub);
-			// let mBcIgv			= 0.00;
-			// if (mObjDfac.fvh_modo_pago == 'PPS') {
-			// 	mDbBaseImp		= Ax.math.bc.sub(mDcSuma, mObjDate.tdate_prdsemedexo, Ax.math.bc.add(mObjDate.tdate_cpgfijaf, mObjDate.tdate_cpgvaraf));
-			// 	mBcIgv			= Ax.math.bc.mul(mDbBaseImp, 0.18).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
-			// 	mDbTotFac		= Ax.math.bc.sub(Ax.math.bc.add(mDbBaseImp, mBcIgv, mObjDate.tdate_prdsemedexo), Ax.math.bc.add(mObjDate.tdate_cpgfijexo, mObjDate.tdate_cpgvarexo));
-			// } else {
-			// 	mDbBaseImp		= Ax.math.bc.sub(mObjDfac.cnt_importe_paq, Ax.math.bc.add(mObjDate.tdate_cpgfijaf, mObjDate.tdate_cpgvaraf));
-			// 	mBcIgv			= Ax.math.bc.mul(mDbBaseImp, 0.18).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
-			// 	mDbTotFac		= Ax.math.bc.sub(Ax.math.bc.add(mDbBaseImp, mBcIgv), Ax.math.bc.add(mObjDate.tdate_cpgfijexo, mObjDate.tdate_cpgvarexo));
-			// }
-
-            // Si la factura es exonerada, se mantiene el importe obtenido (0.00) como IGV
-			// if (mObjDfac.fvh_impuesto_val == 0) {
-			// 	mBcIgv = mObjDfac.fvh_impuesto_val;
-			// }
-
             
 
 			// Inserción en fas_tedef_dfac_test 
@@ -821,9 +779,9 @@ function datosFicheros(pdata, pIntIndicador) {
 					"tdfac_totcovaaf_round"	: 0, // Ax.math.bc.of(mObjDate.tdate_cpgvaraf).setScale(2, Ax.math.bc.RoundingMode.HALF_UP),
 					"tdfac_totcovaex"		: 0, // mObjDate.tdate_cpgvarexo,
 					"tdfac_totcovaex_round"	: 0, // Ax.math.bc.of(mObjDate.tdate_cpgvarexo).setScale(2, Ax.math.bc.RoundingMode.HALF_UP),
-					"tdfac_baseimp"			: mObjDfac.fvh_base_imponible,
-					"tdfac_montofact"		: mObjDfac.fvh_impuesto_val,
-					"tdfac_totfact"			: mObjDfac.fvh_importe_total,
+					"tdfac_baseimp"			: Ax.math.bc.of(mObjDfac.fvh_base_imponible).setScale(2, Ax.math.bc.RoundingMode.HALF_UP),
+					"tdfac_montofact"		: Ax.math.bc.of(mObjDfac.fvh_impuesto_val).setScale(2, Ax.math.bc.RoundingMode.HALF_UP),
+					"tdfac_totfact"			: Ax.math.bc.of(mObjDfac.fvh_importe_total).setScale(2, Ax.math.bc.RoundingMode.HALF_UP),
 					"tdfac_tipnota"			: mChrTipoNota,
 					"tdfac_nronota"			: '',
 					"tdfac_mntnota"			: '',
@@ -3169,6 +3127,14 @@ function datosFicheros(pdata, pIntIndicador) {
 						// covigv = obtenerImporteRedondeado(covigv);
 						// covexo = obtenerImporteRedondeado(covexo);
 
+                        // if(mRowData.fvh_numero == 'F418-00003746' || mRowData.fvh_numero == 'F418-00003622'){
+                        //     console.log(mRowData.fvh_numero)
+                        //     console.log('cofigv:', cofigv);
+                        //     console.log('cofexo:', cofexo);
+                        //     console.log('covigv:', covigv);
+                        //     console.log('covexo:', covexo);
+                        // }
+                        
 						cofigv = Ax.math.bc.of(cofigv).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
 						cofexo = Ax.math.bc.of(cofexo).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
 						covigv = Ax.math.bc.of(covigv).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
@@ -3984,6 +3950,22 @@ function datosFicheros(pdata, pIntIndicador) {
         	}
         }
 
+        let mObjMntDfac = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    tdfac_mntprepac,
+                    tdfac_baseimp,
+                    tdfac_montofact,
+                    tdfac_totfact
+                </columns>
+                <from table = 'fas_tedef_dfac_test' />
+                <where>
+                        tdfac_nrodocpg = ?
+                    AND tdfac_lote = ?
+                </where>
+            </select>
+        `, mRowDfac.fvh_numero, mRowDfac.tdfac_lote).toOne();
+
         /**
          * Obtención de la suma total de los copagos de la tabla Date
          * en base a la factura
@@ -3998,13 +3980,102 @@ function datosFicheros(pdata, pIntIndicador) {
                     SUM(tdate_cpgvarexo)	tdate_cpgvarexo,
                     SUM(tdate_prdsemedexo)	tdate_prdsemedexo
                 </columns>
-                <from table = 'fas_tedef_date' />
+                <from table = 'fas_tedef_date_test' />
                 <where>
                         tdate_nrodocpg = ?
                     AND tdate_nrolote = ?
                 </where>
             </select>
         `, mRowDfac.fvh_numero, mRowDfac.tdfac_lote).toOne();
+
+        /**
+         * Reglas en base al modo de pago, obtención de la suma del total de gastos cubiertos,
+         * cálculo para la base imponible y cálculo para el total facturado
+         */
+        let mDcSuma			= Ax.math.bc.of(mObjSumDate.tdate_totgstcub);
+        let mBcIgv			= 0.00;
+        if (mRowDfac.fvh_modo_pago == 'PPS') {
+        	mDbBaseImp		= Ax.math.bc.sub(mDcSuma, mObjSumDate.tdate_prdsemedexo, Ax.math.bc.add(mObjSumDate.tdate_cpgfijaf, mObjSumDate.tdate_cpgvaraf));
+        	mBcIgv			= Ax.math.bc.mul(mDbBaseImp, 0.18).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
+        	mDbTotFac		= Ax.math.bc.sub(Ax.math.bc.add(mDbBaseImp, mBcIgv, mObjSumDate.tdate_prdsemedexo), Ax.math.bc.add(mObjSumDate.tdate_cpgfijexo, mObjSumDate.tdate_cpgvarexo));
+        } else {
+        	mDbBaseImp		= Ax.math.bc.sub(mObjMntDfac.tdfac_mntprepac, Ax.math.bc.add(mObjSumDate.tdate_cpgfijaf, mObjSumDate.tdate_cpgvaraf));
+        	mBcIgv			= Ax.math.bc.mul(mDbBaseImp, 0.18).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
+        	mDbTotFac		= Ax.math.bc.sub(Ax.math.bc.add(mDbBaseImp, mBcIgv), Ax.math.bc.add(mObjSumDate.tdate_cpgfijexo, mObjSumDate.tdate_cpgvarexo));
+        }
+
+        // Si la factura es exonerada, se mantiene el importe obtenido (0.00) como IGV
+        // if (mObjDfac.fvh_impuesto_val == 0) {
+        // 	mBcIgv = mObjDfac.fvh_impuesto_val;
+        // }
+
+        if(mRowDfac.fvh_numero == 'F418-00048421'){
+            console.log(mRowDfac.fvh_modo_pago);
+            console.log('mDbBaseImp', mDbBaseImp);
+            console.log('mBcIgv', mBcIgv);
+            console.log('mDbTotFac', mDbTotFac);
+        }
+
+
+        let mRsDataDate = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    tdate_serial,
+                    tdate_cpgvaraf_round
+                </columns>
+                <from table = 'fas_tedef_date_test' />
+                <where>
+                        tdate_nrodocpg = ?
+                    AND tdate_nrolote = ?
+                </where>
+            </select>
+        `, mRowDfac.fvh_numero, mRowDfac.tdfac_lote).toJSONArray();
+
+        // let mBaseImpCalc = Ax.math.bc.sub(mObjMntDfac.tdfac_mntprepac, Ax.math.bc.add(mObjSumDate.tdate_cpgvaraf, mObjSumDate.tdate_cpgfijaf));
+        // let mDiffBases = Ax.math.bc.sub(mBaseImpCalc, mObjMntDfac.tdfac_baseimp).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
+
+
+        let mTotImpCalc = mDbTotFac;
+        let mDiffBases = Ax.math.bc.sub(mTotImpCalc, mObjMntDfac.tdfac_totfact).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
+
+
+
+        if(mRowDfac.fvh_numero == 'F418-00048421'){
+            console.log('mTotImpCalc', mTotImpCalc);
+            console.log('BASE_FACT', mObjMntDfac.tdfac_totfact);
+            console.log(mRsDataDate);
+        }
+
+        mRsDataDate.forEach(mRowDate => {
+            if (mDiffBases > 0.00) {
+                
+                Ax.db.update('fas_tedef_date_test',
+                    {
+                        "tdate_cpgvaraf_round"	: Ax.math.bc.add(mRowDate.tdate_cpgvaraf_round, 0.01),
+                        "tdate_cpgvaraf"		: Ax.math.bc.add(mRowDate.tdate_cpgvaraf_round, 0.01)
+                    },
+                    {
+                        "tdate_serial"			: mRowDate.tdate_serial
+                    }
+                );
+                mDiffBases = Ax.math.bc.sub(mDiffBases, 0.01);
+
+                mObjSumDate.tdate_cpgvaraf = Ax.math.bc.add(mObjSumDate.tdate_cpgvaraf, 0.01);
+            } else if (mDiffBases < 0.00) {
+                Ax.db.update('fas_tedef_date_test',
+                    {
+                        "tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01),
+                        "tdate_cpgvaraf"		: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01)
+                    },
+                    {
+                        "tdate_serial"			: mRowDate.tdate_serial
+                    }
+                );
+                mDiffBases = Ax.math.bc.add(mDiffBases, 0.01);
+                
+                mObjSumDate.tdate_cpgvaraf = Ax.math.bc.sub(mObjSumDate.tdate_cpgvaraf, 0.01);
+            }
+        });
 
 
         /**
@@ -4042,6 +4113,8 @@ function datosFicheros(pdata, pIntIndicador) {
                 "tdfac_serial"			: mRowDfac.tdfac_serial
             }
         );
+
+
     });
 
     mRsDfac.close();
@@ -4082,18 +4155,30 @@ function datosFicheros(pdata, pIntIndicador) {
 	}
 }
 
-// // PQX
+// // F418-00047571
 // var pdata = {
-//     tdl_nrolote: '0623082',
+//     tdl_nrolote: '0622913',
 //     tdf_centro: 'CRP0',
 //     tdl_financiador: '00043392'
 // }
-
-// PQX
+// F418-00048421
 var pdata = {
-    tdl_nrolote: '0623137',
+    tdl_nrolote: '0623830',
     tdf_centro: 'CRP0',
-    tdl_financiador: '00043258'
+    tdl_financiador: '00043392'
 }
 
 datosFicheros(pdata, 0)
+
+
+
+
+
+/**
+
+SELECT * FROM fas_tedef_dfac_test WHERE tdfac_lote = '0622913' AND tdfac_nrodocpg = 'F418-00047571';
+SELECT * FROM fas_tedef_date_test WHERE tdate_nrolote = '0622913' AND tdate_nrodocpg = 'F418-00047571';
+SELECT * FROM fas_tedef_dserv_test WHERE tdserv_nrolote = '0622913';
+SELECT * FROM fas_tedef_dfarm_test WHERE tdfarm_nrolote = '0622913';
+
+ */
