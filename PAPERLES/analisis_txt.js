@@ -263,9 +263,13 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
      * [13-01-2025]
      * Ticket Nº185912, Nº185943
      *  - Ajuste para notas de crédito 'NCRE', igual comportamiento que su factura origen.
+     * 
+     * [20-01-2025]
+     * Ticket Nº187051
+     *  - Se agrega la tipologia 'NCRD'.
     */
     pArrLineInvoice.forEach(row=>{
-        if (pObjHeadInvoice.tipologia_documento != 'NCRE'){
+        if (!['NCRE', 'NCRD'].includes(pObjHeadInvoice.tipologia_documento)){
             if (row.codigo_item != 'DC') {
                 if (row.codigo_item == '286' && row.cantidad_item < 0) {
                     mCpmDif += row.precio_unitario;
@@ -301,10 +305,14 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
      * [13-01-2025]
      * Ticket Nº185912, Nº185943
      *  - Ajuste para notas de crédito 'NCRE', igual comportamiento que su factura origen.
+     * 
+     * [20-01-2025]
+     * Ticket Nº187051
+     *  - Se agrega la tipologia 'NCRD'.
     */
     pArrLineInvoice.forEach(row=>{
         
-        if (pObjHeadInvoice.tipologia_documento != 'NCRE'){
+        if (!['NCRE', 'NCRD'].includes(pObjHeadInvoice.tipologia_documento)){
             if (row.codigo_item != 'DC' &&
                 !(row.codigo_item == '286' && row.cantidad_item < 0)) {
 
@@ -962,6 +970,14 @@ function pe_einvoice_generateDoctxt_IFAS(pObjHeadInvoice, pArrLineInvoice, pArrT
     
     return mStrContentTXT;
 }
+
+
+
+
+
+
+
+
 
 
 

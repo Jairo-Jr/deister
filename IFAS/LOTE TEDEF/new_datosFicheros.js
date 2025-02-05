@@ -3956,7 +3956,8 @@ function datosFicheros(pdata, pIntIndicador) {
                     tdfac_mntprepac,
                     tdfac_baseimp,
                     tdfac_montofact,
-                    tdfac_totfact
+                    tdfac_totfact,
+                    tdfac_mecpag fvh_modo_pago
                 </columns>
                 <from table = 'fas_tedef_dfac_test' />
                 <where>
@@ -3994,7 +3995,7 @@ function datosFicheros(pdata, pIntIndicador) {
          */
         let mDcSuma			= Ax.math.bc.of(mObjSumDate.tdate_totgstcub);
         let mBcIgv			= 0.00;
-        if (mRowDfac.fvh_modo_pago == 'PPS') {
+        if (mObjMntDfac.fvh_modo_pago == 'PPS') {
         	mDbBaseImp		= Ax.math.bc.sub(mDcSuma, mObjSumDate.tdate_prdsemedexo, Ax.math.bc.add(mObjSumDate.tdate_cpgfijaf, mObjSumDate.tdate_cpgvaraf));
         	mBcIgv			= Ax.math.bc.mul(mDbBaseImp, 0.18).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
         	mDbTotFac		= Ax.math.bc.sub(Ax.math.bc.add(mDbBaseImp, mBcIgv, mObjSumDate.tdate_prdsemedexo), Ax.math.bc.add(mObjSumDate.tdate_cpgfijexo, mObjSumDate.tdate_cpgvarexo));
@@ -4009,8 +4010,8 @@ function datosFicheros(pdata, pIntIndicador) {
         // 	mBcIgv = mObjDfac.fvh_impuesto_val;
         // }
 
-        if(mRowDfac.fvh_numero == 'F418-00048421'){
-            console.log(mRowDfac.fvh_modo_pago);
+        if(mRowDfac.fvh_numero == 'F801-00008893'){
+            console.log(mObjMntDfac.fvh_modo_pago);
             console.log('mDbBaseImp', mDbBaseImp);
             console.log('mBcIgv', mBcIgv);
             console.log('mDbTotFac', mDbTotFac);
@@ -4040,7 +4041,7 @@ function datosFicheros(pdata, pIntIndicador) {
 
 
 
-        if(mRowDfac.fvh_numero == 'F418-00048421'){
+        if(mRowDfac.fvh_numero == 'F801-00008893'){
             console.log('mTotImpCalc', mTotImpCalc);
             console.log('BASE_FACT', mObjMntDfac.tdfac_totfact);
             console.log(mRsDataDate);
@@ -4161,11 +4162,11 @@ function datosFicheros(pdata, pIntIndicador) {
 //     tdf_centro: 'CRP0',
 //     tdl_financiador: '00043392'
 // }
-// F418-00048421
+// F801-00008893
 var pdata = {
-    tdl_nrolote: '0623830',
+    tdl_nrolote: '0624239',
     tdf_centro: 'CRP0',
-    tdl_financiador: '00043392'
+    tdl_financiador: '00041343'
 }
 
 datosFicheros(pdata, 0)
