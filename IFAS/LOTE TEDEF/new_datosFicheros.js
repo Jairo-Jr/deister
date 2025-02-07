@@ -4,6 +4,8 @@ function datosFicheros(pdata, pIntIndicador) {
     Ax.db.execute(`DELETE fas_tedef_date_test WHERE tdate_nrolote = ?`, pdata.tdl_nrolote);
     Ax.db.execute(`DELETE fas_tedef_dserv_test WHERE tdserv_nrolote = ?`, pdata.tdl_nrolote);
     Ax.db.execute(`DELETE fas_tedef_dfarm_test WHERE tdfarm_nrolote = ?`, pdata.tdl_nrolote);
+
+    var mStrCondFact = `AND fas_factura_venta.fvh_numero = 'F418-00046104'`
 	/**
      * Se redondea hacia arriba cuando el tercer decimal es mayor que 5, 
      * de lo contrario se redondea hacia abajo
@@ -100,6 +102,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					tdf_nrolote	= ?
 				AND tdf_centro	= ?
 				AND liql_estado IN ('P', 'F')
+                ${mStrCondFact}
 			</where>
 			${mStrSqlSegOrden}
 		</select>
@@ -429,6 +432,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					AND ${mStrSqlCond}
 					AND fas_admision_aut.aut_estado = 'A'
 					AND fas_admision_aut.aut_tipo != '99'
+                    ${mStrCondFact}
 				</where>
 				<order>
 					fas_admision_aut.aut_tipo ASC
@@ -484,6 +488,7 @@ function datosFicheros(pdata, pIntIndicador) {
 							AND fas_paquete_grupo.pgr_estado	= 'A'
 							AND fas_paquete.paq_estado			= 'A'
 							AND fas_factura_venta.fvh_id		= ?
+                            ${mStrCondFact}
 						</where>
 					</select>
 				`, mObjDfac.fvh_id).toOne();
@@ -906,6 +911,7 @@ function datosFicheros(pdata, pIntIndicador) {
                     tdf_nrolote	= ?
                 AND tdf_centro	= ?
                 AND liql_estado in ('P', 'F')
+                ${mStrCondFact}
             </where>
             ${mStrSqlOrden}
         </select>
@@ -1134,6 +1140,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					AND fas_liquidacion.liq_id = ?
 					AND fas_liquidacion_linea.liql_importe_neto > 0
 					AND fas_liquidacion_linea.liql_estado IN ('P', 'F', 'Q')
+                    ${mStrCondFact}
 				</where>
 				<order>
 					farm_correlativo
@@ -1627,6 +1634,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					AND fas_liquidacion.liq_id = ?
 					AND fas_liquidacion_linea.liql_importe_neto > 0
 					AND fas_liquidacion_linea.liql_estado IN ('P', 'F', 'Q')
+                    ${mStrCondFact}
 				</where>
 				<group>
 					1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44
@@ -2426,6 +2434,7 @@ function datosFicheros(pdata, pIntIndicador) {
 						AND fas_admision_aut.aut_tipo != '99'
 						AND fas_admision_aut.aut_estado = 'A'
 						AND fas_liquidacion_linea.liql_estado IN ('P','F','Q')
+                        ${mStrCondFact}
 					</where>
 					<order>
 						fas_admision_aut.date_created
@@ -3511,6 +3520,7 @@ function datosFicheros(pdata, pIntIndicador) {
 										AND fas_tedef_dserv_test.tdserv_pres = ?
 										AND fas_liquidacion_linea.acp_id IS NOT NULL
 										AND fas_liquidacion_linea.liql_estado IN ('P','F','Q')
+                                        ${mStrCondFact}
 									</where>
 									<order>
 										serv_correlativo
@@ -3598,6 +3608,7 @@ function datosFicheros(pdata, pIntIndicador) {
 										AND fas_tedef_dfarm_test.tdfarm_pres = ?
 										AND fas_liquidacion_linea.acd_id IS NOT NULL
 										AND fas_liquidacion_linea.liql_estado IN ('P','F','Q')
+                                        ${mStrCondFact}
 									</where>
 								</select>
 							`, mRowData.tdf_nrolote, mRowData.fvh_numero, mRowData.liq_id, mCountFichAte).toMemory();
@@ -3883,6 +3894,7 @@ function datosFicheros(pdata, pIntIndicador) {
             </from>
             <where>
                 tdfac_lote = ?
+                ${mStrCondFact}
             </where>
         </select>
     `, mStrLote).toMemory();
@@ -4010,7 +4022,7 @@ function datosFicheros(pdata, pIntIndicador) {
         // 	mBcIgv = mObjDfac.fvh_impuesto_val;
         // }
 
-        if(mRowDfac.fvh_numero == 'F801-00008893'){
+        if(mRowDfac.fvh_numero == 'F418-00046104'){
             console.log(mObjMntDfac.fvh_modo_pago);
             console.log('mDbBaseImp', mDbBaseImp);
             console.log('mBcIgv', mBcIgv);
@@ -4022,7 +4034,8 @@ function datosFicheros(pdata, pIntIndicador) {
             <select>
                 <columns>
                     tdate_serial,
-                    tdate_cpgvaraf_round
+                    tdate_cpgvaraf_round,
+                    tdate_cpgfijaf_round
                 </columns>
                 <from table = 'fas_tedef_date_test' />
                 <where>
@@ -4041,7 +4054,7 @@ function datosFicheros(pdata, pIntIndicador) {
 
 
 
-        if(mRowDfac.fvh_numero == 'F801-00008893'){
+        if(mRowDfac.fvh_numero == 'F418-00046104'){
             console.log('mTotImpCalc', mTotImpCalc);
             console.log('BASE_FACT', mObjMntDfac.tdfac_totfact);
             console.log(mRsDataDate);
@@ -4063,18 +4076,33 @@ function datosFicheros(pdata, pIntIndicador) {
 
                 mObjSumDate.tdate_cpgvaraf = Ax.math.bc.add(mObjSumDate.tdate_cpgvaraf, 0.01);
             } else if (mDiffBases < 0.00) {
-                Ax.db.update('fas_tedef_date_test',
-                    {
-                        "tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01),
-                        "tdate_cpgvaraf"		: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01)
-                    },
-                    {
-                        "tdate_serial"			: mRowDate.tdate_serial
-                    }
-                );
+
+                if(mRowDate.tdate_cpgvaraf_round > 0.00){
+                    Ax.db.update('fas_tedef_date_test',
+                        {
+                            "tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01),
+                            "tdate_cpgvaraf"		: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01)
+                        },
+                        {
+                            "tdate_serial"			: mRowDate.tdate_serial
+                        }
+                    );
+                    mObjSumDate.tdate_cpgvaraf = Ax.math.bc.sub(mObjSumDate.tdate_cpgvaraf, 0.01);
+                } else {
+                    Ax.db.update('fas_tedef_date_test',
+                        {
+                            "tdate_cpgfijaf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgfijaf_round, 0.01),
+                            "tdate_cpgfijaf"		: Ax.math.bc.sub(mRowDate.tdate_cpgfijaf_round, 0.01)
+                        },
+                        {
+                            "tdate_serial"			: mRowDate.tdate_serial
+                        }
+                    );
+                    mObjSumDate.tdate_cpgfijaf = Ax.math.bc.sub(mObjSumDate.tdate_cpgfijaf, 0.01);
+                }
+                
                 mDiffBases = Ax.math.bc.add(mDiffBases, 0.01);
                 
-                mObjSumDate.tdate_cpgvaraf = Ax.math.bc.sub(mObjSumDate.tdate_cpgvaraf, 0.01);
             }
         });
 
@@ -4162,9 +4190,9 @@ function datosFicheros(pdata, pIntIndicador) {
 //     tdf_centro: 'CRP0',
 //     tdl_financiador: '00043392'
 // }
-// F801-00008893
+// F418-00046104
 var pdata = {
-    tdl_nrolote: '0624239',
+    tdl_nrolote: '0622931',
     tdf_centro: 'CRP0',
     tdl_financiador: '00041343'
 }
@@ -4177,9 +4205,9 @@ datosFicheros(pdata, 0)
 
 /**
 
-SELECT * FROM fas_tedef_dfac_test WHERE tdfac_lote = '0622913' AND tdfac_nrodocpg = 'F418-00047571';
-SELECT * FROM fas_tedef_date_test WHERE tdate_nrolote = '0622913' AND tdate_nrodocpg = 'F418-00047571';
-SELECT * FROM fas_tedef_dserv_test WHERE tdserv_nrolote = '0622913';
-SELECT * FROM fas_tedef_dfarm_test WHERE tdfarm_nrolote = '0622913';
+SELECT * FROM fas_tedef_dfac_test WHERE tdfac_lote = '0622931' AND tdfac_nrodocpg = 'F418-00046104';
+SELECT * FROM fas_tedef_date_test WHERE tdate_nrolote = '0622931' AND tdate_nrodocpg = 'F418-00046104';
+SELECT * FROM fas_tedef_dserv_test WHERE tdserv_nrolote = '0622931';
+SELECT * FROM fas_tedef_dfarm_test WHERE tdfarm_nrolote = '0622931';
 
  */
