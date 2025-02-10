@@ -5,15 +5,102 @@ function datosFicheros(pdata, pIntIndicador) {
     Ax.db.execute(`DELETE fas_tedef_dserv_test WHERE tdserv_nrolote = ?`, pdata.tdl_nrolote);
     Ax.db.execute(`DELETE fas_tedef_dfarm_test WHERE tdfarm_nrolote = ?`, pdata.tdl_nrolote);
 
-    var mStrCondFact = `AND fas_factura_venta.fvh_numero = 'F418-00046104'`
+    var mStrCondFact = `AND fas_factura_venta.fvh_numero = 'F418-00047108'`;
+    // var mStrCondFact = `AND 1=1`;
+
 	/**
      * Se redondea hacia arriba cuando el tercer decimal es mayor que 5, 
      * de lo contrario se redondea hacia abajo
     */
-    function obtenerImporteRedondeado(numero) {
+    function ajusteDiferenciaFarmAte(pNroLote, pNumFac, pNumFichAte, pDiffCopago, pCovigv) {
+        
+        let mArrDfarm = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    tdfarm_serial,
+                    tdfarm_cpgprdfarm,
+                    tdfarm_cpgprd_round
+                </columns>
+                <from table = 'fas_tedef_dfarm_test' />
+                <where>
+                        tdfarm_nrolote = ?
+                    AND tdfarm_nrodocpg = ?
+                    AND tdfarm_pres = ?
+                </where>
+                <order>
+                    tdfarm_pres, tdfarm_corprd
+                </order>
+            </select>
+        `, pNroLote, pNumFac, pNumFichAte).toJSONArray();
+        console.log(pNroLote, pNumFac, pNumFichAte);
+
+        let mArrDate = Ax.db.executeQuery(`
+            <select>
+                <columns>
+                    tdserv_serial,
+                    tdserv_cpgvarproc,
+                    tdserv_cpgvr_round
+                </columns>
+                <from table = 'fas_tedef_dserv_test' />
+                <where>
+                        tdserv_nrolote = ?
+        			AND tdserv_nrodocpg = ?
+                    AND tdserv_pres = ?
+                </where>
+                <order>
+                    tdserv_pres, tdserv_corserv
+                </order>
+            </select>
+        `, pNroLote, pNumFac, pNumFichAte).toJSONArray();
+
+        /**
+         * Proteccion para evitar bucle infinito
+        */
+        let mNumMaxIte = Ax.math.bc.mul(Ax.math.bc.abs(pDiffCopago), 100);
+        while(pDiffCopago != 0.00 || mNumMaxIte > 0){
+            let i = 0;
+            mArrDfarm.forEach(rowDfarm => {
+                if(pDiffCopago > 0.00){
+                    if(rowDfarm.tdfarm_cpgprd_round > 0.00){
+                        Ax.db.update('fas_tedef_dfarm_test',
+                            {
+                                "tdfarm_cpgprdfarm"     : Ax.math.bc.sub(rowDfarm.tdfarm_cpgprd_round, 0.01),
+                                "tdfarm_cpgprd_round"   : Ax.math.bc.sub(rowDfarm.tdfarm_cpgprd_round, 0.01)
+                            },
+                            {
+                                "tdfarm_serial"			: rowDfarm.tdfarm_serial
+                            }
+                        );
+                        
+                        pDiffCopago = Ax.math.bc.sub(pDiffCopago, 0.01);
+                        pCovigv = Ax.math.bc.sub(pCovigv, 0.01);
+                        mArrDfarm[i].tdfarm_cpgprd_round = Ax.math.bc.sub(rowDfarm.tdfarm_cpgprd_round, 0.01);
+                    }
+                    
+                } else if(pDiffCopago < 0.00){
+                    Ax.db.update('fas_tedef_dfarm_test',
+                        {
+                            "tdfarm_cpgprdfarm"     : Ax.math.bc.add(rowDfarm.tdfarm_cpgprd_round, 0.01),
+                            "tdfarm_cpgprd_round"   : Ax.math.bc.add(rowDfarm.tdfarm_cpgprd_round, 0.01)
+                        },
+                        {
+                            "tdfarm_serial"			: rowDfarm.tdfarm_serial
+                        }
+                    );
+                    pDiffCopago = Ax.math.bc.add(pDiffCopago, 0.01);
+                    pCovigv = Ax.math.bc.add(pCovigv, 0.01);
+                    mArrDfarm[i].tdfarm_cpgprd_round = Ax.math.bc.add(rowDfarm.tdfarm_cpgprd_round, 0.01);
+                }
+                i++;
+            });
+
+            mNumMaxIte = Ax.math.bc.sub(mNumMaxIte, 0.01);
+        }
         // Multiplicamos por 1000 y aplicamos Math.floor para obtener la parte entera
-        const tercerDecimal = Math.floor((numero * 1000) % 10);
-        return tercerDecimal > 5 ? Ax.math.bc.of(numero).setScale(2, Ax.math.bc.RoundingMode.HALF_UP): Ax.math.bc.of(numero).setScale(2, Ax.math.bc.RoundingMode.DOWN);
+        // const tercerDecimal = Math.floor((numero * 1000) % 10);
+        // return tercerDecimal > 5 ? Ax.math.bc.of(numero).setScale(2, Ax.math.bc.RoundingMode.HALF_UP): Ax.math.bc.of(numero).setScale(2, Ax.math.bc.RoundingMode.DOWN);
+
+        return pCovigv;
     }
 
 	// Protección ante algún error, realizamos un rollback
@@ -1644,7 +1731,7 @@ function datosFicheros(pdata, pIntIndicador) {
 				</order>
 			</select>
 		`, mRowData.tdf_nrolote, mRowData.fvh_numero, mRowData.liq_id).toMemory();
-
+        
         /**
 		 * Si tenemos servicios de tipo paquete, se eliminan las lineas con estado "F" (línea del paquete)
 		 * y se mantienen las prestaciones que contiene el paquete ('Q')
@@ -2445,7 +2532,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					</group>
 				</select>
 			`, mRowData.tdf_nrolote, mRowData.fvh_numero, mRowData.liq_episodio, mRowData.liq_cnt_id).toMemory();
-
+            
 			// Verificación si hay lineas informadas para Date
 			if (mRsDate.getRowCount() > 0) {
 
@@ -3383,6 +3470,22 @@ function datosFicheros(pdata, pIntIndicador) {
 						row.aut_tipo_documento_tit		= mObjDatosPaciente.pac_tipo_documento;
 						row.aut_numero_documento_tit	= mObjDatosPaciente.pac_numero_documento;
 
+                        if(mRowData.liq_episodio == 'C24CLIRP37392968'){
+                            
+                            console.log('covigv', covigv, 'row', row.liql_importe_neto_coa_pp);
+                            /**
+                             * covigv: Suma de copagos farmacia y atenciones
+                            */
+                            let mDiffCopago = Ax.math.bc.sub(covigv, row.liql_importe_neto_coa_pp).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
+                            if(mDiffCopago > 0.00 || mDiffCopago < 0.00){
+                                console.log('mDiffCopago', mDiffCopago);
+                                covigv = ajusteDiferenciaFarmAte(row.tdf_nrolote, row.fvh_numero, mCountFichAte, mDiffCopago, covigv);
+                                console.log('luego_ajuste', covigv);
+                                // let xyzcovigv = ajusteDiferenciaFarmAte(row.tdf_nrolote, row.fvh_numero, mCountFichAte, mDiffCopago, covigv);
+                                // console.log('luego_ajuste', xyzcovigv);
+                            }
+                        }
+                        
 						// Insert en fas_tedef_date_test 
 						mIntSerialDate = Ax.db.insert('fas_tedef_date_test',
 							{
@@ -4022,7 +4125,7 @@ function datosFicheros(pdata, pIntIndicador) {
         // 	mBcIgv = mObjDfac.fvh_impuesto_val;
         // }
 
-        if(mRowDfac.fvh_numero == 'F418-00046104'){
+        if(mRowDfac.fvh_numero == 'F418-00047108'){
             console.log(mObjMntDfac.fvh_modo_pago);
             console.log('mDbBaseImp', mDbBaseImp);
             console.log('mBcIgv', mBcIgv);
@@ -4030,81 +4133,94 @@ function datosFicheros(pdata, pIntIndicador) {
         }
 
 
-        let mRsDataDate = Ax.db.executeQuery(`
-            <select>
-                <columns>
-                    tdate_serial,
-                    tdate_cpgvaraf_round,
-                    tdate_cpgfijaf_round
-                </columns>
-                <from table = 'fas_tedef_date_test' />
-                <where>
-                        tdate_nrodocpg = ?
-                    AND tdate_nrolote = ?
-                </where>
-            </select>
-        `, mRowDfac.fvh_numero, mRowDfac.tdfac_lote).toJSONArray();
+        
 
         // let mBaseImpCalc = Ax.math.bc.sub(mObjMntDfac.tdfac_mntprepac, Ax.math.bc.add(mObjSumDate.tdate_cpgvaraf, mObjSumDate.tdate_cpgfijaf));
         // let mDiffBases = Ax.math.bc.sub(mBaseImpCalc, mObjMntDfac.tdfac_baseimp).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
 
-
-        let mTotImpCalc = mDbTotFac;
-        let mDiffBases = Ax.math.bc.sub(mTotImpCalc, mObjMntDfac.tdfac_totfact).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
-
+        let mBaseImpCalc = mDbBaseImp;
+        let mDiffBases = Ax.math.bc.sub(mBaseImpCalc, mObjMntDfac.tdfac_baseimp).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
 
 
-        if(mRowDfac.fvh_numero == 'F418-00046104'){
-            console.log('mTotImpCalc', mTotImpCalc);
-            console.log('BASE_FACT', mObjMntDfac.tdfac_totfact);
-            console.log(mRsDataDate);
+        // let mTotImpCalc = mDbTotFac;
+        // let mDiffBases = Ax.math.bc.sub(mTotImpCalc, mObjMntDfac.tdfac_totfact).setScale(2, Ax.math.bc.RoundingMode.HALF_UP);
+
+
+
+        if(mRowDfac.fvh_numero == 'F418-00047108'){
+            // console.log('mTotImpCalc', mTotImpCalc);
+            console.log('mBaseImpCalc', mBaseImpCalc);
+            console.log('TOT_FACT', mObjMntDfac.tdfac_totfact);
+            console.log('mDiffBases', mDiffBases);
+            // console.log('num_atenciones', mRsDataDate.length);
         }
+        while(mDiffBases != 0.00){
+            console.log('DIFF:', mDiffBases);
+            let mRsDataDate = Ax.db.executeQuery(`
+                <select>
+                    <columns>
+                        tdate_serial,
+                        tdate_cpgvaraf_round,
+                        tdate_cpgfijaf_round
+                    </columns>
+                    <from table = 'fas_tedef_date_test' />
+                    <where>
+                            tdate_nrodocpg = ?
+                        AND tdate_nrolote = ?
+                    </where>
+                </select>
+            `, mRowDfac.fvh_numero, mRowDfac.tdfac_lote).toJSONArray();
+            mRsDataDate.forEach(mRowDate => {
+                if (mDiffBases > 0.00) {
+                    
+                    Ax.db.update('fas_tedef_date_test',
+                        {
+                            "tdate_cpgvaraf_round"	: Ax.math.bc.add(mRowDate.tdate_cpgvaraf_round, 0.01),
+                            "tdate_cpgvaraf"		: Ax.math.bc.add(mRowDate.tdate_cpgvaraf_round, 0.01)
+                        },
+                        {
+                            "tdate_serial"			: mRowDate.tdate_serial
+                        }
+                    );
+                    mDiffBases = Ax.math.bc.sub(mDiffBases, 0.01);
 
-        mRsDataDate.forEach(mRowDate => {
-            if (mDiffBases > 0.00) {
-                
-                Ax.db.update('fas_tedef_date_test',
-                    {
-                        "tdate_cpgvaraf_round"	: Ax.math.bc.add(mRowDate.tdate_cpgvaraf_round, 0.01),
-                        "tdate_cpgvaraf"		: Ax.math.bc.add(mRowDate.tdate_cpgvaraf_round, 0.01)
-                    },
-                    {
-                        "tdate_serial"			: mRowDate.tdate_serial
+                    mObjSumDate.tdate_cpgvaraf = Ax.math.bc.add(mObjSumDate.tdate_cpgvaraf, 0.01);
+                } else if (mDiffBases < 0.00) {
+
+                    if(mRowDate.tdate_cpgvaraf_round > 0.00){
+                        console.log('+++++', mRowDate.tdate_cpgvaraf_round)
+                        Ax.db.update('fas_tedef_date_test',
+                            {
+                                "tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01),
+                                "tdate_cpgvaraf"		: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01)
+                            },
+                            {
+                                "tdate_serial"			: mRowDate.tdate_serial
+                            }
+                        );
+                        mObjSumDate.tdate_cpgvaraf = Ax.math.bc.sub(mObjSumDate.tdate_cpgvaraf, 0.01);
+                        mDiffBases = Ax.math.bc.add(mDiffBases, 0.01);
+                    } else if(mRowDate.tdate_cpgfijaf_round > 0.00){
+                        
+                        Ax.db.update('fas_tedef_date_test',
+                            {
+                                "tdate_cpgfijaf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgfijaf_round, 0.01),
+                                "tdate_cpgfijaf"		: Ax.math.bc.sub(mRowDate.tdate_cpgfijaf_round, 0.01)
+                            },
+                            {
+                                "tdate_serial"			: mRowDate.tdate_serial
+                            }
+                        );
+                        mObjSumDate.tdate_cpgfijaf = Ax.math.bc.sub(mObjSumDate.tdate_cpgfijaf, 0.01);
+                        mDiffBases = Ax.math.bc.add(mDiffBases, 0.01);
                     }
-                );
-                mDiffBases = Ax.math.bc.sub(mDiffBases, 0.01);
-
-                mObjSumDate.tdate_cpgvaraf = Ax.math.bc.add(mObjSumDate.tdate_cpgvaraf, 0.01);
-            } else if (mDiffBases < 0.00) {
-
-                if(mRowDate.tdate_cpgvaraf_round > 0.00){
-                    Ax.db.update('fas_tedef_date_test',
-                        {
-                            "tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01),
-                            "tdate_cpgvaraf"		: Ax.math.bc.sub(mRowDate.tdate_cpgvaraf_round, 0.01)
-                        },
-                        {
-                            "tdate_serial"			: mRowDate.tdate_serial
-                        }
-                    );
-                    mObjSumDate.tdate_cpgvaraf = Ax.math.bc.sub(mObjSumDate.tdate_cpgvaraf, 0.01);
-                } else {
-                    Ax.db.update('fas_tedef_date_test',
-                        {
-                            "tdate_cpgfijaf_round"	: Ax.math.bc.sub(mRowDate.tdate_cpgfijaf_round, 0.01),
-                            "tdate_cpgfijaf"		: Ax.math.bc.sub(mRowDate.tdate_cpgfijaf_round, 0.01)
-                        },
-                        {
-                            "tdate_serial"			: mRowDate.tdate_serial
-                        }
-                    );
-                    mObjSumDate.tdate_cpgfijaf = Ax.math.bc.sub(mObjSumDate.tdate_cpgfijaf, 0.01);
+                    
+                    
+                    
                 }
-                
-                mDiffBases = Ax.math.bc.add(mDiffBases, 0.01);
-                
-            }
-        });
+            });
+        }
+        console.log('FIN DIFF:', mDiffBases);
 
 
         /**
@@ -4190,7 +4306,7 @@ function datosFicheros(pdata, pIntIndicador) {
 //     tdf_centro: 'CRP0',
 //     tdl_financiador: '00043392'
 // }
-// F418-00046104
+// F418-00047108
 var pdata = {
     tdl_nrolote: '0622931',
     tdf_centro: 'CRP0',
@@ -4205,8 +4321,8 @@ datosFicheros(pdata, 0)
 
 /**
 
-SELECT * FROM fas_tedef_dfac_test WHERE tdfac_lote = '0622931' AND tdfac_nrodocpg = 'F418-00046104';
-SELECT * FROM fas_tedef_date_test WHERE tdate_nrolote = '0622931' AND tdate_nrodocpg = 'F418-00046104';
+SELECT * FROM fas_tedef_dfac_test WHERE tdfac_lote = '0622931' AND tdfac_nrodocpg = 'F418-00047108';
+SELECT * FROM fas_tedef_date_test WHERE tdate_nrolote = '0622931' AND tdate_nrodocpg = 'F418-00047108';
 SELECT * FROM fas_tedef_dserv_test WHERE tdserv_nrolote = '0622931';
 SELECT * FROM fas_tedef_dfarm_test WHERE tdfarm_nrolote = '0622931';
 
