@@ -1,5 +1,10 @@
 function datosFicheros(pdata, pIntIndicador) {
 
+    Ax.db.execute(`DELETE fas_tedef_dfac_test WHERE tdfac_lote = ?`, pdata.tdl_nrolote);
+    Ax.db.execute(`DELETE fas_tedef_date_test WHERE tdate_nrolote = ?`, pdata.tdl_nrolote);
+    Ax.db.execute(`DELETE fas_tedef_dserv_test WHERE tdserv_nrolote = ?`, pdata.tdl_nrolote);
+    Ax.db.execute(`DELETE fas_tedef_dfarm_test WHERE tdfarm_nrolote = ?`, pdata.tdl_nrolote);
+
 	// Protección ante algún error, realizamos un rollback
 	Ax.db.commitWork();
 	Ax.db.beginWork();
@@ -510,7 +515,7 @@ function datosFicheros(pdata, pIntIndicador) {
 				mIntSecu_farm ++
 
 				// Inserción en la tabla Dfarm
-				Ax.db.insert('fas_tedef_dfarm',
+				Ax.db.insert('fas_tedef_dfarm_test',
 					{
 						"tdfarm_nrolote"		: mrow.tdf_nrolote,
 						"tdfarm_ruc"			: mrow.emp_nif,
@@ -569,7 +574,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					NVL(ROUND(SUM(tdfarm_mntncubprd), 2), 0.00)	tdfarm_mntncubprd,
 					NVL(SUM(tdfarm_mntncub_round), 0.00)		tdfarm_mntncub_round
 				</columns>
-				<from table = 'fas_tedef_dfarm' />
+				<from table = 'fas_tedef_dfarm_test' />
 				<where>
 						tdfarm_nrolote	= ?
 					AND tdfarm_nrodocpg	= ?
@@ -592,7 +597,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					tdfarm_mntprd_round,
 					tdfarm_mntncub_round
 				</columns>
-				<from table = 'fas_tedef_dfarm' />
+				<from table = 'fas_tedef_dfarm_test' />
 				<where>
 						tdfarm_nrolote	= ?
 					AND tdfarm_nrodocpg	= ?
@@ -698,7 +703,7 @@ function datosFicheros(pdata, pIntIndicador) {
 				}
 
 				// Actualización de los montos de dfarm
-				Ax.db.update('fas_tedef_dfarm',
+				Ax.db.update('fas_tedef_dfarm_test',
 					{
 						"tdfarm_mntunt_round"	: mRowFarmRound.tdfarm_mntunt_round,
 						"tdfarm_cpgprd_round"	: mRowFarmRound.tdfarm_cpgprd_round,
@@ -1024,7 +1029,7 @@ function datosFicheros(pdata, pIntIndicador) {
 				}
 
 				// Inserción en la tabla Dserv
-				mIntSerDserv = Ax.db.insert('fas_tedef_dserv',
+				mIntSerDserv = Ax.db.insert('fas_tedef_dserv_test',
 					{
 						"tdserv_nrolote"		: mRow.tdf_nrolote,
 						"tdserv_ruc"			: mRow.emp_nif,
@@ -1163,7 +1168,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					if (mIntIndicador == 2) {
 						mIntRubro = '15';
 						for (let mIndFor = 0; mIndFor < mIntSer.length; mIndFor++) {
-							Ax.db.update('fas_tedef_dserv',
+							Ax.db.update('fas_tedef_dserv_test',
 								{
 									"tdserv_codrubro"	: mIntRubro
 								},
@@ -1267,7 +1272,7 @@ function datosFicheros(pdata, pIntIndicador) {
 				}
 
 				// Updateamos los campos calculados con las reglas previas
-				Ax.db.update('fas_tedef_dserv',
+				Ax.db.update('fas_tedef_dserv_test',
 					{
 						"tdserv_mntprocserv"	: mIntMntCub,
 						"tdserv_igv_round"		: Ax.math.bc.of(mIntMntCub).setScale(2, Ax.math.bc.RoundingMode.HALF_UP),
@@ -1310,7 +1315,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					NVL(ROUND(SUM(tdserv_mntnocubserv), 2), 0.00)	tdserv_mntnocubserv,
 					NVL(SUM(tdserv_mnttot_round), 0.00)				tdserv_mnttot_round
 				</columns>
-				<from table = 'fas_tedef_dserv' />
+				<from table = 'fas_tedef_dserv_test' />
 				<where>
 						tdserv_nrolote	= ?
 					AND tdserv_nrodocpg	= ?
@@ -1335,7 +1340,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					tdserv_igv_round,
 					tdserv_mnttot_round
 				</columns>
-				<from table = 'fas_tedef_dserv' />
+				<from table = 'fas_tedef_dserv_test' />
 				<where>
 						tdserv_nrolote	= ?
 					AND tdserv_nrodocpg	= ?
@@ -1463,7 +1468,7 @@ function datosFicheros(pdata, pIntIndicador) {
 				}
 
 				// Actualización de las linas
-				Ax.db.update('fas_tedef_dserv',
+				Ax.db.update('fas_tedef_dserv_test',
 					{
 						"tdserv_mntuni_round"	: mRowServRound.tdserv_mntuni_round,
 						"tdserv_cpgvr_round"	: mRowServRound.tdserv_cpgvr_round,
@@ -1481,7 +1486,7 @@ function datosFicheros(pdata, pIntIndicador) {
 
 		/**
 		 * Obtenemos en número máximo de prestacion informada en servicios y farmacia
-		 * el mayor de ellos será la cantidad de veces que se recorrerá para fas_tedef_date
+		 * el mayor de ellos será la cantidad de veces que se recorrerá para fas_tedef_date_test
 		 */
 		let mIntMax		= 1;
 		let mIntMaxFarm	= 1;
@@ -1498,7 +1503,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					<columns>
 						MAX(tdserv_pres)
 					</columns>
-					<from table = 'fas_tedef_dserv' />
+					<from table = 'fas_tedef_dserv_test' />
 					<where>
 							tdserv_nrodocpg	= ?
 						AND tdserv_nrolote	= ?
@@ -1511,7 +1516,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					<columns>
 						MAX(tdfarm_pres)
 					</columns>
-					<from table = 'fas_tedef_dfarm' />
+					<from table = 'fas_tedef_dfarm_test' />
 					<where>
 							tdfarm_nrodocpg = ?
 						AND tdfarm_nrolote = ?
@@ -2250,7 +2255,7 @@ function datosFicheros(pdata, pIntIndicador) {
 									SUM(tdserv_cpgfj_round)	tdserv_cpgfj_round,
 									tdserv_servexeimp
 								</columns>
-								<from table = 'fas_tedef_dserv' />
+								<from table = 'fas_tedef_dserv_test' />
 								<where>
 										tdserv_nrodocpg = ?
 									AND tdserv_pres 	= ?
@@ -2269,7 +2274,7 @@ function datosFicheros(pdata, pIntIndicador) {
 									SUM(tdfarm_cpgprd_round) tdfarm_cpgprd_round,
 									tdfarm_prdexeifv
 								</columns>
-								<from table = 'fas_tedef_dfarm' />
+								<from table = 'fas_tedef_dfarm_test' />
 								<where>
 										tdfarm_nrodocpg	= ?
 									AND tdfarm_pres		= ?
@@ -2289,7 +2294,7 @@ function datosFicheros(pdata, pIntIndicador) {
 									tdfarm_prdexeifv,
 									tdfarm_cpgprd_round
 								</columns>
-								<from table = 'fas_tedef_dfarm' />
+								<from table = 'fas_tedef_dfarm_test' />
 								<where>
 										tdfarm_nrodocpg	= ?
 									AND tdfarm_pres		= ?
@@ -2306,7 +2311,7 @@ function datosFicheros(pdata, pIntIndicador) {
 									tdserv_cpgfj_round,
 									tdserv_cpgvr_round
 								</columns>
-								<from table = 'fas_tedef_dserv' />
+								<from table = 'fas_tedef_dserv_test' />
 								<where>
 										tdserv_nrodocpg	= ?
 									AND tdserv_pres		= ?
@@ -2412,7 +2417,7 @@ function datosFicheros(pdata, pIntIndicador) {
 								}
 
 								// Actualización del copago fijo y variable afecto a IGV
-								Ax.db.update('fas_tedef_dserv',
+								Ax.db.update('fas_tedef_dserv_test',
 									{
 										"tdserv_cpgfj_round"	: mRowServLineas.tdserv_cpgfj_round,
 										"tdserv_cpgvr_round"	: mRowServLineas.tdserv_cpgvr_round
@@ -2461,7 +2466,7 @@ function datosFicheros(pdata, pIntIndicador) {
 								}
 
 								// Actualización del copago fijo y variable Exonerado a IGV
-								Ax.db.update('fas_tedef_dserv',
+								Ax.db.update('fas_tedef_dserv_test',
 									{
 										"tdserv_cpgfj_round"	: mRowServLineas.tdserv_cpgfj_round,
 										"tdserv_cpgvr_round"	: mRowServLineas.tdserv_cpgvr_round
@@ -2506,7 +2511,7 @@ function datosFicheros(pdata, pIntIndicador) {
 									}
 								}
 
-								Ax.db.update('fas_tedef_dfarm',
+								Ax.db.update('fas_tedef_dfarm_test',
 									{
 										"tdfarm_cpgprd_round"	: mRowFarmLineas.tdfarm_cpgprd_round
 									},
@@ -2534,7 +2539,7 @@ function datosFicheros(pdata, pIntIndicador) {
 									}
 								}
 
-								Ax.db.update('fas_tedef_dfarm',
+								Ax.db.update('fas_tedef_dfarm_test',
 									{
 										"tdfarm_cpgprd_round"	: mRowFarmLineas.tdfarm_cpgprd_round
 									},
@@ -2581,8 +2586,8 @@ function datosFicheros(pdata, pIntIndicador) {
 						row.aut_tipo_documento_tit		= mObjDatosPaciente.pac_tipo_documento;
 						row.aut_numero_documento_tit	= mObjDatosPaciente.pac_numero_documento;
 
-						// Insert en fas_tedef_date 
-						mIntSerialDate = Ax.db.insert('fas_tedef_date',
+						// Insert en fas_tedef_date_test 
+						mIntSerialDate = Ax.db.insert('fas_tedef_date_test',
 							{
 								"tdate_nrolote"			: row.tdf_nrolote,
 								"tdate_ruc"				: row.emp_nif,
@@ -2655,7 +2660,7 @@ function datosFicheros(pdata, pIntIndicador) {
 										DISTINCT
 										fas_liquidacion_linea.liq_id,
 										fas_liquidacion_linea.liql_id,
-										fas_tedef_dserv.tdserv_mntprocserv liql_importe_neto,
+										fas_tedef_dserv_test.tdserv_mntprocserv liql_importe_neto,
 										fas_liquidacion_linea.liql_precio_fac,
 										fas_liquidacion_linea.liql_cubierto,
 										fas_liquidacion_linea.liql_impuesto,
@@ -2692,10 +2697,10 @@ function datosFicheros(pdata, pIntIndicador) {
 																<join table='fas_prestacion'>
 																	<on>fas_liquidacion_linea.liql_presta_fact = fas_prestacion.pre_codigo</on>
 																</join>
-																<join table = 'fas_tedef_dserv'>
-																	<on>fas_tedef_factura.tdf_factura = fas_tedef_dserv.tdserv_nrodocpg</on>
-																	<on>fas_tedef_factura.tdf_nrolote = fas_tedef_dserv.tdserv_nrolote</on>
-																	<on>fas_liquidacion_linea.liql_id = fas_tedef_dserv.tdserv_liql_id</on>
+																<join table = 'fas_tedef_dserv_test'>
+																	<on>fas_tedef_factura.tdf_factura = fas_tedef_dserv_test.tdserv_nrodocpg</on>
+																	<on>fas_tedef_factura.tdf_nrolote = fas_tedef_dserv_test.tdserv_nrolote</on>
+																	<on>fas_liquidacion_linea.liql_id = fas_tedef_dserv_test.tdserv_liql_id</on>
 																</join>
 																<join table='fas_actividad_pres'>
 																	<on>fas_liquidacion_linea.acp_id = fas_actividad_pres.acp_id</on>
@@ -2715,7 +2720,7 @@ function datosFicheros(pdata, pIntIndicador) {
 										AND fas_tedef_factura.tdf_factura = ?
 										AND ${mStrSqlCond}
 										AND fas_liquidacion_linea.liq_id = ?
-										AND fas_tedef_dserv.tdserv_pres = ?
+										AND fas_tedef_dserv_test.tdserv_pres = ?
 										AND fas_liquidacion_linea.acp_id IS NOT NULL
 										AND fas_liquidacion_linea.liql_estado IN ('P','F','Q')
 									</where>
@@ -2778,10 +2783,10 @@ function datosFicheros(pdata, pIntIndicador) {
 															<on>fas_liquidacion.liq_id = fas_liquidacion_linea.liq_id</on>
 															<join table='fas_producto'>
 																<on>fas_liquidacion_linea.liql_presta_fact = fas_producto.prd_codigo</on>
-																<join table = 'fas_tedef_dfarm'>
-																	<on>fas_tedef_factura.tdf_factura = fas_tedef_dfarm.tdfarm_nrodocpg</on>
-																	<on>fas_tedef_factura.tdf_nrolote = fas_tedef_dfarm.tdfarm_nrolote</on>
-																	<on>fas_liquidacion_linea.liql_id = fas_tedef_dfarm.tdfarm_liql_id</on>
+																<join table = 'fas_tedef_dfarm_test'>
+																	<on>fas_tedef_factura.tdf_factura = fas_tedef_dfarm_test.tdfarm_nrodocpg</on>
+																	<on>fas_tedef_factura.tdf_nrolote = fas_tedef_dfarm_test.tdfarm_nrolote</on>
+																	<on>fas_liquidacion_linea.liql_id = fas_tedef_dfarm_test.tdfarm_liql_id</on>
 																</join>
 															</join>
 															<join table='fas_actividad_prod'>
@@ -2802,7 +2807,7 @@ function datosFicheros(pdata, pIntIndicador) {
 										AND fas_tedef_factura.tdf_factura = ?
 										AND ${mStrSqlCond}
 										AND fas_liquidacion_linea.liq_id = ?
-										AND fas_tedef_dfarm.tdfarm_pres = ?
+										AND fas_tedef_dfarm_test.tdfarm_pres = ?
 										AND fas_liquidacion_linea.acd_id IS NOT NULL
 										AND fas_liquidacion_linea.liql_estado IN ('P','F','Q')
 									</where>
@@ -3026,7 +3031,7 @@ function datosFicheros(pdata, pIntIndicador) {
 												  preCub9 + prdCub6 +
 												  prdCub8;
 
-							// Updateamos fas_tedef_date con los montos obtenidos
+							// Updateamos fas_tedef_date_test con los montos obtenidos
 							let mObjTedef_date =
 								{
 									"tdate_honoproexo"		: preCub1,
@@ -3042,7 +3047,7 @@ function datosFicheros(pdata, pIntIndicador) {
 									"tdate_totgstcub_round"	: Ax.math.bc.of(sumFinal).setScale(2, Ax.math.bc.RoundingMode.HALF_UP)
 								}
 
-							Ax.db.update('fas_tedef_date',
+							Ax.db.update('fas_tedef_date_test',
 								mObjTedef_date,
 								{
 									"tdate_serial"		: mIntSerialDate
@@ -3125,7 +3130,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					SUM(tdate_cpgvaraf_round)	tdate_cpgvaraf_round,
 					SUM(tdate_cpgvarexo_round)	tdate_cpgvarexo_round
 				</columns>
-				<from table = 'fas_tedef_date' />
+				<from table = 'fas_tedef_date_test' />
 				<where>
 						tdate_nrolote	= ?
 					AND tdate_nrodocpg	= ?
@@ -3140,7 +3145,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					tdfarm_prdexeifv,
 					NVL(SUM(tdfarm_cpgprd_round), 0.00) tdfarm_cpgprd_round
 				</columns>
-				<from table = 'fas_tedef_dfarm' />
+				<from table = 'fas_tedef_dfarm_test' />
 				<where>
 						tdfarm_nrolote	= ?
 					AND tdfarm_nrodocpg	= ?
@@ -3159,7 +3164,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					NVL(SUM(tdserv_cpgvr_round), 0.00) tdserv_cpgvr_round,
 					NVL(SUM(tdserv_cpgfj_round), 0.00) tdserv_cpgfj_round
 				</columns>
-				<from table = 'fas_tedef_dserv' />
+				<from table = 'fas_tedef_dserv_test' />
 				<where>
 						tdserv_nrolote	= ?
 					AND tdserv_nrodocpg	= ?
@@ -3180,7 +3185,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					tdate_cpgvaraf_round,
 					tdate_cpgvarexo_round
 				</columns>
-				<from table = 'fas_tedef_date' />
+				<from table = 'fas_tedef_date_test' />
 				<where>
 						tdate_nrolote	= ?
 					AND tdate_nrodocpg	= ?
@@ -3216,8 +3221,8 @@ function datosFicheros(pdata, pIntIndicador) {
 
 		if (mBcSumCpFjIgv > 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjIgv > 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpFjIgv > 0.00 && mRowAte.tdate_cpgfijaf_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgfijaf_round"	: Ax.math.bc.add(mRowAte.tdate_cpgfijaf_round, 0.01),
 							"tdate_cpgfijaf"		: Ax.math.bc.add(mRowAte.tdate_cpgfijaf_round, 0.01)
@@ -3232,8 +3237,8 @@ function datosFicheros(pdata, pIntIndicador) {
 			mRsAte.close();
 		} else if (mBcSumCpFjIgv < 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjIgv < 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpFjIgv < 0.00 && mRowAte.tdate_cpgfijaf_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgfijaf_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgfijaf_round, 0.01),
 							"tdate_cpgfijaf"		: Ax.math.bc.sub(mRowAte.tdate_cpgfijaf_round, 0.01)
@@ -3250,8 +3255,8 @@ function datosFicheros(pdata, pIntIndicador) {
 
 		if (mBcSumCpFjExo > 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjExo > 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpFjExo > 0.00 && mRowAte.tdate_cpgfijexo_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgfijexo_round"	: Ax.math.bc.add(mRowAte.tdate_cpgfijexo_round, 0.01),
 							"tdate_cpgfijexo"		: Ax.math.bc.add(mRowAte.tdate_cpgfijexo_round, 0.01)
@@ -3266,8 +3271,8 @@ function datosFicheros(pdata, pIntIndicador) {
 			mRsAte.close();
 		} else if (mBcSumCpFjExo < 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpFjExo < 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpFjExo < 0.00 && mRowAte.tdate_cpgfijexo_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgfijexo_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgfijexo_round, 0.01),
 							"tdate_cpgfijexo"		: Ax.math.bc.sub(mRowAte.tdate_cpgfijexo_round, 0.01)
@@ -3284,8 +3289,8 @@ function datosFicheros(pdata, pIntIndicador) {
 
 		if (mBcSumCpVrIgv > 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrIgv > 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpVrIgv > 0.00 && mRowAte.tdate_cpgvaraf_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgvaraf_round"	: Ax.math.bc.add(mRowAte.tdate_cpgvaraf_round, 0.01),
 							"tdate_cpgvaraf"		: Ax.math.bc.add(mRowAte.tdate_cpgvaraf_round, 0.01)
@@ -3300,8 +3305,8 @@ function datosFicheros(pdata, pIntIndicador) {
 			mRsAte.close();
 		} else if (mBcSumCpVrIgv < 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrIgv < 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpVrIgv < 0.00 && mRowAte.tdate_cpgvaraf_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgvaraf_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgvaraf_round, 0.01),
 							"tdate_cpgvaraf"		: Ax.math.bc.sub(mRowAte.tdate_cpgvaraf_round, 0.01)
@@ -3318,8 +3323,8 @@ function datosFicheros(pdata, pIntIndicador) {
 
 		if (mBcSumCpVrExo > 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrExo > 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpVrExo > 0.00 && mRowAte.tdate_cpgvarexo_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgvarexo_round"	: Ax.math.bc.add(mRowAte.tdate_cpgvarexo_round, 0.01),
 							"tdate_cpgvarexo"		: Ax.math.bc.add(mRowAte.tdate_cpgvarexo_round, 0.01)
@@ -3334,8 +3339,8 @@ function datosFicheros(pdata, pIntIndicador) {
 			mRsAte.close();
 		} else if (mBcSumCpVrExo < 0.00) {
 			mRsAte.forEach((mRowAte) => {
-				if (mBcSumCpVrExo < 0.00) {
-					Ax.db.update('fas_tedef_date',
+				if (mBcSumCpVrExo < 0.00 && mRowAte.tdate_cpgvarexo_round != 0) {
+					Ax.db.update('fas_tedef_date_test',
 						{
 							"tdate_cpgvarexo_round"	: Ax.math.bc.sub(mRowAte.tdate_cpgvarexo_round, 0.01),
 							"tdate_cpgvarexo"		: Ax.math.bc.sub(mRowAte.tdate_cpgvarexo_round, 0.01)
@@ -3501,7 +3506,7 @@ function datosFicheros(pdata, pIntIndicador) {
 						<columns>
 							tdserv_fecproc
 						</columns>
-						<from table = 'fas_tedef_dserv' />
+						<from table = 'fas_tedef_dserv_test' />
 						<where>
 								tdserv_nrolote = ?
 							AND tdserv_nrodocpg = ?
@@ -3517,7 +3522,7 @@ function datosFicheros(pdata, pIntIndicador) {
 						<columns>
 							tdfarm_fecdisfarm
 						</columns>
-						<from table = 'fas_tedef_dfarm' />
+						<from table = 'fas_tedef_dfarm_test' />
 						<where>
 								tdfarm_nrolote = ?
 							AND tdfarm_nrodocpg = ?
@@ -3815,7 +3820,7 @@ function datosFicheros(pdata, pIntIndicador) {
 						SUM(tdate_cpgvarexo)	tdate_cpgvarexo,
 						SUM(tdate_prdsemedexo)	tdate_prdsemedexo
 					</columns>
-					<from table = 'fas_tedef_date' />
+					<from table = 'fas_tedef_date_test' />
 					<where>
 							tdate_nrodocpg = ?
 						AND tdate_nrolote = ?
@@ -3852,7 +3857,7 @@ function datosFicheros(pdata, pIntIndicador) {
 					<columns>
 						count(*)
 					</columns>
-					<from table = 'fas_tedef_date' />
+					<from table = 'fas_tedef_date_test' />
 					<where>
 							tdate_nrodocpg = ?
 						AND tdate_nrolote = ?
@@ -3860,8 +3865,8 @@ function datosFicheros(pdata, pIntIndicador) {
 				</select>
 			`, mRowData.fvh_numero, mRowData.tdf_nrolote);
 
-			// Insert en fas_tedef_dfac 
-			Ax.db.insert('fas_tedef_dfac',
+			// Insert en fas_tedef_dfac_test 
+			Ax.db.insert('fas_tedef_dfac_test',
 				{
 					"tdfac_fecha"			: mDateFecha,
 					"tdfac_hora"			: mDateHora,
@@ -3922,6 +3927,8 @@ function datosFicheros(pdata, pIntIndicador) {
 		throw "Lista de facturas que faltan datos: " + result;
 	}
 
+	// Ax.db.call('recalcularTEDEF', pdata);
+	
 	/**
 	 * [0] pIntIndicador => Proceso normal del cliente
 	 * [1] pIntIndicador => Ejecución del código en modo simulación
@@ -3931,3 +3938,12 @@ function datosFicheros(pdata, pIntIndicador) {
 		return true
 	}
 }
+
+
+var pdata = {
+    tdl_nrolote: '0600437',
+    tdf_centro: 'CRP0',
+    tdl_financiador: '00043258'
+}
+
+return datosFicheros(pdata);
